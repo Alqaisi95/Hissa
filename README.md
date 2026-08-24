@@ -1,0 +1,212 @@
+# حِصّة | Hissa Pools
+
+منصة تمويل جماعي لمشاريع تشغيلية محددة في سلطنة عُمان — تنفيذ كامل لـ **Pilot MVP**
+وفق وثيقة المشروع ووثيقة متطلبات المنتج (PRD v1.0).
+
+A crowdfunding platform for specific operational projects in the Sultanate of Oman.
+This repository is a complete Pilot MVP implementation of the product document and PRD v1.0.
+
+> **الوضع التنظيمي.** تعمل حِصّة من خلال مشغل تمويل جماعي مرخّص. لا تحتفظ المنصة بأموال
+> المستثمرين في حسابها التشغيلي (BR-001, BR-002). هذا المستودع تنفيذ منتج وليس عرضًا
+> استثماريًا أو رأيًا قانونيًا؛ تُعتمد القواعد النهائية والعقود والحدود من مستشار قانوني
+> عُماني وهيئة الخدمات المالية أو المشغل المرخّص قبل أي إطلاق حقيقي.
+
+---
+
+## Quick start
+
+```bash
+npm install
+npm run seed -w apps/api -- --fresh     # pilot dataset: 3 pools, full staff roster
+npm run dev                             # API on :4000, web on :5173
+```
+
+| Persona | Email | Password |
+|---|---|---|
+| Investor (retail) | `investor1@example.om` | `HissaPilot#2026` |
+| Investor (sophisticated) | `sophisticated@example.om` | `HissaPilot#2026` |
+| Project owner | `owner.cafe@example.om` | `HissaPilot#2026` |
+| Investment analyst | `analyst@hissa.om` | `HissaPilot#2026` |
+| Committee member | `committee1@hissa.om` | `HissaPilot#2026` |
+| Compliance | `compliance@hissa.om` | `HissaPilot#2026` |
+| Finance ops (maker) | `finance.maker@hissa.om` | `HissaPilot#2026` |
+| Finance ops (checker) | `finance.checker@hissa.om` | `HissaPilot#2026` |
+| Portfolio ops | `portfolio@hissa.om` | `HissaPilot#2026` |
+| System admin | `admin@hissa.om` | `HissaPilot#2026` |
+
+Staff roles require MFA. In development the one-time code is echoed in the sign-in
+response and shown under the code field — never in production (`config.exposeOtp`).
+
+```bash
+npm test          # 54 tests: AT-01..AT-12, engines, full journey
+npm run typecheck # API and web
+npm run build     # production build
+```
+
+---
+
+## What is implemented
+
+Every requirement identifier below is the one used in the PRD, and it appears in the
+code as a comment next to the logic that satisfies it.
+
+### Identity and suitability — FR-001…FR-008
+Registration with OTP on email or phone, MFA for privileged roles, investor
+classification with compliance sign-off, a suitability assessment that **restricts on a
+misunderstood core risk regardless of total score**, eKYC/KYB with UBO and sanctions/PEP
+screening, versioned consents storing a hash of the exact text shown, and periodic
+re-verification that moves a lapsed account to `restricted`.
+
+### Origination and due diligence — FR-101…FR-108
+Draft-capable applications that survive across sessions, a classified document vault with
+versions, checksums and malware scanning, bank/POS feeds with month-coverage tracking,
+two-way information requests on an SLA clock, a 14-item due-diligence checklist where
+waiving a mandatory item demands written justification, a **versioned weighted risk model**
+whose score, inputs and model version are all retained, and a committee flow with a hashed
+decision pack, configurable quorum and **conflict-forced recusal** (BR-016).
+
+### Pools and disclosure — FR-201…FR-208
+A disclosure builder whose mandatory sections are enforced by schema, **immutable hashed
+versions** that are superseded rather than replaced, publication gates (owner contribution
+received first, no banned guarantee wording, conservative ≤ base ≤ optimistic), the public
+marketplace, a permissioned data room with logged downloads and denials, moderated Q&A, and
+pause / extend / cancel with reasons and investor notification.
+
+### Investment — FR-301…FR-308
+An eligibility gate that evaluates KYC, suitability, consents, account status and the
+investor limits, returning **what is available without disclosing the internal rule**;
+a quote with fees, units and ownership share; acknowledgements bound to the exact
+disclosure version; hand-off to the licensed partner's hosted checkout (no card data
+touches Hissa); idempotent webhooks; and a **deterministic largest-remainder allocation**
+whose result always ties exactly to the ceiling.
+
+### Funds — FR-401…FR-408
+Escrow references rather than an internal balance, daily reconciliation whose differences
+become SLA'd cases and are never auto-closed, **all-or-nothing closing** that refunds every
+confirmed commitment when the minimum is missed, milestone disbursements requiring met
+conditions with evidence, refunds and distributions from evidenced realised cash — every
+money movement under **dual control** where the maker can never approve their own request.
+
+### Portfolio and monitoring — FR-501…FR-509
+Report schedules with reminders, KPI actual-vs-forecast variance, covenants that raise
+alerts and cases on breach, publication review that keeps drafts away from investors,
+a portfolio showing nominal values only (**no implied market price**), voting weighted by
+holdings at the record date, default/workout handling, and a final-settlement close that
+refuses to run while any money movement is still in flight.
+
+### Administration — FR-601…FR-610
+RBAC with segregation of duties, work queues, an **append-only audit log** enforced by
+database triggers, case management with internal notes that never surface externally,
+complaints with references and SLAs, reproducible exports carrying their filters and
+extraction time, **effective-dated settings** that cannot apply retroactively and need a
+second approver, bilingual notification templates, incident banners, and PDPL data-subject
+requests with a self-service export.
+
+### Business rules BR-001…BR-020
+All twenty are enforced in code rather than documented and hoped for. The full mapping is
+in [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md).
+
+---
+
+## Architecture
+
+```
+apps/api                     Modular monolith with explicit domain boundaries (PRD §16.1)
+  src/domains/               identity · origination · pools · orders · funds
+                             portfolio · cases · admin · analytics · public
+  src/workflow/              pool state machine, application states, scheduler
+  src/integrations/          partner · eKYC · e-sign · notifications  (swappable adapters)
+  src/lib/                   money · rbac · settings · audit · documents · legal · crypto
+  src/db/                    schema.sql · access layer · seed
+apps/web                     React + Vite, Arabic RTL / English LTR
+  src/pages/{public,investor,owner,staff}
+```
+
+**Money.** Amounts are integer *baisa* (1 OMR = 1000) everywhere — no floats in financial
+arithmetic (PRD §10.1). Percentages are basis points. Pro-rata allocation uses the
+largest-remainder method so a split always sums back to the total.
+
+**Time.** Stored UTC, presented in Asia/Muscat.
+
+**State.** Every pool transition records a reason, an authorised actor, a timestamp and the
+related inputs. A reverse move is a new event, never a deletion (PRD §5).
+
+**Integration contract.** Every money call carries an idempotency key and a correlation id;
+webhooks are signed and processed exactly once; a **timeout is not a failure** — the order
+stays `pending` until the partner answers or reconciliation resolves it (§11.1, AT-09).
+
+### Sandbox adapters
+
+`integrations/` ships sandbox implementations with the production contract already in
+place. Going live means replacing the adapter body, not the calling code:
+
+| Adapter | Sandbox behaviour |
+|---|---|
+| `partner.ts` | Hosted-checkout stub, idempotent references, settlement via signed webhook |
+| `ekyc.ts` | Deterministic outcomes from ID prefixes: `999…` sanctions, `888…` PEP, `777…` manual review |
+| `esign.ts` | Signed artefact with evidence, stored with a checksum |
+| `notifications.ts` | Queued delivery with channel fallback to in-app |
+| `storage.ts` | Local object store mirroring the S3 contract |
+
+---
+
+## Testing
+
+```
+AT-01  commitment confirms, receipt bound to the disclosure hash, audited
+AT-02  retail per-issuer cap blocks the excess and shows exactly what remains
+AT-03  missed target refunds every commitment and disburses nothing
+AT-04  material change supersedes the version, notifies, opens a case
+AT-05  the maker cannot approve; approval without evidence is refused
+AT-06  overdue report raises an alert, a case and an escalation
+AT-07  403 without disclosing data, and the attempt is logged
+AT-08  duplicate webhook applies once and records the replay
+AT-09  partner timeout stays pending, never failed
+AT-10  Arabic journey, bilingual errors, OMR three decimals
+AT-11  complaint yields reference, SLA, owner and acknowledgement
+AT-12  audit log and published disclosures are immutable
+```
+
+Plus unit coverage of the money, allocation, risk, suitability, state-machine and RBAC
+engines, and an end-to-end journey from company registration through committee decision,
+publication, oversubscribed funding, reconciliation, allocation, disbursement, reporting
+and distribution.
+
+---
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `4000` | API port |
+| `HISSA_DB` | `apps/api/data/hissa.sqlite` | Database file (`:memory:` in tests) |
+| `HISSA_STORAGE` | `apps/api/data/objects` | Object store root |
+| `PARTNER_WEBHOOK_SECRET` | `dev-webhook-secret` | HMAC secret for partner webhooks |
+| `PARTNER_BASE_URL` | sandbox | Licensed operator base URL |
+| `SESSION_TTL_HOURS` | `12` | Session lifetime |
+| `CORS_ORIGINS` | `http://localhost:5173` | Allowed origins |
+| `ANALYTICS_SALT` | dev value | Pseudonymisation salt (§14.1) |
+
+The datastore is SQLite via Node's built-in `node:sqlite`, chosen so the pilot runs with
+no external service. The access layer is a thin SQL wrapper; moving to PostgreSQL means
+porting `schema.sql` and `db/index.ts`.
+
+---
+
+## Before real money moves
+
+The PRD's Go-Live conditions (§13.3, §15.1) are product and legal gates, not code:
+
+1. A signed agreement with a licensed operator, and the RACI matrix between the parties.
+2. Omani legal counsel sign-off on the SPV structure, contracts and disclosure memorandum.
+3. Investor limits re-validated with the FSA and the operator — the published values in
+   `lib/settings.ts` are the PRD's working assumptions, effective-dated so they can be
+   changed with an approval trail rather than a deployment.
+4. A PDPL review covering controller/processor roles, hosting, cross-border transfer,
+   retention and breach notification.
+5. Penetration test with no open critical or high findings, and a successful restore drill.
+6. Production adapters for the partner, eKYC/AML, escrow, e-sign and messaging.
+
+Open decisions OD-01…OD-10 from PRD §17.1 remain open; where the code had to assume
+something (cooling-off disabled, pro-rata allocation, the published fee schedule), the
+assumption is an effective-dated setting rather than a constant.

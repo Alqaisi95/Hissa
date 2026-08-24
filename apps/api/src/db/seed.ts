@@ -311,6 +311,8 @@ for (const spec of SPECS) {
     const unitPrice = omr(100);
     const totalUnits = spec.target / unitPrice;
     const closesAt = spec.stage === 'funding' ? plus(at, days(22)) : plus(at, -days(5));
+    // Publication always precedes funding, so funding-time KPIs stay positive.
+    const publishedAt = spec.stage === 'operating' ? plus(at, -days(60)) : plus(at, -days(35));
 
     run(`INSERT INTO pools (id, reference, application_id, entity_id, title_ar, sector, governorate, structure,
                             spv_name, total_units, unit_price, target_amount, min_amount, max_amount, min_ticket,
@@ -320,15 +322,16 @@ for (const spec of SPECS) {
         [poolId, makeReference('POOL', poolSeq), applicationId, spec.entityId, spec.titleAr, spec.sector,
          spec.governorate, `${spec.titleAr.split('—')[0].trim()} — شركة غرض خاص`, totalUnits, unitPrice,
          spec.target, Math.round(spec.target * 0.8), Math.round(spec.target * 1.1), omr(100),
-         spec.ownerContribution, plus(at, -days(36)), spec.tenorMonths,
-         plus(at, -days(35)), closesAt, `ESCROW-OM-${makeReference('POOL', poolSeq)}`, staff.portfolio,
-         plus(at, -days(38)), at]);
+         spec.ownerContribution, plus(publishedAt, -days(1)), spec.tenorMonths,
+         publishedAt, closesAt, `ESCROW-OM-${makeReference('POOL', poolSeq)}`, staff.portfolio,
+         plus(publishedAt, -days(3)), at]);
 
     run(`INSERT INTO pool_state_events (id, pool_id, from_state, to_state, reason, payload, actor_id, created_at)
-         VALUES (?,?,NULL,'draft','seeded pilot pool','{}',?,?)`, [newId(), poolId, staff.portfolio, plus(at, -days(38))]);
+         VALUES (?,?,NULL,'draft','seeded pilot pool','{}',?,?)`,
+        [newId(), poolId, staff.portfolio, plus(publishedAt, -days(3))]);
     run(`INSERT INTO pool_state_events (id, pool_id, from_state, to_state, reason, payload, actor_id, created_at)
          VALUES (?,?,'approved','funding','disclosure approved and published','{}',?,?)`,
-        [newId(), poolId, staff.portfolio, plus(at, -days(35))]);
+        [newId(), poolId, staff.portfolio, publishedAt]);
 
     const sections = buildDisclosure(spec, monthlyRevenue);
     run(`INSERT INTO disclosure_versions (id, pool_id, version, sections, content_hash, status, created_by, approved_by, published_at, created_at)
@@ -488,7 +491,7 @@ if (created.bakery && !get(`SELECT 1 FROM refunds WHERE pool_id = ?`, [created.b
     for (const orderId of orders) {
       const order = get<any>(`SELECT amount FROM investment_orders WHERE id = ?`, [orderId]);
       run(`INSERT INTO refunds (id, pool_id, order_id, amount, reason, status, created_by, created_at)
-           VALUES (?,?,?,?, 'all-or-nothing: funding target not reached', 'requested', ?, ?)`,
+           VALUES (?,?,?,?, 'refund.target_not_reached', 'requested', ?, ?)`,
           [newId(), poolId, orderId, order.amount, staff.financeMaker, plus(at, -days(5))]);
     }
   });

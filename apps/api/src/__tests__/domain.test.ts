@@ -245,6 +245,24 @@ describe('RBAC — PRD §9 segregation of duties', () => {
   test('every declared role has at least one permission', () => {
     for (const role of ROLES) assert.ok(ROLE_PERMISSIONS[role].length > 0, `${role} has no permissions`);
   });
+
+  test('oversight roles read origination and monitoring without acting on them', () => {
+    // PRD §9 — Compliance views every supervisory file; the work belongs elsewhere.
+    for (const role of ['compliance', 'auditor'] as const) {
+      const permissions = permissionsFor([role]);
+      for (const read of ['dd.read', 'committee.read', 'monitor.read'] as const) {
+        assert.ok(permissions.has(read), `${role} must be able to read ${read}`);
+      }
+      for (const act of ['dd.work', 'dd.score', 'committee.vote', 'report.publish'] as const) {
+        assert.equal(permissions.has(act), false, `${role} must not hold ${act}`);
+      }
+    }
+    // The analyst works the case but never decides it or touches money.
+    const analyst = permissionsFor(['investment_analyst']);
+    assert.ok(analyst.has('dd.work'));
+    assert.equal(analyst.has('committee.decide'), false);
+    assert.equal(analyst.has('funds.approve'), false);
+  });
 });
 
 describe('report variance — FR-502', () => {

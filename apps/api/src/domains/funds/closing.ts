@@ -47,7 +47,7 @@ export function closePool(poolId: string, actorId: string, reason: string): Clos
 
       for (const order of confirmed) {
         run(`INSERT INTO refunds (id, pool_id, order_id, amount, reason, status, created_by, created_at)
-             VALUES (?,?,?,?, 'all-or-nothing: funding target not reached', 'requested', ?, ?)`,
+             VALUES (?,?,?,?, 'refund.target_not_reached', 'requested', ?, ?)`,
             [newId(), poolId, order.id, order.amount, actorId, at]);
         notify({ userId: order.investor_id, templateCode: 'pool_failed_refund',
                  variables: { poolTitle: pool.title_ar, amount: order.amount / 1000 } });
@@ -86,7 +86,7 @@ export function closePool(poolId: string, actorId: string, reason: string): Clos
       // BR-017 — the unallocated remainder of an oversubscribed pool is refunded.
       if (line.refund > 0) {
         run(`INSERT INTO refunds (id, pool_id, order_id, amount, reason, status, created_by, created_at)
-             VALUES (?,?,?,?, 'oversubscription allocation remainder', 'requested', ?, ?)`,
+             VALUES (?,?,?,?, 'refund.allocation_remainder', 'requested', ?, ?)`,
             [newId(), poolId, line.orderId, line.refund, actorId, at]);
       }
       notify({ userId: line.investorId, templateCode: 'pool_funded',

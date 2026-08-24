@@ -22,7 +22,7 @@ export const PERMISSIONS = [
   'identity.read_any', 'identity.review_kyc', 'identity.suspend', 'identity.classify',
   // origination
   'application.create', 'application.read_own', 'application.read_any', 'application.screen',
-  'dd.work', 'dd.score', 'committee.read', 'committee.vote', 'committee.decide',
+  'dd.read', 'dd.work', 'dd.score', 'committee.read', 'committee.vote', 'committee.decide',
   // pools
   'pool.build', 'pool.publish', 'pool.pause', 'pool.cancel', 'pool.read_any', 'qa.moderate',
   // investing
@@ -30,7 +30,7 @@ export const PERMISSIONS = [
   // funds — maker vs checker
   'funds.read', 'funds.reconcile', 'funds.request', 'funds.approve',
   // portfolio & monitoring
-  'report.submit', 'report.review', 'report.publish', 'pool.monitor', 'distribution.create',
+  'report.submit', 'report.review', 'report.publish', 'monitor.read', 'pool.monitor', 'distribution.create',
   // support & admin
   'case.read_any', 'case.work', 'complaint.create', 'settings.propose', 'settings.approve',
   'admin.users', 'audit.read', 'reports.export', 'banner.manage',
@@ -44,17 +44,20 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   project_owner: ['application.create', 'application.read_own', 'report.submit', 'complaint.create'],
 
   investment_analyst: [
-    'application.read_any', 'application.screen', 'dd.work', 'dd.score',
+    'application.read_any', 'application.screen', 'dd.read', 'dd.work', 'dd.score',
     'committee.read', 'pool.read_any', 'case.work',
   ],
 
   // Votes within quorum; never touches money (PRD §9).
-  committee_member: ['committee.read', 'committee.vote', 'committee.decide', 'application.read_any', 'pool.read_any'],
+  committee_member: ['committee.read', 'committee.vote', 'committee.decide', 'application.read_any',
+                     'pool.read_any', 'dd.read'],
 
   compliance: [
     'identity.read_any', 'identity.review_kyc', 'identity.suspend', 'identity.classify',
     'application.read_any', 'pool.read_any', 'pool.pause', 'funds.read', 'case.read_any', 'case.work',
     'settings.propose', 'settings.approve', 'audit.read', 'reports.export', 'order.read_any',
+    // Read-only oversight of origination, committee and monitoring — no action rights there.
+    'dd.read', 'committee.read', 'monitor.read',
   ],
 
   // PRD §9 — Finance Ops both prepares and counter-approves money movements.
@@ -64,14 +67,17 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
                 'order.read_any', 'case.work', 'reports.export'],
 
   portfolio_ops: [
-    'pool.read_any', 'pool.monitor', 'report.review', 'report.publish',
+    'pool.read_any', 'monitor.read', 'pool.monitor', 'report.review', 'report.publish',
     'distribution.create', 'case.work', 'qa.moderate', 'pool.build', 'pool.publish',
   ],
 
   // Technical breadth, zero financial/investment approval.
   system_admin: ['admin.users', 'settings.propose', 'audit.read', 'banner.manage', 'pool.read_any'],
 
-  auditor: ['audit.read', 'pool.read_any', 'application.read_any', 'funds.read', 'order.read_any', 'case.read_any'],
+  auditor: [
+    'audit.read', 'pool.read_any', 'application.read_any', 'funds.read', 'order.read_any',
+    'case.read_any', 'dd.read', 'committee.read', 'monitor.read',
+  ],
 };
 
 /** Roles that must clear MFA before any privileged action (FR-007). */

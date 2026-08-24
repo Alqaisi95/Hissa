@@ -320,7 +320,7 @@ export function evaluateCovenants(poolId: string, kpis: Record<string, { actual:
 
 // ─────────────────────────── FR-504 alerts ───────────────────────────
 
-portfolioRouter.get('/alerts', requireAuth, requirePermission('pool.monitor'), (req, res) => {
+portfolioRouter.get('/alerts', requireAuth, requirePermission('monitor.read'), (req, res) => {
   const status = z.string().optional().parse(req.query.status);
   res.json({
     items: all<any>(
@@ -359,6 +359,25 @@ portfolioRouter.post('/pools/:id/votes', requireAuth, requirePermission('pool.mo
     notify({ userId: holder.investor_id, templateCode: 'vote_opened', variables: { title: body.titleAr, closesAt: body.closesAt } });
   }
   res.status(201).json({ voteId: id });
+});
+
+/** Votes an investor can act on, with their own ballot if already cast. */
+portfolioRouter.get('/pools/:id/votes', requireAuth, (req, res) => {
+  const holding = get<any>(`SELECT units FROM holdings WHERE pool_id = ? AND investor_id = ?`,
+                           [req.params.id, req.auth!.userId]);
+  const isStaff = req.auth!.roles.some((r) => ['portfolio_ops', 'compliance', 'auditor'].includes(r));
+  if (!holding && !isStaff) throw forbidden();
+
+  const votes = all<any>(`SELECT * FROM votes WHERE pool_id = ? ORDER BY closes_at DESC`, [req.params.id]);
+  res.json({
+    items: votes.map((vote) => ({
+      id: vote.id, titleAr: vote.title_ar, description: vote.description,
+      opensAt: vote.opens_at, closesAt: vote.closes_at, recordDate: vote.record_date, status: vote.status,
+      myBallot: get<any>(`SELECT choice, weight, created_at FROM vote_ballots WHERE vote_id = ? AND investor_id = ?`,
+                         [vote.id, req.auth!.userId]) ?? null,
+      myWeight: holding?.units ?? 0,
+    })),
+  });
 });
 
 portfolioRouter.post('/votes/:id/ballot', requireAuth, (req, res) => {
@@ -476,7 +495,7 @@ portfolioRouter.post('/pools/:id/close', requireAuth, requirePermission('pool.mo
 });
 
 /** Monitoring dashboard for portfolio operations. */
-portfolioRouter.get('/monitoring', requireAuth, requirePermission('pool.monitor'), (_req, res) => {
+portfolioRouter.get('/monitoring', requireAuth, requirePermission('monitor.read'), (_req, res) => {
   const at = nowIso();
   res.json({
     pools: all(`SELECT id, reference, title_ar, status, funded_at, tenor_months FROM pools

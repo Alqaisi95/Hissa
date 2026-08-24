@@ -263,7 +263,7 @@ ordersRouter.post('/:id/cancel', requireAuth, (req, res) => {
   run(`UPDATE investment_orders SET status = 'cancelled', cancelled_at = ?, updated_at = ? WHERE id = ?`, [at, at, order.id]);
   if (order.status === 'confirmed') {
     run(`INSERT INTO refunds (id, pool_id, order_id, amount, reason, status, created_by, created_at)
-         VALUES (?,?,?,?, 'investor cancellation within cooling-off window', 'requested', ?, ?)`,
+         VALUES (?,?,?,?, 'refund.investor_cancellation', 'requested', ?, ?)`,
         [newId(), order.pool_id, order.id, order.amount, req.auth!.userId, at]);
   }
   audit({ actorId: req.auth!.userId, action: 'order.cancelled', entityType: 'investment_order', entityId: order.id,

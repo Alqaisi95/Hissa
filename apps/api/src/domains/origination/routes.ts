@@ -243,7 +243,7 @@ originationRouter.post('/applications/:id/feeds', requireAuth, (req, res) => {
 
 // ─────────────────────────── FR-105 analyst workspace ───────────────────────────
 
-originationRouter.get('/cases', requireAuth, requirePermission('dd.work'), (req, res) => {
+originationRouter.get('/cases', requireAuth, requirePermission('dd.read'), (req, res) => {
   const status = z.string().optional().parse(req.query.status);
   const rows = all<any>(
     `SELECT c.*, a.reference, a.title_ar, a.sector, a.requested_amount, a.status AS application_status,
@@ -259,7 +259,7 @@ originationRouter.get('/cases', requireAuth, requirePermission('dd.work'), (req,
   res.json({ items: rows, count: rows.length });
 });
 
-originationRouter.get('/cases/:id', requireAuth, requirePermission('dd.work'), (req, res) => {
+originationRouter.get('/cases/:id', requireAuth, requirePermission('dd.read'), (req, res) => {
   const ddCase = get<any>(`SELECT * FROM dd_cases WHERE id = ?`, [req.params.id]);
   if (!ddCase) throw notFound();
   const app = get<any>(`SELECT * FROM project_applications WHERE id = ?`, [ddCase.application_id]);
