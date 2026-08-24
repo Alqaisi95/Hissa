@@ -1,0 +1,17 @@
+{
+  "name": "hissa-pools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "حِصّة | Hissa Pools — منصة تمويل جماعي لمشاريع تشغيلية محددة في سلطنة عُمان",
+  "workspaces": ["apps/api", "apps/web"],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/api & npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/api && npm run build --workspace apps/web",
+    "seed": "npm run seed --workspace apps/api",
+    "test": "npm run test --workspace apps/api",
+    "typecheck": "npm run typecheck --workspace apps/api && npm run typecheck --workspace apps/web"
+  },
+  "engines": { "node": ">=22.5.0" }
+}

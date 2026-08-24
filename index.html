@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>حاسبة النسبة المئوية</title>
+    <style>
+        body {
+            background-color: #f2f2f2;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        button {
+            width: 49%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            font-weight: bold;
+            text-align: center;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .calculate-text {
+            font-size: 24px;
+            color: #ff7f00; /* تغيير لون الكلمة */
+            text-align: center;
+        }
+    </style>
+    <script>
+        function calculate() {
+            var amount = parseFloat(document.getElementById("amount").value);
+            var result = amount + (amount * 0.15);
+            document.getElementById("result").innerHTML = result.toLocaleString('en-US');
+        }
+
+        function copyResult() {
+          var result = document.getElementById("result").innerHTML;
+          navigator.clipboard.writeText(result).then(function() {
+              var copyNotification = document.getElementById("copy-notification");
+              copyNotification.innerHTML = "تم النسخ!";
+              setTimeout(function() {
+                  copyNotification.innerHTML = "";
+              }, 1500);
+          });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>حاسبة النسبة المئوية</h1>
+        <label for="amount">المبلغ:</label>
+        <input type="text" id="amount" name="amount">
+        <button onclick="calculate()">حساب</button>
+        <button onclick="copyResult()">نسخ النتيجة</button>
+        <br><br>
+        <label for="result">النتيجة:</label>
+        <span id="result"></span>
+        <div id="copy-notification" style="text-align:center; color:#4CAF50; font-weight:bold;"></div>
+    </div>
+</body>
+</html>
