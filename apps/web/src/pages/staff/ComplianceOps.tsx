@@ -33,15 +33,24 @@ function KycQueue() {
   const restrict = useMutation((payload: { userId: string; status: string; reason: string }) =>
     api.post(`/identity/admin/users/${payload.userId}/restrict`,
              { status: payload.status, reason: payload.reason }));
+  const classify = useMutation((payload: { profileId: string; classification: string; reason: string }) =>
+    api.post(`/identity/admin/classification/${payload.profileId}`,
+             { classification: payload.classification, reason: payload.reason }));
 
   if (queue.loading) return <Loading rows={5} />;
   if (queue.error) return <ErrorNotice error={queue.error} onRetry={queue.reload} />;
 
   const ask = (message: string) => window.prompt(message) ?? '';
+  const CLASSES = ['retail', 'angel', 'sophisticated'];
 
   return (
     <Card title={t('queueKyc')} actions={<Badge>{queue.data?.count ?? 0}</Badge>}>
-      <ErrorNotice error={decide.error ?? restrict.error} />
+      <ErrorNotice error={decide.error ?? restrict.error ?? classify.error} />
+      <p className="small muted">
+        {locale === 'ar'
+          ? 'التصنيف الأعلى من «أفراد» لا يسري إلا باعتماد الامتثال، ويُحفظ كل تغيير بنسخة تاريخية ومبرر.'
+          : 'Anything above retail takes effect only on compliance approval, and every change is versioned with its justification.'}
+      </p>
       {(queue.data?.items ?? []).length === 0 ? <Empty /> : (
         <div className="table-wrap">
           <table className="data">
@@ -92,6 +101,17 @@ function KycQueue() {
                                 if (reason.length >= 5 && await restrict.run({ userId: item.user_id, status: 'restricted', reason })) queue.reload();
                               }}>
                         {locale === 'ar' ? 'تقييد' : 'Restrict'}
+                      </button>
+                      <button type="button" className="btn btn--sm" disabled={classify.pending}
+                              onClick={async () => {
+                                const next = ask(
+                                  locale === 'ar' ? `التصنيف: ${CLASSES.join(' / ')}` : `Classification: ${CLASSES.join(' / ')}`);
+                                if (!CLASSES.includes(next)) return;
+                                const reason = ask(locale === 'ar' ? 'مبرر التصنيف (5 أحرف)' : 'Classification reason (5+)');
+                                if (reason.length >= 5
+                                    && await classify.run({ profileId: item.profile_id, classification: next, reason })) queue.reload();
+                              }}>
+                        {locale === 'ar' ? 'التصنيف' : 'Classify'}
                       </button>
                     </div>
                   </td>

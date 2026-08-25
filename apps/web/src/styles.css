@@ -450,3 +450,20 @@ html[dir="rtl"] .chart__tip--static { transform: none; }
 .chart-grid { display: grid; gap: 1.15rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .chart-grid--wide { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 @media (max-width: 860px) { .chart-grid--wide { grid-template-columns: 1fr; } }
+
+/*
+ * Code and identifiers are always left-to-right, whatever the page direction:
+ * a JSON block starting with a neutral brace would otherwise inherit RTL and
+ * read back-to-front.
+ */
+pre, code, .mono {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+pre {
+  text-align: left;
+  margin: .5rem 0 0;
+  font-family: var(--font-en);
+  font-size: .82rem;
+  line-height: 1.6;
+}

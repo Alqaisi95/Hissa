@@ -63,6 +63,7 @@ function Settings() {
               <pre className="small mono" style={{ overflowX: 'auto', marginBlockEnd: 0 }}>
                 {JSON.stringify(setting.value, null, 2)}
               </pre>
+              <SettingHistory settingKey={setting.key} />
             </details>
           ))}
         </div>
@@ -139,6 +140,49 @@ function Settings() {
           <button type="submit" className="btn btn--primary" disabled={propose.pending}>{t('submit')}</button>
         </form>
       </Card>
+    </div>
+  );
+}
+
+/** BR-020 — the effective-dated trail behind the value currently in force. */
+function SettingHistory({ settingKey }: { settingKey: string }) {
+  const { locale, formatDate } = useI18n();
+  const history = useQuery<any>(`/admin/settings/${settingKey}/history`, [settingKey]);
+
+  if (history.loading) return null;
+  const rows = history.data?.history ?? [];
+  if (rows.length === 0) {
+    return (
+      <p className="small muted" style={{ marginBlockStart: '.6rem', marginBlockEnd: 0 }}>
+        {locale === 'ar'
+          ? 'لم يُغيَّر هذا الإعداد بعد — القيمة المعروضة هي الافتراض المعتمد.'
+          : 'This setting has never been changed — the value shown is the approved default.'}
+      </p>
+    );
+  }
+
+  return (
+    <div className="table-wrap" style={{ marginBlockStart: '.7rem' }}>
+      <table className="data">
+        <thead>
+          <tr>
+            <th>{locale === 'ar' ? 'يسري من' : 'Effective from'}</th>
+            <th>{locale === 'ar' ? 'إلى' : 'Until'}</th>
+            <th>{locale === 'ar' ? 'الحالة' : 'Status'}</th>
+            <th>{locale === 'ar' ? 'المبرر' : 'Note'}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row: any) => (
+            <tr key={row.id}>
+              <td className="small">{formatDate(row.effective_from)}</td>
+              <td className="small">{row.effective_to ? formatDate(row.effective_to) : '—'}</td>
+              <td><StatusBadge status={row.status === 'active' ? 'active' : 'draft'} /></td>
+              <td className="small">{row.note ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

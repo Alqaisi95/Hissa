@@ -4,6 +4,7 @@ import { useI18n } from '../../lib/i18n.tsx';
 import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { Card, Empty, ErrorNotice, Field, Loading, StatusBadge } from '../../components/ui.tsx';
+import { useState as useLocalState } from 'react';
 
 export function Complaints() {
   const { t, locale, formatDate } = useI18n();
@@ -12,6 +13,7 @@ export function Complaints() {
 
   const [form, setForm] = useState({ category: 'investment_process', subject: '', body: '' });
   const [created, setCreated] = useState<any>(null);
+  const [openRef, setOpenRef] = useLocalState<string | null>(null);
   const submit = useMutation(() => api.post('/cases/complaints', form));
   const dsar = useMutation((payload: { requestType: string; details: string }) => api.post('/cases/dsar', payload));
 
@@ -69,7 +71,7 @@ export function Complaints() {
               <thead>
                 <tr>
                   <th>{t('reference')}</th><th>{t('complaintSubject')}</th>
-                  <th>{t('status')}</th><th>{t('slaDue')}</th><th>{t('date')}</th>
+                  <th>{t('status')}</th><th>{t('slaDue')}</th><th>{t('date')}</th><th />
                 </tr>
               </thead>
               <tbody>
@@ -80,6 +82,12 @@ export function Complaints() {
                     <td><StatusBadge status={item.status} /></td>
                     <td>{formatDate(item.sla_due_at)}</td>
                     <td>{formatDate(item.created_at)}</td>
+                    <td>
+                      <button type="button" className="btn btn--sm"
+                              onClick={() => setOpenRef(openRef === item.reference ? null : item.reference)}>
+                        {openRef === item.reference ? t('close') : t('viewDetails')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -87,6 +95,8 @@ export function Complaints() {
           </div>
         )}
       </Card>
+
+      {openRef ? <ComplaintThread reference={openRef} /> : null}
 
       <Card title={locale === 'ar' ? 'طلبات البيانات الشخصية' : 'Personal data requests'}>
         <p className="small muted">
@@ -112,5 +122,44 @@ export function Complaints() {
         <ErrorNotice error={dsar.error} />
       </Card>
     </div>
+  );
+}
+
+
+/** FR-605 — the customer's own thread. Internal notes never appear here. */
+function ComplaintThread({ reference }: { reference: string }) {
+  const { t, locale, formatDate } = useI18n();
+  const thread = useQuery<any>(`/cases/complaints/${reference}`, [reference]);
+
+  if (thread.loading) return <Loading rows={3} />;
+  if (thread.error) return <ErrorNotice error={thread.error} onRetry={thread.reload} />;
+  if (!thread.data) return null;
+
+  const c = thread.data.case;
+  return (
+    <Card title={c.subject} actions={<StatusBadge status={c.status} />}>
+      <dl className="kv" style={{ marginBlockEnd: '1rem' }}>
+        <dt>{t('reference')}</dt><dd className="mono">{c.reference}</dd>
+        <dt>{t('slaDue')}</dt><dd>{formatDate(c.sla_due_at, true)}</dd>
+        {c.resolution ? <><dt>{locale === 'ar' ? 'المعالجة' : 'Resolution'}</dt><dd>{c.resolution}</dd></> : null}
+      </dl>
+      <p style={{ whiteSpace: 'pre-wrap' }}>{c.body}</p>
+
+      {(thread.data.notes ?? []).length > 0 ? (
+        <div className="stack-sm" style={{ marginBlockStart: '1rem' }}>
+          <strong className="small">{locale === 'ar' ? 'التحديثات' : 'Updates'}</strong>
+          {thread.data.notes.map((note: any, i: number) => (
+            <div key={i} className="panel">
+              <p className="small" style={{ margin: 0 }}>{note.body}</p>
+              <span className="small muted">{formatDate(note.created_at, true)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="small muted" style={{ marginBlockEnd: 0 }}>
+          {locale === 'ar' ? 'لا توجد تحديثات معلنة بعد.' : 'No published updates yet.'}
+        </p>
+      )}
+    </Card>
   );
 }

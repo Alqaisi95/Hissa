@@ -112,6 +112,9 @@ export function Register() {
     accountType: form.accountType,
   }));
   const verify = useMutation(() => api.post('/identity/otp/verify', { userId: pending!.userId, code }));
+  const resend = useMutation(() => api.post('/identity/otp/request', {
+    userId: pending!.userId, channel: form.email ? 'email' : 'sms', purpose: 'verify_contact',
+  }));
 
   if (pending) {
     return (
@@ -138,9 +141,18 @@ export function Register() {
               <input id="otp" type="text" inputMode="numeric" dir="ltr" maxLength={6} required
                      value={code} onChange={(event) => setCode(event.target.value)} />
             </Field>
-            <ErrorNotice error={verify.error} />
+            <ErrorNotice error={verify.error ?? resend.error} />
             <button type="submit" className="btn btn--primary btn--block" disabled={verify.pending}>
               {t('confirm')}
+            </button>
+            <button
+              type="button" className="btn btn--ghost btn--block" disabled={resend.pending}
+              onClick={async () => {
+                const r = await resend.run();
+                if (r) setPending((p) => (p ? { ...p, devOtp: r.devOtp } : p));
+              }}
+            >
+              {locale === 'ar' ? 'إعادة إرسال الرمز' : 'Resend the code'}
             </button>
           </form>
         </Card>

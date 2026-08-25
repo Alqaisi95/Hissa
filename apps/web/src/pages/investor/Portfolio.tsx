@@ -235,11 +235,47 @@ function PoolVotes({ poolId }: { poolId: string }) {
                   ))}
                 </div>
               )}
+              {/* FR-507 — once cast or closed, the tally is visible to holders. */}
+              {vote.myBallot || closed ? <VoteResults voteId={vote.id} /> : null}
             </div>
           );
         })}
       </div>
       <ErrorNotice error={ballot.error} />
+    </div>
+  );
+}
+
+function VoteResults({ voteId }: { voteId: string }) {
+  const { locale } = useI18n();
+  const results = useQuery<any>(`/portfolio/votes/${voteId}/results`, [voteId]);
+  if (results.loading || !results.data) return null;
+
+  const { tally, ballots, turnoutBps } = results.data;
+  const total = Math.max(1, tally.for + tally.against + tally.abstain);
+  const rows: [string, number][] = [
+    [locale === 'ar' ? 'موافق' : 'For', tally.for],
+    [locale === 'ar' ? 'معارض' : 'Against', tally.against],
+    [locale === 'ar' ? 'ممتنع' : 'Abstain', tally.abstain],
+  ];
+
+  return (
+    <div className="stack-sm" style={{ marginBlockStart: '.5rem' }}>
+      {rows.map(([label, weight]) => (
+        <div key={label} className="meter-block">
+          <div className="meter-block__head">
+            <span>{label}</span>
+            <span className="num">{Math.round((weight / total) * 100)}%</span>
+          </div>
+          <div className="progress">
+            <div className="progress__bar" style={{ width: `${(weight / total) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+      <span className="small muted">
+        {locale === 'ar' ? 'المشاركة' : 'Turnout'}: <span className="num">{Math.round(turnoutBps / 100)}%</span>
+        {' · '}{ballots} {locale === 'ar' ? 'صوتًا' : 'ballots'}
+      </span>
     </div>
   );
 }
