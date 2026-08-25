@@ -456,6 +456,22 @@
   .whoami__n { font-size: .82rem; font-weight: 500; line-height: 1.2; }
   .whoami__r { font-size: .68rem; color: var(--ink-3); line-height: 1.2; }
   .locked { opacity: .62; }
+  /* ═══ permission matrix ════════════════════════════════════════════════ */
+  .pmx th, .pmx td { text-align: center; }
+  .pmx th:first-child, .pmx td:first-child { text-align: start; min-inline-size: 12rem; }
+  .pmx__who { vertical-align: bottom; }
+  .pmx__who span { display: block; font-weight: 600; }
+  .pmx__who .muted { font-weight: 400; }
+  .pmx__c { padding-inline: .3rem; }
+  /* presence, not magnitude: a filled mark or an empty one */
+  .pm {
+    display: inline-block; inline-size: 11px; block-size: 11px; border-radius: 50%;
+    border: 1.5px solid var(--rule); background: transparent; vertical-align: middle;
+  }
+  .pm--on { background: var(--brand); border-color: var(--brand); }
+  .pm--hot { border-radius: 3px; }
+  .pm--on.pm--hot { background: var(--sand); border-color: var(--sand); }
+
 
   /* ═══ dashboard ════════════════════════════════════════════════════════ */
   .band { display: flex; flex-direction: column; gap: .85rem; }
@@ -1517,6 +1533,7 @@ const NAV_OWNER = [
   { k: 'own.reports', label: 'التقارير' },
 ];
 const STAFF_NAV = [
+  { k: 'ops.adash',    label: 'لوحة إدارة النظام', perm: 'admin.users' },
   { k: 'ops.dash',     label: 'لوحة التشغيل',     perm: 'dashboard.read' },
   { k: 'ops.pipeline', label: 'التحليلات',        perm: 'dashboard.read' },
   { k: 'ops.apps',     label: 'طلبات التمويل',    perm: 'application.review' },
@@ -2590,6 +2607,141 @@ function kpiRowHtml() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   SYSTEM ADMINISTRATION DASHBOARD
+   A different job asks different questions. Operations asks where the money
+   is; administration asks who can reach it, whether anyone can reach it
+   alone, and whether the record of who did what still hangs together.
+   ══════════════════════════════════════════════════════════════════════════ */
+const PERM_CATALOG = [
+  { k: 'dashboard.read',      ar: 'قراءة لوحات التشغيل',       domain: 'عام' },
+  { k: 'audit.read',          ar: 'قراءة سجل التدقيق',          domain: 'عام' },
+  { k: 'pool.manage',         ar: 'إدارة الفرص وإغلاقها',       domain: 'الفرص',    sensitive: true },
+  { k: 'application.review',  ar: 'فحص الطلبات واعتمادها',      domain: 'الفرص',    sensitive: true },
+  { k: 'application.read',    ar: 'قراءة الطلبات',              domain: 'الفرص' },
+  { k: 'funds.request',       ar: 'طلب صرف',                    domain: 'المال',    sensitive: true },
+  { k: 'funds.approve',       ar: 'اعتماد صرف',                 domain: 'المال',    sensitive: true },
+  { k: 'funds.read',          ar: 'قراءة الأرصدة والصرف',       domain: 'المال' },
+  { k: 'distribution.create', ar: 'تنفيذ التوزيعات',            domain: 'المال',    sensitive: true },
+  { k: 'report.publish',      ar: 'نشر التقارير',               domain: 'المتابعة', sensitive: true },
+  { k: 'kyc.read',            ar: 'قراءة طابور التحقق',         domain: 'الالتزام' },
+  { k: 'kyc.approve',         ar: 'اعتماد التحقق',              domain: 'الالتزام', sensitive: true },
+  { k: 'case.work',           ar: 'معالجة الحالات',             domain: 'الالتزام' },
+  { k: 'case.read',           ar: 'قراءة الحالات',              domain: 'الالتزام' },
+  { k: 'settings.read',       ar: 'قراءة الإعدادات',            domain: 'النظام' },
+  { k: 'admin.users',         ar: 'إدارة الحسابات',             domain: 'النظام',   sensitive: true },
+  { k: 'admin.enrol',         ar: 'إصدار دعوات الانضمام',       domain: 'النظام',   sensitive: true },
+];
+
+/* What an administrator has to notice before someone else does. */
+function accessExceptions() {
+  const now = Date.now();
+  const out = [];
+  const staff = STATE.users.filter(x => x.role === 'staff');
+  const active = staff.filter(x => !x.suspended);
+
+  /* A sensitive permission nobody holds is a stalled process; one only a
+     single person holds is a process that stops when they take leave. */
+  PERM_CATALOG.filter(pc => pc.sensitive).forEach(pc => {
+    const holders = active.filter(x => (x.perms || []).includes(pc.k));
+    if (holders.length === 0)
+      out.push({ sev: 3, kind: 'صلاحية', what: pc.ar,
+        why: 'لا يملكها أي حساب نشط — كل عمل يعتمد عليها متوقف', ref: pc.k, view: 'ops.admin' });
+    else if (holders.length === 1)
+      out.push({ sev: 2, kind: 'صلاحية', what: pc.ar,
+        why: 'يملكها حساب واحد فقط (' + holders[0].name + ') — يتوقف العمل بغيابه',
+        ref: pc.k, view: 'ops.admin' });
+  });
+
+  const admins = active.filter(x => (x.perms || []).includes('admin.users'));
+  if (admins.length < 2)
+    out.push({ sev: 3, kind: 'حوكمة', what: 'مدير نظام واحد نشط',
+      why: 'الرقابة الثنائية على الإعدادات تحتاج مديرَين — لا يمكن اعتماد أي اقتراح',
+      ref: 'admin.users', view: 'ops.admin' });
+
+  staff.filter(x => !(x.perms || []).length && !x.suspended).forEach(x =>
+    out.push({ sev: 2, kind: 'حساب', what: x.name, why: 'حساب نشط بلا أي صلاحية — لا يفتح شاشة واحدة',
+      ref: x.email || x.id, view: 'ops.admin' }));
+
+  staff.filter(x => x.suspended).forEach(x =>
+    out.push({ sev: 1, kind: 'حساب', what: x.name,
+      why: 'موقوف منذ ' + Math.floor((now - new Date(x.suspended).getTime()) / DAY) + ' يومًا',
+      ref: x.email || x.id, view: 'ops.admin' }));
+
+  STATE.invites.forEach(i => {
+    const st = inviteState(i);
+    if (st === 'open') {
+      const left = Math.ceil((new Date(i.expiresAt).getTime() - now) / DAY);
+      if (left <= 2) out.push({ sev: 1, kind: 'دعوة', what: 'كود ' + i.code,
+        why: 'صالح ' + (left <= 0 ? 'اليوم فقط' : left + ' يومًا') + ' لوظيفة '
+          + (JOB_AR[i.job] || i.job) + ' ولم يُستخدم', ref: i.code, view: 'ops.admin' });
+    } else if (st === 'expired') {
+      out.push({ sev: 1, kind: 'دعوة', what: 'كود ' + i.code,
+        why: 'انتهى دون استخدام — لوظيفة ' + (JOB_AR[i.job] || i.job), ref: i.code, view: 'ops.admin' });
+    }
+  });
+
+  STATE.settingProposals.filter(x => x.status === 'pending').forEach(x => {
+    const days = Math.floor((now - new Date(x.proposedAt).getTime()) / DAY);
+    const f = SETTING_FIELDS.find(y => y.k === x.key) || { label: x.key };
+    out.push({ sev: 2, kind: 'إعداد', what: 'اقتراح تغيير «' + f.label + '»',
+      why: 'معلّق منذ ' + days + ' يومًا وينتظر مديرًا غير من اقترحه',
+      ref: x.id, view: 'ops.settings' });
+  });
+
+  return out.sort((a, b) => b.sev - a.sev);
+}
+
+/* The chain is either intact or it is not; saying which row broke is the
+   only useful form of "not". */
+function auditIntegrity() {
+  const rows = STATE.audit;
+  const breaks = [];
+  for (let i = 1; i < rows.length; i += 1) {
+    if (rows[i].prev !== rows[i - 1].hash) breaks.push(i);
+  }
+  const recomputed = [];
+  let prev = '0'.repeat(16);
+  rows.forEach((r, i) => {
+    const copy = Object.assign({}, r);
+    delete copy.hash;
+    copy.prev = prev;
+    if (h64(prev + '|' + JSON.stringify(copy)) !== r.hash) recomputed.push(i);
+    prev = r.hash;
+  });
+  const byActor = {};
+  const byAction = {};
+  rows.forEach(r => {
+    const name = (user(r.actor) || {}).name || 'غير معروف';
+    byActor[name] = (byActor[name] || 0) + 1;
+    byAction[r.action] = (byAction[r.action] || 0) + 1;
+  });
+  return {
+    total: rows.length, breaks, recomputed,
+    intact: breaks.length === 0 && recomputed.length === 0,
+    byActor: Object.keys(byActor).map(k => ({ label: k, value: byActor[k] })).sort((a, b) => b.value - a.value),
+    byAction: Object.keys(byAction).map(k => ({ label: k, value: byAction[k] })).sort((a, b) => b.value - a.value),
+  };
+}
+
+/* Audit rows per day over a window — activity, not volume of money. */
+function auditActivity(days) {
+  const end = new Date(); end.setUTCHours(0, 0, 0, 0);
+  const start = new Date(end.getTime() - (days - 1) * DAY);
+  const out = Array.from({ length: days }, (_, i) => {
+    const d = new Date(start.getTime() + i * DAY);
+    return { key: d.toISOString().slice(0, 10), value: 0, count: 0,
+      label: d.toISOString().slice(5, 10) };
+  });
+  const index = {};
+  out.forEach((b, i) => { index[b.key] = i; });
+  STATE.audit.forEach(r => {
+    const k = String(r.at).slice(0, 10);
+    if (index[k] != null) { out[index[k]].value += 1; out[index[k]].count += 1; }
+  });
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    DASHBOARD MODEL
    Four questions, answered in order. Every figure below is derived from the
    record — nothing on the dashboard is a written-in number.
@@ -2913,6 +3065,145 @@ VIEWS['ops.dash'] = () => {
 };
 
 /* ── ops · pipeline ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   ops · the administration dashboard
+   ══════════════════════════════════════════════════════════════════════════ */
+VIEWS['ops.adash'] = () => {
+  const u = me();
+  const days = SESSION.win || 90;
+  const exc = accessExceptions();
+  const audit = auditIntegrity();
+  const activity = auditActivity(Math.min(days, 90));
+  const staff = STATE.users.filter(x => x.role === 'staff');
+  const active = staff.filter(x => !x.suspended);
+  const members = STATE.users.filter(x => x.role !== 'staff');
+  const openInv = STATE.invites.filter(i => inviteState(i) === 'open');
+  const pendingSet = STATE.settingProposals.filter(x => x.status === 'pending');
+
+  /* ── band 1 · access exceptions ── */
+  const SEV = { 3: ['crit', 'حرِج'], 2: ['warn', 'انتباه'], 1: ['', 'للعلم'] };
+  const b1 = exc.length
+    ? '<div class="card"><div class="card__body card__body--flush" style="padding:.4rem 1rem"><div class="exc">'
+      + exc.slice(0, 9).map(x => {
+          const sv = SEV[x.sev] || SEV[1];
+          return '<div class="exc__row">'
+            + '<span class="exc__age' + (sv[0] ? ' exc__age--' + sv[0] : '') + '">' + sv[1] + '</span>'
+            + '<span><span class="exc__what">' + esc(x.what) + '</span>'
+            + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
+            + (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view))
+                ? '<button class="btn btn--sm" data-act="go" data-view="' + x.view + '">افتح</button>'
+                : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
+            + '</div>';
+        }).join('')
+      + '</div>' + (exc.length > 9 ? '<p class="xs muted" style="padding:.5rem 0">و' + (exc.length - 9) + ' بندًا آخر.</p>' : '')
+      + '</div></div>'
+    : '<div class="note note--pos">لا خلل في الوصول: كل صلاحية حسّاسة يحملها أكثر من حساب نشط، ولا حسابات معطّلة الصلاحيات ولا دعوات منتهية.</div>';
+
+  /* ── band 2 · who holds what ──
+     Presence, not magnitude: a filled mark or an empty one, never a colour
+     ramp. The count column is where the risk shows. */
+  const cell = (has, sensitive) => has
+    ? '<span class="pm pm--on' + (sensitive ? ' pm--hot' : '') + '" aria-label="ممنوحة"></span>'
+    : '<span class="pm" aria-label="غير ممنوحة"></span>';
+  const matrix = '<div class="tablewrap"><table class="pmx"><thead><tr>'
+    + '<th>الصلاحية</th>'
+    + active.map(x => '<th class="pmx__who"><span>' + esc(x.name.split(' ')[0]) + '</span>'
+        + '<span class="xs muted">' + esc(JOB_AR[x.job] || '') + '</span></th>').join('')
+    + '<th class="n">من يملكها</th></tr></thead><tbody>'
+    + PERM_CATALOG.map(pc => {
+        const holders = active.filter(x => (x.perms || []).includes(pc.k));
+        const tone = !holders.length ? 'chip--crit' : holders.length === 1 && pc.sensitive ? 'chip--warn' : '';
+        return '<tr><td><div class="sm">' + esc(pc.ar) + (pc.sensitive ? ' <span class="pm pm--hot"></span>' : '') + '</div>'
+          + '<div class="xs muted mono">' + pc.k + '</div></td>'
+          + active.map(x => '<td class="pmx__c">' + cell((x.perms || []).includes(pc.k), pc.sensitive) + '</td>').join('')
+          + '<td class="n"><span class="chip ' + tone + '">' + holders.length + '</span></td></tr>';
+      }).join('')
+    + '</tbody></table></div>';
+
+  const b2 = '<div class="card"><div class="card__body">' + frameHtml({
+      title: 'من يملك ماذا',
+      sub: 'العلامة الممتلئة تعني ممنوحة، والفارغة غير ممنوحة — حضور لا مقدار، فلا تدرّج لوني. '
+         + 'العلامة الصغيرة بجانب الصلاحية تعني أنها حسّاسة، وعمود العدد هو موضع الخطر: صفر يعني عملًا متوقفًا، وواحد يعني اعتمادًا على شخص واحد.',
+      chart: matrix,
+      cols: ['الصلاحية', 'المفتاح', 'عدد من يملكها', 'من'],
+      rows: PERM_CATALOG.map(pc => {
+        const holders = active.filter(x => (x.perms || []).includes(pc.k));
+        return [esc(pc.ar), '<span class="mono xs">' + pc.k + '</span>', String(holders.length),
+          holders.map(h => esc(h.name)).join('، ') || '—'];
+      }),
+    }) + '</div></div>';
+
+  /* ── band 3 · is the record intact ── */
+  const b3 = '<div class="grid grid--2 grid--top">'
+    + '<div class="card"><div class="card__body">'
+    + '<div class="hero"><span class="hero__v" style="color:' + (audit.intact ? 'var(--pos)' : 'var(--crit)') + '">'
+    + (audit.intact ? 'سليمة' : 'مكسورة') + '</span>'
+    + '<span class="hero__k">سلسلة التجزئة عبر ' + audit.total + ' سطرًا في سجل التدقيق</span></div>'
+    + (audit.intact
+        ? '<div class="note note--pos sm">أُعيد حساب تجزئة كل سطر من محتواه ومن تجزئة سابقه، وطابقت المخزَّنة في كل الأسطر. '
+          + 'أي تعديل أو حذف لسطر واحد كان سيكسر كل ما بعده.</div>'
+        : '<div class="note note--crit sm">لا تطابق في '
+          + (audit.recomputed.length ? audit.recomputed.length + ' سطرًا عند إعادة الحساب' : '')
+          + (audit.breaks.length ? (audit.recomputed.length ? '، و' : '') + audit.breaks.length + ' وصلة بين سطرين' : '')
+          + '. أول موضع: السطر رقم ' + ((audit.recomputed[0] != null ? audit.recomputed[0] : audit.breaks[0]) + 1) + '.</div>')
+    + '<div class="grid grid--3" style="gap:.6rem">'
+    + [['أسطر السجل', String(audit.total)],
+       ['أنواع الإجراءات', String(audit.byAction.length)],
+       ['منفِّذون مختلفون', String(audit.byActor.length)]]
+      .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
+    + '</div></div></div>'
+    + '<div class="card"><div class="card__body">' + frameHtml({
+        title: 'نشاط السجل يوميًّا',
+        sub: 'عدد الإجراءات المسجَّلة في كل يوم. الفراغ الطويل في نظام يُفترض أنه يعمل سؤال بحد ذاته.',
+        chart: columnsSvg(activity.map(a => ({ label: a.label, value: a.value, count: a.count })),
+          v => v + ' إجراء'),
+        cols: ['اليوم', 'عدد الإجراءات'],
+        rows: activity.filter(a => a.value > 0).map(a => [a.label, String(a.value)]),
+      }) + '</div></div></div>';
+
+  /* ── band 4 · governance ── */
+  const b4 = '<div class="grid grid--2 grid--top">'
+    + '<div class="card"><div class="card__body">' + frameHtml({
+        title: 'الإجراءات حسب نوعها',
+        sub: 'ما الذي يحدث في هذا النظام فعلًا، مرتَّبًا بالتكرار.',
+        chart: barsHtml(audit.byAction.slice(0, 8), v => String(v), CAT),
+        cols: ['الإجراء', 'المرات'],
+        rows: audit.byAction.map(a => [esc(a.label), String(a.value)]),
+      }) + '</div></div>'
+    + '<div class="card"><div class="card__body">' + frameHtml({
+        title: 'الإجراءات حسب المنفِّذ',
+        sub: 'تركّز كل الإجراءات في حساب واحد يعني أن الرقابة الثنائية شكلية.',
+        chart: barsHtml(audit.byActor.slice(0, 8), v => String(v), CAT),
+        cols: ['المنفِّذ', 'المرات'],
+        rows: audit.byActor.map(a => [esc(a.label), String(a.value)]),
+      }) + '</div></div></div>'
+    + '<div class="grid grid--4">'
+    + [['حسابات فريق نشطة', String(active.length)],
+       ['موقوفة', String(staff.length - active.length)],
+       ['مستثمرون وأصحاب مشاريع', String(members.length)],
+       ['دعوات صالحة', String(openInv.length)],
+       ['اقتراحات إعدادات معلّقة', String(pendingSet.length)],
+       ['بانتظار التحقق', String(members.filter(x => x.kyc === 'pending').length)]]
+      .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
+    + '</div>';
+
+  const winPicker = '<span class="segsm">' + [[30, '30 يومًا'], [90, '90 يومًا']].map(w =>
+    '<button data-act="setWin" data-win="' + w[0] + '" aria-pressed="' + (days === w[0]) + '">'
+    + w[1] + '</button>').join('') + '</span>';
+
+  return {
+    crumb: 'إدارة النظام', title: 'لوحة إدارة النظام',
+    lede: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يستطيع الوصول إليه، وهل يستطيع أحد وحده، وهل ما زال سجل «من فعل ماذا» متماسكًا.',
+    body: '<div class="stack" style="gap:2rem">'
+      + band('01', 'هل في الوصول خلل؟',
+             exc.length ? exc.length + ' بندًا، الأخطر أولًا' : 'لا شيء يستدعي تدخّلًا', b1)
+      + band('02', 'من يملك ماذا؟', PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا', b2)
+      + band('03', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b3, winPicker)
+      + band('04', 'ما الذي يجري في النظام؟', 'الإجراءات ومن ينفّذها، وحالة الحوكمة', b4)
+      + '</div>',
+  };
+};
+
 /* ══════════════════════════════════════════════════════════════════════════
    ops · analytics
    Distributions and concentrations — the questions you ask sitting down.
