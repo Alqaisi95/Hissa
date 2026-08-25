@@ -8,7 +8,7 @@ import { correlation, errorHandler, notFoundHandler } from './middleware/error.t
 import { loadSession, requireAuth, requirePermission } from './middleware/auth.ts';
 import { rateLimit } from './middleware/rateLimit.ts';
 import { verifySignature } from './lib/crypto.ts';
-import { badRequest } from './lib/errors.ts';
+import { badRequest, notFound } from './lib/errors.ts';
 import { identityRouter } from './domains/identity/routes.ts';
 import { originationRouter } from './domains/origination/routes.ts';
 import { poolsRouter } from './domains/pools/routes.ts';
@@ -19,6 +19,7 @@ import { casesRouter } from './domains/cases/routes.ts';
 import { adminRouter } from './domains/admin/routes.ts';
 import { publicRouter } from './domains/public/routes.ts';
 import { kpiSnapshot, track } from './domains/analytics/track.ts';
+import { overviewInsights, poolInsights, investorInsights } from './domains/analytics/insights.ts';
 import { inbox } from './integrations/notifications.ts';
 import { ALL_JOBS } from './workflow/scheduler.ts';
 import { nowIso } from './lib/ids.ts';
@@ -107,6 +108,23 @@ export function createApp() {
   app.get('/api/analytics/kpis', requireAuth, requirePermission('reports.export'), (req, res) => {
     const windowDays = z.coerce.number().int().min(1).max(365).default(30).parse(req.query.windowDays ?? 30);
     res.json(kpiSnapshot(windowDays));
+  });
+
+  /** §14 — the aggregations the operations dashboard plots. */
+  app.get('/api/analytics/overview', requireAuth, requirePermission('dashboard.read'), (req, res) => {
+    const windowDays = z.coerce.number().int().min(7).max(365).default(90).parse(req.query.windowDays ?? 90);
+    res.json({ ...overviewInsights(windowDays), kpis: kpiSnapshot(windowDays) });
+  });
+
+  app.get('/api/analytics/pools/:id', requireAuth, requirePermission('pool.read_any'), (req, res) => {
+    const insights = poolInsights(req.params.id);
+    if (!insights) throw notFound();
+    res.json(insights);
+  });
+
+  /** An investor's own composition — scoped to the caller, never to another investor. */
+  app.get('/api/analytics/me', requireAuth, (req, res) => {
+    res.json(investorInsights(req.auth!.userId));
   });
 
   /** Manual job trigger for operations and UAT (the scheduler runs them automatically). */

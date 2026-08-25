@@ -34,6 +34,8 @@ export const PERMISSIONS = [
   // support & admin
   'case.read_any', 'case.work', 'complaint.create', 'settings.propose', 'settings.approve',
   'admin.users', 'audit.read', 'reports.export', 'banner.manage',
+  // the operations dashboard: aggregate figures, no record-level detail
+  'dashboard.read',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -45,38 +47,41 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
   investment_analyst: [
     'application.read_any', 'application.screen', 'dd.read', 'dd.work', 'dd.score',
-    'committee.read', 'pool.read_any', 'case.work',
+    'committee.read', 'pool.read_any', 'case.work', 'dashboard.read',
   ],
 
   // Votes within quorum; never touches money (PRD §9).
   committee_member: ['committee.read', 'committee.vote', 'committee.decide', 'application.read_any',
-                     'pool.read_any', 'dd.read'],
+                     'pool.read_any', 'dd.read', 'dashboard.read'],
 
   compliance: [
     'identity.read_any', 'identity.review_kyc', 'identity.suspend', 'identity.classify',
     'application.read_any', 'pool.read_any', 'pool.pause', 'funds.read', 'case.read_any', 'case.work',
     'settings.propose', 'settings.approve', 'audit.read', 'reports.export', 'order.read_any',
     // Read-only oversight of origination, committee and monitoring — no action rights there.
-    'dd.read', 'committee.read', 'monitor.read',
+    'dd.read', 'committee.read', 'monitor.read', 'dashboard.read',
   ],
 
   // PRD §9 — Finance Ops both prepares and counter-approves money movements.
   // The safeguard is per transaction, not per role: `assertDualControl` blocks the
   // maker from approving their own request (FR-405, BR-012).
   finance_ops: ['funds.read', 'funds.reconcile', 'funds.request', 'funds.approve',
-                'order.read_any', 'case.work', 'reports.export'],
+                'order.read_any', 'case.work', 'reports.export', 'pool.read_any', 'dashboard.read'],
 
   portfolio_ops: [
     'pool.read_any', 'monitor.read', 'pool.monitor', 'report.review', 'report.publish',
-    'distribution.create', 'case.work', 'qa.moderate', 'pool.build', 'pool.publish',
+    // Creating a distribution means seeing the escrow position it draws on (PRD §9).
+    'distribution.create', 'funds.read', 'case.work', 'qa.moderate', 'pool.build', 'pool.publish',
+    'dashboard.read',
   ],
 
   // Technical breadth, zero financial/investment approval.
-  system_admin: ['admin.users', 'settings.propose', 'audit.read', 'banner.manage', 'pool.read_any'],
+  system_admin: ['admin.users', 'settings.propose', 'audit.read', 'banner.manage', 'pool.read_any',
+                 'dashboard.read'],
 
   auditor: [
     'audit.read', 'pool.read_any', 'application.read_any', 'funds.read', 'order.read_any',
-    'case.read_any', 'dd.read', 'committee.read', 'monitor.read',
+    'case.read_any', 'dd.read', 'committee.read', 'monitor.read', 'dashboard.read',
   ],
 };
 

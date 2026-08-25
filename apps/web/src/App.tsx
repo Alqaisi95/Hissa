@@ -11,6 +11,7 @@ import { Checkout } from './pages/investor/Checkout.tsx';
 import { OrderStatus } from './pages/investor/OrderStatus.tsx';
 import { Portfolio } from './pages/investor/Portfolio.tsx';
 import { Complaints } from './pages/investor/Complaints.tsx';
+import { Notifications } from './pages/investor/Notifications.tsx';
 import { ProjectPortal } from './pages/owner/ProjectPortal.tsx';
 import { Console } from './pages/staff/Console.tsx';
 import { STAFF_ROLES } from './lib/auth.tsx';
@@ -35,6 +36,7 @@ export function App() {
         <Route path="invest/:poolId" element={<RequireAuth><Checkout /></RequireAuth>} />
         <Route path="orders/:id" element={<RequireAuth><OrderStatus /></RequireAuth>} />
         <Route path="complaints" element={<RequireAuth><Complaints /></RequireAuth>} />
+        <Route path="notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
 
         <Route path="project" element={<RequireRole roles={['project_owner']}><ProjectPortal /></RequireRole>} />
         <Route path="console" element={<RequireRole roles={STAFF_ROLES}><Console /></RequireRole>} />

@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/auth.tsx';
 import {
   Badge, Card, Empty, ErrorNotice, Field, Loading, Money, StatusBadge,
 } from '../../components/ui.tsx';
+import { OwnerReports } from './Reports.tsx';
 
 export function ProjectPortal() {
   const { t, locale } = useI18n();
@@ -69,8 +70,21 @@ export function ProjectPortal() {
                 <dt>{t('filterSector')}</dt><dd>{application.sector}</dd>
               </dl>
 
+              {application.pool_id ? (
+                <div className="row" style={{ marginBlockStart: '.75rem' }}>
+                  <Badge tone="brand">{application.pool_reference}</Badge>
+                  <StatusBadge status={application.pool_status} />
+                </div>
+              ) : null}
+
               {selected === application.id ? (
-                <ApplicationDetail applicationId={application.id} onChanged={() => applications.reload()} />
+                <div className="stack" style={{ marginBlockStart: '1rem' }}>
+                  {/* FR-501 — once the application is a funded pool, reporting is the owner's duty. */}
+                  {application.pool_id ? (
+                    <OwnerReports poolId={application.pool_id} poolTitle={application.pool_title ?? application.title_ar} />
+                  ) : null}
+                  <ApplicationDetail applicationId={application.id} onChanged={() => applications.reload()} />
+                </div>
               ) : null}
             </Card>
           ))}

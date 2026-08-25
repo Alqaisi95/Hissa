@@ -263,6 +263,24 @@ describe('RBAC — PRD §9 segregation of duties', () => {
     assert.equal(analyst.has('committee.decide'), false);
     assert.equal(analyst.has('funds.approve'), false);
   });
+
+  test('every staff role can open the dashboard, and no investor can', () => {
+    for (const role of ['investment_analyst', 'committee_member', 'compliance',
+                        'finance_ops', 'portfolio_ops', 'system_admin', 'auditor'] as const) {
+      assert.ok(permissionsFor([role]).has('dashboard.read'), `${role} needs dashboard.read`);
+    }
+    for (const role of ['investor', 'project_owner'] as const) {
+      assert.equal(permissionsFor([role]).has('dashboard.read'), false, `${role} must not hold dashboard.read`);
+    }
+  });
+
+  test('portfolio ops can see the escrow position it distributes from, but not approve it', () => {
+    const ops = permissionsFor(['portfolio_ops']);
+    assert.ok(ops.has('distribution.create'));
+    assert.ok(ops.has('funds.read'));
+    assert.equal(ops.has('funds.approve'), false, 'creating a distribution must not carry approving it');
+    assert.equal(ops.has('funds.request'), false);
+  });
 });
 
 describe('report variance — FR-502', () => {

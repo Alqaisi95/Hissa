@@ -7,10 +7,11 @@ import { api } from '../../lib/api.ts';
 import {
   Badge, Card, Empty, ErrorNotice, Loading, Money, Stat, StatusBadge, Tabs,
 } from '../../components/ui.tsx';
+import { PortfolioInsights } from './Insights.tsx';
 
 export function Portfolio() {
   const { t, pick, locale, formatDate, formatPercent } = useI18n();
-  const [tab, setTab] = useState<'holdings' | 'statements'>('holdings');
+  const [tab, setTab] = useState<'holdings' | 'insights' | 'statements'>('holdings');
   const portfolio = useQuery<any>('/portfolio');
 
   if (portfolio.loading) return <Loading rows={8} />;
@@ -33,12 +34,16 @@ export function Portfolio() {
       {/* FR-505 — nominal values only; the platform states plainly that it has no market price. */}
       <div className="notice notice--info small">{summary.valuationNoteAr}</div>
 
-      <Tabs<'holdings' | 'statements'>
+      <Tabs<'holdings' | 'insights' | 'statements'>
         active={tab} onChange={setTab}
-        tabs={[{ key: 'holdings', label: t('portfolioTitle') }, { key: 'statements', label: t('statements') }]}
+        tabs={[
+          { key: 'holdings', label: t('portfolioTitle') },
+          { key: 'insights', label: locale === 'ar' ? 'التحليل' : 'Insights' },
+          { key: 'statements', label: t('statements') },
+        ]}
       />
 
-      {tab === 'statements' ? <Statement /> : (
+      {tab === 'insights' ? <PortfolioInsights /> : tab === 'statements' ? <Statement /> : (
         <div className="stack">
           {pendingCommitments.length > 0 ? (
             <Card title={t('pendingCommitments')}>

@@ -41,6 +41,8 @@ export function Layout() {
             <NavLink to="/fees">{t('navFees')}</NavLink>
             <NavLink to="/faq">{t('navFaq')}</NavLink>
             {auth.user && !isStaff ? <NavLink to="/portfolio">{t('navPortfolio')}</NavLink> : null}
+            {auth.user ? <NavLink to="/notifications">{t('navNotifications')}</NavLink> : null}
+            {auth.user ? <NavLink to="/complaints">{t('navComplaints')}</NavLink> : null}
             {isOwner ? <NavLink to="/project">{t('navProjectPortal')}</NavLink> : null}
             {isStaff ? <NavLink to="/console">{t('navConsole')}</NavLink> : null}
           </nav>

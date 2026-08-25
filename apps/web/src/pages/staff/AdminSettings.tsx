@@ -5,22 +5,29 @@ import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { useAuth } from '../../lib/auth.tsx';
 import { Badge, Card, Empty, ErrorNotice, Field, Loading, StatusBadge, Tabs } from '../../components/ui.tsx';
+import { AdminUsers } from './AdminUsers.tsx';
+import { AdminContent } from './AdminContent.tsx';
 
 export function AdminSettings() {
   const { t, locale } = useI18n();
-  const [tab, setTab] = useState<'settings' | 'audit' | 'exports'>('settings');
+  const [tab, setTab] = useState<'settings' | 'users' | 'content' | 'audit' | 'exports'>('settings');
 
   return (
     <div className="stack">
-      <Tabs<'settings' | 'audit' | 'exports'>
+      <Tabs<'settings' | 'users' | 'content' | 'audit' | 'exports'>
         active={tab} onChange={setTab}
         tabs={[
           { key: 'settings', label: t('settingsTitle') },
+          { key: 'users', label: locale === 'ar' ? 'المستخدمون' : 'Users' },
+          { key: 'content', label: locale === 'ar' ? 'المحتوى والمهام' : 'Content & jobs' },
           { key: 'audit', label: t('auditLog') },
           { key: 'exports', label: t('exportsTitle') },
         ]}
       />
-      {tab === 'settings' ? <Settings /> : tab === 'audit' ? <AuditLog /> : <Exports />}
+      {tab === 'settings' ? <Settings />
+        : tab === 'users' ? <AdminUsers />
+        : tab === 'content' ? <AdminContent />
+        : tab === 'audit' ? <AuditLog /> : <Exports />}
     </div>
   );
 }

@@ -60,6 +60,16 @@ Paths are relative to the repository root.
 - **FR-509** — final settlement refuses to close while any refund, distribution or
   disbursement is still in flight.
 
+## Screen coverage
+
+Every endpoint that carries a user-facing decision has a screen. The staff console
+covers the dashboard, pool management (builder, disclosure authoring with version
+diff, publication, lifecycle actions, data room, Q&A moderation, monitoring setup
+and the state trail), due diligence, committee, the money desk in both its maker
+and checker halves, monitoring, compliance queues, and administration of users,
+roles, templates, banners, settings, audit and exports. Project owners submit
+KPI reports with live variance; investors get portfolio insights and an inbox.
+
 ## Non-functional requirements
 
 | ID | Requirement | Where |

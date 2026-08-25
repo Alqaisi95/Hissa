@@ -7,9 +7,28 @@ import { useI18n } from '../../lib/i18n.tsx';
 import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { useAuth } from '../../lib/auth.tsx';
-import { Badge, Card, Empty, ErrorNotice, Loading, Money, StatusBadge, Stat, Reason } from '../../components/ui.tsx';
+import { Badge, Card, Empty, ErrorNotice, Loading, Money, StatusBadge, Stat, Reason, Tabs } from '../../components/ui.tsx';
+import { FundsCreate } from './FundsCreate.tsx';
 
 export function FundsOps() {
+  const { locale } = useI18n();
+  const [view, setView] = useState<'approvals' | 'requests'>('approvals');
+
+  return (
+    <div className="stack">
+      <Tabs<'approvals' | 'requests'>
+        active={view} onChange={setView}
+        tabs={[
+          { key: 'approvals', label: locale === 'ar' ? 'بانتظار الاعتماد' : 'Awaiting approval' },
+          { key: 'requests', label: locale === 'ar' ? 'طلبات ومطابقة' : 'Requests & reconciliation' },
+        ]}
+      />
+      {view === 'approvals' ? <FundsApprovals /> : <FundsCreate />}
+    </div>
+  );
+}
+
+function FundsApprovals() {
   const { t, locale, formatDate } = useI18n();
   const auth = useAuth();
   const queue = useQuery<any>('/funds/queue');

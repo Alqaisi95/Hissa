@@ -94,6 +94,24 @@ a portfolio showing nominal values only (**no implied market price**), voting we
 holdings at the record date, default/workout handling, and a final-settlement close that
 refuses to run while any money movement is still in flight.
 
+### Dashboards and analytics — PRD §14
+An operations dashboard that leads with what needs attention — reconciliation
+breaks, cases and reports against their SLAs, money awaiting a second approver —
+then explains it with a cumulative commitment trend, the conversion funnel, pool
+status and sector mix. Each pool carries its own dashboard: funding curve,
+investor mix by classification, ticket-size bands, milestone progress, escrow
+position, and actual-against-forecast for every reported KPI. Investors get the
+same treatment on their own holdings, in nominal terms only.
+
+Chart colour is computed, not chosen. The categorical slots and the teal ordinal
+ramp were run through a palette validator — lightness band, chroma floor,
+colour-vision separation, normal-vision floor and contrast against this product's
+own light and dark chart surfaces, each mode validated on its own rather than
+flipped. One slot sits under 3:1 on the light surface, which is legal only with a
+second channel, so every chart ships direct labels and a table view and no chart
+rests identity on colour alone. Status uses a reserved scale that never doubles as
+a series colour and always carries a glyph and a word.
+
 ### Administration — FR-601…FR-610
 RBAC with segregation of duties, work queues, an **append-only audit log** enforced by
 database triggers, case management with internal notes that never surface externally,
@@ -112,6 +130,7 @@ in [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md).
 
 ```
 apps/api                     Modular monolith with explicit domain boundaries (PRD §16.1)
+  src/domains/analytics/     event tracking, KPI definitions, dashboard aggregations
   src/domains/               identity · origination · pools · orders · funds
                              portfolio · cases · admin · analytics · public
   src/workflow/              pool state machine, application states, scheduler
@@ -119,6 +138,7 @@ apps/api                     Modular monolith with explicit domain boundaries (P
   src/lib/                   money · rbac · settings · audit · documents · legal · crypto
   src/db/                    schema.sql · access layer · seed
 apps/web                     React + Vite, Arabic RTL / English LTR
+  src/components/charts.tsx  validated palettes, mark specs, table view per chart
   src/pages/{public,investor,owner,staff}
 ```
 

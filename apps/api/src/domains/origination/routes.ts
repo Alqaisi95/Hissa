@@ -181,10 +181,27 @@ originationRouter.post('/applications/:id/submit', requireAuth, (req, res) => {
   res.json({ applicationId: app.id, status: 'submitted', caseId });
 });
 
+/** FR-203 — committee-approved applications that do not yet have a pool. */
+originationRouter.get('/applications/ready-for-pool', requireAuth, requirePermission('pool.build'), (_req, res) => {
+  res.json({
+    items: all(
+      `SELECT a.id, a.reference, a.title_ar, a.sector, a.governorate, a.requested_amount,
+              a.owner_contribution, a.tenor_months, a.status, e.legal_name
+         FROM project_applications a
+         JOIN legal_entities e ON e.id = a.entity_id
+         LEFT JOIN pools p ON p.application_id = a.id
+        WHERE a.status IN ('approved','conditional') AND p.id IS NULL
+        ORDER BY a.decided_at DESC`),
+  });
+});
+
 originationRouter.get('/applications/mine', requireAuth, (req, res) => {
   const rows = all<any>(
-    `SELECT a.*, c.status AS case_status, c.risk_grade
-       FROM project_applications a LEFT JOIN dd_cases c ON c.application_id = a.id
+    `SELECT a.*, c.status AS case_status, c.risk_grade,
+            p.id AS pool_id, p.reference AS pool_reference, p.status AS pool_status, p.title_ar AS pool_title
+       FROM project_applications a
+       LEFT JOIN dd_cases c ON c.application_id = a.id
+       LEFT JOIN pools p ON p.application_id = a.id
       WHERE a.owner_user_id = ? ORDER BY a.created_at DESC`, [req.auth!.userId]);
   res.json({ items: rows.map((r) => ({ ...r, use_of_funds: JSON.parse(r.use_of_funds) })) });
 });
