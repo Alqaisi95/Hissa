@@ -46,6 +46,16 @@ ok('active nav carries aria-current=page, and only one does',
   await p.$$eval('.navlink', l => l.filter(x => x.getAttribute('aria-current') === 'page').length) === 1);
 ok('no navlink advertises aria-current="false"',
   await p.$$eval('.navlink', l => l.every(x => x.getAttribute('aria-current') !== 'false')));
+/* Renaming the attribute value once left the stylesheet selecting the old one,
+   so the current screen silently lost its highlight and every assertion about
+   the attribute still passed. Check that it paints, not just that it is set. */
+ok('the current nav entry still looks current', await p.$$eval('.navlink', l => {
+  const on = l.find(x => x.getAttribute('aria-current') === 'page');
+  const off = l.find(x => x.getAttribute('aria-current') !== 'page');
+  if (!on || !off) return false;
+  const a = getComputedStyle(on), b = getComputedStyle(off);
+  return a.backgroundColor !== b.backgroundColor && a.color !== b.color;
+}));
 
 // a refusal must reach the assertive region
 await p.evaluate(() => {
@@ -55,9 +65,13 @@ await p.evaluate(() => {
 });
 await p.click('#forged'); await p.waitForTimeout(400);
 const alerts = await p.$$eval('#alerts .toast', t => t.map(x => x.textContent.trim()));
-ok('a refused action is announced assertively: ' + (alerts[0] || '(none)'), alerts.length > 0);
-ok('focus was not yanked away by the re-render',
-  await p.evaluate(() => document.activeElement && document.activeElement.id !== 'pagetitle'));
+ok('a refused action is announced assertively: ' + (alerts.join(' | ') || '(none)'),
+  alerts.some(t => /لا تملك صلاحية/.test(t)));
+// the refusal re-rendered the shell; focus must come back to the control,
+// not fall through to the document body
+ok('focus returns to the control after a re-render, not to the body',
+  await p.evaluate(() => document.activeElement && document.activeElement !== document.body
+    && document.activeElement.id !== 'pagetitle'));
 
 // decorative marks stay out of the accessibility tree
 ok('decorative glyphs hidden (brand mark, avatar, nav number, status dot)',

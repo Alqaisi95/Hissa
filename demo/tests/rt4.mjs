@@ -35,7 +35,10 @@ if (html) {
     ['assertive region', 'id="alerts" role="alert"'],
     ['polite region',    'id="toasts" role="status"'],
     ['state block',      '<script id="appstate"'],
-    ['schema stamped',   '"schema":3'],
+    /* read the number from the source rather than pinning it here, or this
+       line fails on every schema bump for no reason */
+    ['schema stamped',   '"schema":' + (fs.readFileSync('hissa-demo.html', 'utf8')
+                          .match(/const SCHEMA = (\d+);/) || [])[1]],
   ]) console.log((html.includes(needle) ? '  ✓ ' : '  ✗ ') + what);
   fs.writeFileSync('serve/rebuilt.html', html);
   /* A fresh context, not a second tab: the sign-in lives in browser storage
