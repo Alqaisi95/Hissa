@@ -1,0 +1,1776 @@
+<title>حِصّة | Hissa Pools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style id="appstyle">
+  /* ═══ tokens ════════════════════════════════════════════════════════════
+     Complete light palette on bare :root. Dark redefines the same names
+     twice — once for the system preference, once for an explicit choice —
+     so the in-page toggle wins in both directions.
+     ═══════════════════════════════════════════════════════════════════ */
+  :root {
+    --canvas:#f4f6f4; --panel:#ffffff; --panel-2:#eef1ee; --rule:#dfe3df; --rule-2:#ebeee9;
+    --ink:#131d1b; --ink-2:#4b5755; --ink-3:#7c8785;
+    --brand:#0d5c58; --brand-2:#0a4341; --brand-wash:#e0eeec; --on-brand:#ffffff;
+    --sand:#8f5d16; --sand-wash:#f7efe1;
+    --pos:#186040;  --pos-wash:#dcefe5;
+    --warn:#7a4c0e; --warn-wash:#f9eed9;
+    --crit:#8e1a1a; --crit-wash:#f8e4e4;
+    --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a;
+    --ord-1:#7cbfc2; --ord-2:#52a4a8; --ord-3:#2b878b; --ord-4:#136a6e; --ord-5:#0a4649;
+    --st-good:#0ca30c; --st-warn:#fab219; --st-serious:#ec835a; --st-crit:#d03b3b;
+    --grid:#e2e6e2;
+    --r:10px; --r-s:6px;
+    --ar:'IBM Plex Sans Arabic','Segoe UI',system-ui,sans-serif;
+    --mo:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --shadow:0 1px 2px rgba(16,28,26,.05), 0 8px 24px rgba(16,28,26,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas:#090e0d; --panel:#111a18; --panel-2:#192320; --rule:#233130; --rule-2:#182322;
+      --ink:#e8efed; --ink-2:#a6b4b1; --ink-3:#75827f;
+      --brand:#4bb3ab; --brand-2:#7ad2c8; --brand-wash:#0f2f2c; --on-brand:#041a19;
+      --sand:#d5a05c; --sand-wash:#2a2216;
+      --pos:#5cba8c; --pos-wash:#11301f;
+      --warn:#d4a158; --warn-wash:#2e2413;
+      --crit:#e58181; --crit-wash:#331717;
+      --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70;
+      --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+      --grid:#1e2b2a;
+      --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas:#090e0d; --panel:#111a18; --panel-2:#192320; --rule:#233130; --rule-2:#182322;
+    --ink:#e8efed; --ink-2:#a6b4b1; --ink-3:#75827f;
+    --brand:#4bb3ab; --brand-2:#7ad2c8; --brand-wash:#0f2f2c; --on-brand:#041a19;
+    --sand:#d5a05c; --sand-wash:#2a2216;
+    --pos:#5cba8c; --pos-wash:#11301f;
+    --warn:#d4a158; --warn-wash:#2e2413;
+    --crit:#e58181; --crit-wash:#331717;
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70;
+    --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+    --grid:#1e2b2a;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  /* ═══ base ═════════════════════════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--canvas); color: var(--ink);
+    font-family: var(--ar); font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4 { margin: 0; line-height: 1.3; font-weight: 600; }
+  h1 { font-size: 1.45rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.05rem; }
+  h3 { font-size: .92rem; }
+  p, ul, ol { margin: 0; }
+  ul, ol { padding-inline-start: 1.2rem; }
+  /* mixed Arabic + Latin resolves per paragraph, not per document */
+  p, li, td, th, dd, dt, .txt, .lede { unicode-bidi: plaintext; }
+  a { color: var(--brand); }
+  img, svg { max-width: 100%; }
+  .num, .mono { font-family: var(--mo); font-variant-numeric: tabular-nums; }
+  /* identifier-like runs stay LTR whatever the paragraph around them does */
+  .mono, code { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+  .muted { color: var(--ink-3); }
+  .sm { font-size: .82rem; } .xs { font-size: .73rem; }
+  .stack { display: flex; flex-direction: column; gap: 1.15rem; }
+  .stack-s { display: flex; flex-direction: column; gap: .55rem; }
+  .row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .row--tight { gap: .35rem; }
+  .spacer { margin-inline-start: auto; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+  /* ═══ shell ════════════════════════════════════════════════════════════ */
+  .riskbar {
+    background: var(--warn-wash); color: var(--warn);
+    border-block-end: 1px solid color-mix(in srgb, var(--warn) 22%, transparent);
+    font-size: .76rem; text-align: center; padding: .45rem 1rem;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: color-mix(in srgb, var(--panel) 90%, transparent);
+    backdrop-filter: blur(10px);
+    border-block-end: 1px solid var(--rule);
+    display: flex; align-items: center; gap: .9rem;
+    padding: .6rem clamp(.8rem, 3vw, 1.6rem);
+  }
+  .brand { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+  .brand__mark {
+    inline-size: 32px; block-size: 32px; flex: none; border-radius: 9px;
+    background: var(--brand); color: var(--on-brand);
+    display: grid; place-items: center; font-weight: 700; font-size: 1.05rem;
+  }
+  .brand__name { font-weight: 700; font-size: 1.02rem; line-height: 1.15; }
+  .brand__sub { font-size: .68rem; color: var(--ink-3); line-height: 1.2; }
+
+  .seg { display: flex; background: var(--panel-2); border-radius: 999px; padding: 3px; gap: 2px; }
+  .seg button {
+    font: inherit; font-size: .78rem; border: 0; cursor: pointer; white-space: nowrap;
+    background: none; color: var(--ink-2); padding: .3rem .75rem; border-radius: 999px;
+  }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+  .iconbtn {
+    font: inherit; font-size: .76rem; cursor: pointer;
+    background: var(--panel); color: var(--ink-2);
+    border: 1px solid var(--rule); border-radius: 999px; padding: .3rem .7rem;
+  }
+  .iconbtn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+  .topbar__who { max-width: 200px; }
+  @media (max-width: 720px) {
+    .topbar { flex-wrap: wrap; row-gap: .5rem; }
+    .brand { flex: 1 1 100%; }
+    .topbar > .spacer { display: none; }
+    .seg { overflow-x: auto; max-width: 100%; }
+    .topbar__who { flex: 1 1 8rem; max-width: none; }
+  }
+
+  .layout { display: grid; grid-template-columns: 226px minmax(0, 1fr); align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .side {
+    position: sticky; top: 49px; align-self: start;
+    block-size: calc(100dvh - 49px); overflow-y: auto;
+    border-inline-end: 1px solid var(--rule);
+    padding: 1rem .7rem 2rem;
+    display: flex; flex-direction: column; gap: .15rem;
+  }
+  .side__group { font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+                 color: var(--ink-3); padding: .9rem .6rem .3rem; }
+  .navlink {
+    display: flex; align-items: center; gap: .55rem; width: 100%;
+    font: inherit; font-size: .86rem; text-align: start; cursor: pointer;
+    background: none; border: 0; color: var(--ink-2);
+    padding: .48rem .6rem; border-radius: var(--r-s);
+  }
+  .navlink:hover { background: var(--panel-2); color: var(--ink); }
+  .navlink[aria-current="true"] { background: var(--brand-wash); color: var(--brand); font-weight: 600; }
+  .navlink__n { font-family: var(--mo); font-size: .68rem; color: var(--ink-3); flex: none; }
+  .navlink[aria-current="true"] .navlink__n { color: var(--brand); }
+  .navlink__badge {
+    margin-inline-start: auto; font-family: var(--mo); font-size: .68rem;
+    background: var(--panel-2); color: var(--ink-2); border-radius: 999px; padding: 0 .4rem;
+  }
+  @media (max-width: 900px) {
+    .side {
+      position: static; block-size: auto; flex-direction: row; overflow-x: auto;
+      border-inline-end: 0; border-block-end: 1px solid var(--rule);
+      padding: .5rem .8rem; gap: .3rem; scrollbar-width: thin;
+    }
+    .side__group { display: none; }
+    .navlink { width: auto; white-space: nowrap; background: var(--panel-2); }
+    .navlink__badge { margin-inline-start: .2rem; }
+  }
+
+  .main { padding: clamp(1rem, 3vw, 2rem) clamp(.8rem, 3vw, 2rem) 4rem; min-width: 0; }
+  .main__inner { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  .pagehead { display: flex; flex-direction: column; gap: .3rem; }
+  .pagehead__crumb { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .pagehead__lede { color: var(--ink-2); font-size: .9rem; max-width: 74ch; }
+
+  /* ═══ surfaces ═════════════════════════════════════════════════════════ */
+  .card {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: var(--r); box-shadow: var(--shadow);
+  }
+  .card__head {
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    padding: .8rem 1rem; border-block-end: 1px solid var(--rule-2);
+  }
+  .card__body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .card__body--flush { padding: 0; }
+  .grid { display: grid; gap: 1.1rem; }
+  .grid--2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .grid--3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .grid--4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); }
+
+  .kv { background: var(--panel-2); border-radius: var(--r-s); padding: .6rem .75rem; }
+  .kv__k { font-size: .72rem; color: var(--ink-3); }
+  .kv__v { font-family: var(--mo); font-size: 1.05rem; font-weight: 600; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .72rem; font-weight: 500; border-radius: 999px;
+    padding: .1rem .55rem; background: var(--panel-2); color: var(--ink-2);
+    unicode-bidi: plaintext;
+  }
+  .chip__dot { inline-size: 6px; block-size: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .chip--brand { background: var(--brand-wash); color: var(--brand); }
+  .chip--pos   { background: var(--pos-wash);   color: var(--pos); }
+  .chip--warn  { background: var(--warn-wash);  color: var(--warn); }
+  .chip--crit  { background: var(--crit-wash);  color: var(--crit); }
+  .chip--sand  { background: var(--sand-wash);  color: var(--sand); }
+
+  .note {
+    border-radius: var(--r-s); padding: .6rem .8rem; font-size: .82rem;
+    background: var(--panel-2); color: var(--ink-2);
+    border-inline-start: 3px solid var(--ink-3);
+  }
+  .note--info { background: var(--brand-wash); color: var(--brand-2); border-color: var(--brand); }
+  .note--warn { background: var(--warn-wash); color: var(--warn); border-color: var(--warn); }
+  .note--crit { background: var(--crit-wash); color: var(--crit); border-color: var(--crit); }
+  .note--pos  { background: var(--pos-wash);  color: var(--pos);  border-color: var(--pos); }
+  .empty { color: var(--ink-3); font-size: .85rem; text-align: center; padding: 1.6rem 1rem; }
+
+  /* ═══ tables ═══════════════════════════════════════════════════════════ */
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th, td { text-align: start; padding: .5rem .75rem; border-block-end: 1px solid var(--rule-2); vertical-align: top; }
+  th { font-size: .72rem; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
+  tbody tr:last-child td { border-block-end: 0; }
+  td.n, th.n { text-align: end; font-family: var(--mo); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr:hover { background: var(--rule-2); }
+  tfoot td { font-weight: 600; border-block-start: 1px solid var(--rule); }
+
+  /* ═══ forms ════════════════════════════════════════════════════════════ */
+  .field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+  .field > label { font-size: .78rem; color: var(--ink-2); font-weight: 500; }
+  .field__hint { font-size: .72rem; color: var(--ink-3); }
+  input, select, textarea {
+    font: inherit; font-size: .88rem; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: var(--r-s); padding: .45rem .6rem; width: 100%;
+  }
+  input[type="number"], input.num { font-family: var(--mo); }
+  textarea { resize: vertical; min-height: 4.5rem; }
+  input:focus, select:focus, textarea:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px var(--brand-wash); }
+  .check { display: flex; align-items: flex-start; gap: .5rem; font-size: .82rem; color: var(--ink-2); }
+  .check input { inline-size: 16px; block-size: 16px; margin: .28rem 0 0; flex: none; accent-color: var(--brand); }
+
+  .btn {
+    font: inherit; font-size: .85rem; font-weight: 500; cursor: pointer;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: var(--r-s);
+    padding: .45rem .95rem; white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--ink-3); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn--primary { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+  .btn--primary:hover:not(:disabled) { background: var(--brand-2); border-color: var(--brand-2); }
+  .btn--danger { background: var(--crit-wash); color: var(--crit); border-color: color-mix(in srgb, var(--crit) 30%, transparent); }
+  .btn--sm { font-size: .76rem; padding: .25rem .6rem; }
+
+  /* ═══ tabs inside a view ═══════════════════════════════════════════════ */
+  .tabs { display: flex; gap: .2rem; overflow-x: auto; border-block-end: 1px solid var(--rule); }
+  .tabs button {
+    font: inherit; font-size: .84rem; cursor: pointer; white-space: nowrap;
+    background: none; border: 0; border-block-end: 2px solid transparent;
+    color: var(--ink-3); padding: .5rem .8rem; margin-block-end: -1px;
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected="true"] { color: var(--brand); border-block-end-color: var(--brand); font-weight: 600; }
+
+  /* ═══ meters, tiles, charts ════════════════════════════════════════════ */
+  .meter { display: block; background: var(--panel-2); border-radius: 999px; block-size: 8px; overflow: hidden; }
+  .meter__fill { display: block; block-size: 100%; border-radius: 999px; background: var(--brand); }
+
+  .tile {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r);
+    border-inline-start: 3px solid var(--tone, var(--brand));
+    padding: .8rem .9rem; display: flex; flex-direction: column; gap: .2rem;
+  }
+  .tile__k { font-size: .76rem; color: var(--ink-3); }
+  .tile__v { font-family: var(--mo); font-size: 1.6rem; font-weight: 600; line-height: 1.15; }
+  .tile__s { font-size: .72rem; color: var(--ink-2); display: flex; align-items: center; gap: .35rem; }
+  .tile__s .chip__dot { background: var(--tone, var(--brand)); }
+  .tile__state { font-weight: 600; color: var(--tone, var(--brand)); }
+
+  .frame { display: flex; flex-direction: column; gap: .5rem; }
+  .frame__head { display: flex; align-items: flex-start; gap: .6rem; }
+  .frame__sub { font-size: .75rem; color: var(--ink-3); max-width: 62ch; }
+  .frame__toggle {
+    margin-inline-start: auto; flex: none; font: inherit; font-size: .71rem; cursor: pointer;
+    background: var(--panel-2); color: var(--ink-2);
+    border: 1px solid var(--rule); border-radius: 999px; padding: .15rem .55rem;
+  }
+  .frame__toggle:hover { color: var(--ink); }
+  .frame[data-view="table"] .frame__chart, .frame[data-view="chart"] .frame__table { display: none; }
+
+  .plot { width: 100%; height: auto; display: block; overflow: visible; }
+  /* the plot is drawn LTR in both languages, and so are its numerals */
+  .plot text { font-family: var(--mo); font-size: 10px; fill: var(--ink-3); direction: ltr; unicode-bidi: isolate; }
+  .plot .axis { stroke: var(--grid); stroke-width: 1; }
+
+  .bars { display: flex; flex-direction: column; gap: .5rem; }
+  .bars__row { display: grid; grid-template-columns: minmax(6.5rem, 32%) 1fr auto; gap: .6rem; align-items: center; }
+  .bars__label { font-size: .8rem; color: var(--ink-2); }
+  .bars__val { font-family: var(--mo); font-size: .78rem; }
+  @media (max-width: 560px) {
+    .bars__row { grid-template-columns: 1fr auto; }
+    .bars__row .meter { grid-column: 1 / -1; }
+  }
+
+  .funnel { display: flex; flex-direction: column; gap: .8rem; }
+  .funnel__top { display: flex; align-items: baseline; gap: .6rem; }
+  .funnel__val { margin-inline-start: auto; font-family: var(--mo); font-weight: 600; font-size: .88rem; }
+
+  /* ═══ timeline ═════════════════════════════════════════════════════════ */
+  .tl { display: flex; flex-direction: column; }
+  .tl__item { display: grid; grid-template-columns: 18px 1fr; gap: .7rem; padding-block-end: 1rem; position: relative; }
+  .tl__item:not(:last-child)::before {
+    content: ''; position: absolute; inset-block: 16px 0;
+    inset-inline-start: 8px; inline-size: 1px; background: var(--rule);
+  }
+  .tl__dot {
+    inline-size: 17px; block-size: 17px; border-radius: 50%; margin-block-start: 3px;
+    background: var(--panel); border: 2px solid var(--rule); z-index: 1;
+  }
+  .tl__dot--done { background: var(--brand); border-color: var(--brand); }
+  .tl__dot--now  { background: var(--panel); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-wash); }
+  .tl__t { font-size: .86rem; font-weight: 500; }
+  .tl__d { font-size: .74rem; color: var(--ink-3); }
+
+  /* ═══ toast ════════════════════════════════════════════════════════════ */
+  .toasts {
+    position: fixed; inset-block-end: 1rem; inset-inline-start: 1rem; z-index: 90;
+    display: flex; flex-direction: column; gap: .5rem; max-width: min(92vw, 400px);
+  }
+  .toast {
+    background: var(--panel); border: 1px solid var(--rule); border-inline-start: 3px solid var(--brand);
+    border-radius: var(--r-s); box-shadow: var(--shadow); padding: .6rem .8rem; font-size: .82rem;
+  }
+  .toast--bad { border-inline-start-color: var(--crit); }
+  .toast--good { border-inline-start-color: var(--pos); }
+
+  .savebar {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .73rem; color: var(--ink-3);
+  }
+  .savebar__dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--ink-3); }
+  .savebar--live .savebar__dot { background: var(--st-good); }
+  .savebar--ro .savebar__dot { background: var(--st-warn); }
+</style>
+<script id="appstate" type="application/json">
+{"v":1,"seededAt":"2026-08-25T06:00:00Z","settings":{"effectiveFrom":"2026-01-01","minTicket":100000,"unitPrice":100000,"overfundBps":12000,"coolingOffHours":48,"limits":{"retail":{"perIssuer":3000000,"rolling12m":20000000},"angel":{"perIssuer":null,"rolling12m":100000000},"sophisticated":{"perIssuer":null,"rolling12m":null}},"feeBps":{"platform":400,"success":250}},"users":[{"id":"u_inv1","name":"عبدالله الغافري","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv2","name":"شيخة الهنائية","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv3","name":"سعيد الشحي","role":"investor","cls":"angel","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv4","name":"أمل المحروقية","role":"investor","cls":"sophisticated","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv5","name":"مستثمر قيد التحقق","role":"investor","cls":"retail","kyc":"pending","suit":"pass","consents":true},{"id":"u_inv6","name":"لم يجتز اختبار الملاءمة","role":"investor","cls":"retail","kyc":"approved","suit":"restricted","consents":true},{"id":"u_inv7","name":"ماجد البوسعيدي","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv8","name":"ريم الحارثية","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv9","name":"طلال الزدجالي","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_own2","name":"الطريق السريع للنقل — المالك","role":"owner","pool":"p_log"},{"id":"u_own1","name":"نسائم القهوة — المالك","role":"owner","pool":"p_cafe"},{"id":"u_fin1","name":"مريم البلوشية","role":"staff","job":"finance_ops","perms":["funds.request","funds.approve","funds.read","audit.read"]},{"id":"u_fin2","name":"خالد الرواحي","role":"staff","job":"finance_ops","perms":["funds.request","funds.approve","funds.read","audit.read"]},{"id":"u_pf1","name":"هدى الكندية","role":"staff","job":"portfolio_ops","perms":["pool.manage","report.publish","distribution.create","funds.read","audit.read"]},{"id":"u_aud1","name":"مدقق مستقل","role":"staff","job":"auditor","perms":["audit.read","funds.read"]}],"pools":[{"id":"p_cafe","ref":"POOL-2026-0001","status":"funding","title":"فرع جديد لمقهى نسائم — الموج، مسقط","sector":"تجزئة وفروع","issuer":"شركة نسائم القهوة ش.م.م","governorate":"مسقط","target":65000000,"minClose":52000000,"ownerStake":22000000,"tenorMonths":36,"publishedAt":"2026-07-15","closesAt":"2026-09-15","disclosureVersion":3,"uof":[{"item":"تجهيزات وديكور الفرع","supplier":"شركة التصاميم الحديثة","amount":28000000,"quote":"Q-2026-118"},{"item":"معدات تحضير القهوة والمشروبات","supplier":"الخليج لمعدات المقاهي","amount":19500000,"quote":"Q-2026-119"},{"item":"أثاث وتكييف","supplier":"مؤسسة الأثاث المكتبي","amount":9500000,"quote":"Q-2026-120"},{"item":"رأس مال تشغيلي وثلاثة أشهر إيجار","supplier":"مالك العقار","amount":8000000,"quote":"LEASE-2026-07"}],"scenarios":[{"name":"متحفظ","yieldBps":600,"basis":"تأخر التشغيل شهرين وانخفاض المبيعات 20% مع ثبات التكاليف"},{"name":"أساسي","yieldBps":1100,"basis":"تشغيل وفق الجدول وأداء مقارب للفروع القائمة"},{"name":"متفائل","yieldBps":1500,"basis":"تشغيل مبكر وأداء أعلى بـ15% مع ثبات التكاليف"}],"milestones":[{"id":"m1","label":"توقيع عقد الإيجار وتسليم الموقع","amount":8000000,"condition":"عقد إيجار مسجل ومحضر تسليم","state":"pending"},{"id":"m2","label":"تنفيذ التجهيزات والديكور","amount":28000000,"condition":"محضر إنجاز 80% وصور موقع","state":"pending"},{"id":"m3","label":"توريد المعدات والأثاث","amount":29000000,"condition":"فاتورة مورد ومحضر استلام","state":"pending"}],"risks":["تأخر التراخيص البلدية قد يؤجل التشغيل ويؤخر أول توزيع.","منافسة مباشرة من مقهيين في نطاق 500 متر.","ارتفاع الإيجار عند التجديد بعد السنة الثالثة.","اعتماد المشروع على مدير فرع واحد ذي خبرة."]},{"id":"p_log","ref":"POOL-2026-0002","status":"operating","title":"توسعة أسطول شاحنات التوزيع — صحار","sector":"لوجستيات ومركبات","issuer":"مؤسسة الطريق السريع للنقل","governorate":"شمال الباطنة","target":85000000,"minClose":68000000,"ownerStake":30000000,"tenorMonths":48,"publishedAt":"2026-04-02","closesAt":"2026-06-01","fundedAt":"2026-05-14","disclosureVersion":2,"uof":[{"item":"ثلاث شاحنات مبردة","supplier":"الوكيل المعتمد للشاحنات","amount":72000000,"quote":"Q-2026-201"},{"item":"تأمين شامل وترخيص سنة","supplier":"شركة التأمين الوطنية","amount":7500000,"quote":"INS-2026-44"},{"item":"أنظمة تتبع وتبريد","supplier":"تقنيات التتبع","amount":5500000,"quote":"Q-2026-202"}],"scenarios":[{"name":"متحفظ","yieldBps":700,"basis":"انخفاض نسبة تشغيل الأسطول إلى 60% وارتفاع الصيانة"},{"name":"أساسي","yieldBps":1200,"basis":"تشغيل 75% وعقود التوريد الثلاثة مستقرة"},{"name":"متفائل","yieldBps":1600,"basis":"تشغيل 85% وإضافة عقد رابع"}],"milestones":[{"id":"m1","label":"دفعة مقدمة للوكيل","amount":30000000,"condition":"عقد شراء موقّع","state":"executed"},{"id":"m2","label":"استلام الشاحنات وترخيصها","amount":42000000,"condition":"بطاقات ملكية وتأمين ساري","state":"executed"},{"id":"m3","label":"تركيب أنظمة التتبع","amount":13000000,"condition":"محضر تركيب واختبار","state":"pending"}],"risks":["انخفاض نسبة تشغيل الأسطول عن المفترض.","ارتفاع أسعار الوقود وقطع الغيار.","اعتماد الإيراد على ثلاثة عقود توريد رئيسية.","حوادث أو أعطال تخرج مركبة من الخدمة."]},{"id":"p_clinic","ref":"POOL-2026-0004","status":"funding","title":"فرع ثانٍ لعيادة أسنان — صلالة","sector":"رعاية صحية","issuer":"عيادة الواحة لطب الأسنان ش.م.م","governorate":"ظفار","target":40000000,"minClose":32000000,"ownerStake":14000000,"tenorMonths":36,"publishedAt":"2026-08-10","closesAt":"2026-10-20","disclosureVersion":1,"uof":[{"item":"كرسيا أسنان وأجهزة","supplier":"الشرق الأوسط للأجهزة الطبية","amount":21000000,"quote":"Q-2026-401"},{"item":"جهاز أشعة بانورامية","supplier":"الشرق الأوسط للأجهزة الطبية","amount":9500000,"quote":"Q-2026-402"},{"item":"تجهيز العيادة والتعقيم","supplier":"مؤسسة التجهيزات الطبية","amount":6500000,"quote":"Q-2026-403"},{"item":"رأس مال تشغيلي ثلاثة أشهر","supplier":"—","amount":3000000,"quote":"WC-2026-04"}],"scenarios":[{"name":"متحفظ","yieldBps":550,"basis":"بطء بناء قاعدة المرضى في السنة الأولى"},{"name":"أساسي","yieldBps":1050,"basis":"معدل إشغال الكراسي 60% وتعاقد مع شركتَي تأمين"},{"name":"متفائل","yieldBps":1450,"basis":"إشغال 75% وإضافة خدمات تقويم"}],"milestones":[{"id":"m1","label":"تجهيز الموقع والتعقيم","amount":6500000,"condition":"محضر إنجاز وترخيص صحي","state":"pending"},{"id":"m2","label":"توريد الكراسي والأجهزة","amount":21000000,"condition":"فاتورة مورد ومحضر استلام","state":"pending"},{"id":"m3","label":"تركيب جهاز الأشعة","amount":12500000,"condition":"شهادة سلامة إشعاعية","state":"pending"}],"risks":["الترخيص الصحي لجهاز الأشعة قد يتأخر ويؤجل التشغيل الكامل.","الاعتماد على تعاقدات شركات التأمين لتدفق المرضى.","منافسة عيادتين قائمتين في المحافظة نفسها.","اعتماد المشروع على طبيب مقيم واحد في البداية."]},{"id":"p_bake","ref":"POOL-2026-0003","status":"refunding","title":"خط إنتاج المخبوزات المجمدة — نزوى","sector":"معدات إنتاج غذائي","issuer":"مخابز الواحة الحديثة ش.م.م","governorate":"الداخلية","target":48000000,"minClose":38400000,"ownerStake":16000000,"tenorMonths":36,"publishedAt":"2026-05-20","closesAt":"2026-08-01","disclosureVersion":1,"uof":[{"item":"خط إنتاج وتجميد","supplier":"مورد معدات الأغذية","amount":38000000,"quote":"Q-2026-301"},{"item":"غرفة تبريد","supplier":"أنظمة التبريد المتقدمة","amount":7000000,"quote":"Q-2026-302"},{"item":"تدريب وتشغيل تجريبي","supplier":"مورد معدات الأغذية","amount":3000000,"quote":"Q-2026-303"}],"scenarios":[{"name":"متحفظ","yieldBps":500,"basis":"تأخر التراخيص وبطء اعتماد المنتج لدى التجزئة"},{"name":"أساسي","yieldBps":1000,"basis":"اعتماد المنتج في ثلاث سلاسل خلال ستة أشهر"},{"name":"متفائل","yieldBps":1400,"basis":"اعتماد أسرع وتشغيل بطاقة كاملة"}],"milestones":[],"risks":["لم يبلغ التمويل حدّه الأدنى قبل انتهاء المدة.","سوق المخبوزات المجمدة يتطلب اعتمادًا من سلاسل التجزئة."]}],"orders":[{"id":"ORD-2026-0001","poolId":"p_cafe","userId":"u_inv1","amount":1500000,"status":"confirmed","createdAt":"2026-07-20T09:12:00Z"},{"id":"ORD-2026-0002","poolId":"p_cafe","userId":"u_inv2","amount":2900000,"status":"confirmed","createdAt":"2026-07-21T11:40:00Z"},{"id":"ORD-2026-0003","poolId":"p_cafe","userId":"u_inv3","amount":12000000,"status":"confirmed","createdAt":"2026-07-22T08:05:00Z"},{"id":"ORD-2026-0004","poolId":"p_cafe","userId":"u_inv4","amount":20000000,"status":"confirmed","createdAt":"2026-07-25T14:22:00Z"},{"id":"ORD-2026-0005","poolId":"p_cafe","userId":"u_inv1","amount":600000,"status":"pending","createdAt":"2026-08-24T18:03:00Z"},{"id":"ORD-2026-0006","poolId":"p_cafe","userId":"u_inv3","amount":800000,"status":"confirmed","createdAt":"2026-08-10T10:00:00Z"},{"id":"ORD-2026-0012","poolId":"p_cafe","userId":"u_inv4","amount":25000000,"status":"confirmed","createdAt":"2026-08-02T10:15:00Z"},{"id":"ORD-2026-0013","poolId":"p_cafe","userId":"u_inv3","amount":18000000,"status":"confirmed","createdAt":"2026-08-06T12:40:00Z"},{"id":"ORD-2026-0014","poolId":"p_cafe","userId":"u_inv7","amount":2500000,"status":"confirmed","createdAt":"2026-08-12T09:05:00Z"},{"id":"ORD-2026-0015","poolId":"p_cafe","userId":"u_inv8","amount":2800000,"status":"confirmed","createdAt":"2026-08-15T15:20:00Z"},{"id":"ORD-2026-0016","poolId":"p_cafe","userId":"u_inv9","amount":110000,"status":"confirmed","createdAt":"2026-08-19T08:30:00Z"},{"id":"ORD-2026-0007","poolId":"p_log","userId":"u_inv4","amount":40000000,"status":"allocated","createdAt":"2026-05-02T09:00:00Z"},{"id":"ORD-2026-0008","poolId":"p_log","userId":"u_inv3","amount":25000000,"status":"allocated","createdAt":"2026-05-04T13:30:00Z"},{"id":"ORD-2026-0009","poolId":"p_log","userId":"u_inv2","amount":8500000,"status":"allocated","createdAt":"2026-05-06T16:45:00Z"},{"id":"ORD-2026-0017","poolId":"p_clinic","userId":"u_inv7","amount":1200000,"status":"confirmed","createdAt":"2026-08-14T10:00:00Z"},{"id":"ORD-2026-0018","poolId":"p_clinic","userId":"u_inv3","amount":6000000,"status":"confirmed","createdAt":"2026-08-17T11:30:00Z"},{"id":"ORD-2026-0019","poolId":"p_clinic","userId":"u_inv8","amount":900000,"status":"confirmed","createdAt":"2026-08-21T14:10:00Z"},{"id":"ORD-2026-0010","poolId":"p_bake","userId":"u_inv3","amount":9000000,"status":"refunded","createdAt":"2026-06-01T07:20:00Z"},{"id":"ORD-2026-0011","poolId":"p_bake","userId":"u_inv1","amount":3000000,"status":"refunded","createdAt":"2026-06-03T12:10:00Z"}],"disbursements":[{"id":"DSB-2026-0001","poolId":"p_log","milestoneId":"m1","amount":30000000,"status":"executed","requestedBy":"u_fin1","requestedAt":"2026-05-16T08:00:00Z","approvedBy":"u_fin2","approvedAt":"2026-05-16T11:20:00Z","evidence":"عقد شراء موقّع — CTR-2026-77"},{"id":"DSB-2026-0002","poolId":"p_log","milestoneId":"m2","amount":42000000,"status":"executed","requestedBy":"u_fin2","requestedAt":"2026-06-11T09:30:00Z","approvedBy":"u_fin1","approvedAt":"2026-06-11T15:05:00Z","evidence":"بطاقات ملكية 3 مركبات + وثيقة تأمين INS-2026-44"},{"id":"DSB-2026-0003","poolId":"p_log","milestoneId":"m3","amount":13000000,"status":"requested","requestedBy":"u_fin1","requestedAt":"2026-08-23T07:45:00Z","approvedBy":null,"approvedAt":null,"evidence":"محضر تركيب أنظمة التتبع — TRK-2026-19"}],"distributions":[{"id":"DST-2026-0001","poolId":"p_log","period":"الربع الثاني 2026","gross":2100000,"paidAt":"2026-07-05T00:00:00Z"}],"reports":[{"id":"RPT-2026-0001","poolId":"p_log","period":"الربع الثاني 2026","dueAt":"2026-07-15","status":"published","submittedAt":"2026-07-10T09:00:00Z","publishedAt":"2026-07-12T10:00:00Z","kpis":[{"metric":"نسبة تشغيل الأسطول %","actual":72,"forecast":75},{"metric":"إيراد الشهر (ر.ع)","actual":9400,"forecast":9800},{"metric":"تكلفة الصيانة (ر.ع)","actual":1250,"forecast":900}],"narrative":"تم تشغيل المركبات الثلاث اعتبارًا من منتصف يونيو. نسبة التشغيل أقل من المتوقع بثلاث نقاط بسبب تأخر عقد التوريد الثالث، وتكلفة الصيانة أعلى بسبب استبدال وحدة تبريد.","variance":"العقد الثالث بدأ في يوليو ويُتوقع أن ترتفع نسبة التشغيل في الربع القادم."},{"id":"RPT-2026-0002","poolId":"p_log","period":"الربع الثالث 2026","dueAt":"2026-10-15","status":"scheduled","submittedAt":null,"publishedAt":null,"kpis":[],"narrative":"","variance":""}],"cases":[{"id":"CASE-2026-0004","kind":"شكوى","subject":"تأخر إشعار التوزيع","poolId":"p_log","status":"open","openedAt":"2026-08-18T08:00:00Z","slaDays":5},{"id":"CASE-2026-0005","kind":"استفسار","subject":"طلب نسخة من الإفصاح السابق","poolId":"p_cafe","status":"open","openedAt":"2026-08-22T13:00:00Z","slaDays":5},{"id":"CASE-2026-0006","kind":"مطابقة","subject":"فرق 3.000 ر.ع بين كشف الضمان والسجل","poolId":"p_cafe","status":"open","openedAt":"2026-08-24T09:00:00Z","slaDays":2}],"audit":[]}
+</script>
+<div id="root"></div>
+<div class="toasts" id="toasts"></div>
+<script id="appscript">
+(() => {
+'use strict';
+document.documentElement.lang = 'ar';
+document.documentElement.dir  = 'rtl';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PERSISTENCE
+   The page is the database. Every action rewrites the document with the new
+   state embedded, and publishes it — all open views reload to that version.
+   The template is the pristine <style> and <script> source read out of the
+   DOM at boot; the live DOM is never serialized.
+   ══════════════════════════════════════════════════════════════════════════ */
+const STYLE_SRC  = document.getElementById('appstyle').textContent;
+const SCRIPT_SRC = document.getElementById('appscript').textContent;
+const CLOSE = '</' + 'script>';
+
+let STATE = JSON.parse(document.getElementById('appstate').textContent);
+let WRITER = null;              // the artifact namespace, once resolved
+let MODE = 'loading';           // loading | live | local
+
+function buildDoc(st) {
+  const json = JSON.stringify(st).replace(/</g, '\\u003c');
+  return '<!doctype html>\n<html lang="ar" dir="rtl">\n<head>\n'
+    + '<meta charset="utf-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    + '<title>حِصّة | Hissa Pools</title>\n'
+    + '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+    + '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+    + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">\n'
+    + '<style id="appstyle">' + STYLE_SRC + '</style>\n</head>\n<body>\n'
+    + '<script id="appstate" type="application/json">' + json + CLOSE + '\n'
+    + '<div id="root"></div>\n<div class="toasts" id="toasts"></div>\n'
+    + '<script id="appscript">' + SCRIPT_SRC + CLOSE + '\n</body>\n</html>';
+}
+
+/* Apply a mutation, chain an audit entry, persist. Returns false if the
+   mutation itself refused (a rule said no) — those never reach storage. */
+async function commit(label, mutate) {
+  const draft = JSON.parse(JSON.stringify(STATE));
+  let entry;
+  try {
+    entry = mutate(draft);
+  } catch (err) {
+    toast(err.message || 'تعذّر تنفيذ الإجراء', 'bad');
+    return false;
+  }
+  appendAudit(draft, Object.assign({ action: label }, entry || {}));
+  STATE = draft;
+  render();
+
+  if (!WRITER) {
+    toast('نُفِّذ في هذه الجلسة فقط — لم يُحفظ للجميع', 'bad');
+    return true;
+  }
+  try {
+    await WRITER.publish(buildDoc(STATE));
+    /* every open view, this one included, reloads to the new version */
+  } catch (err) {
+    const code = err && err.code;
+    if (code === 'conflict') {
+      toast('حفظ شخص آخر نسخة أحدث. ستُحمَّل نسختُه — أعد الإجراء عليها.', 'bad');
+    } else if (code === 'not_granted' || code === 'not_writer') {
+      MODE = 'local'; render();
+      toast('لديك صلاحية قراءة فقط — الإجراء ظاهر لك ولا يُحفظ.', 'bad');
+    } else {
+      toast('تعذّر الحفظ: ' + (err && err.message ? err.message : 'خطأ غير معروف'), 'bad');
+    }
+  }
+  return true;
+}
+
+/* ══ money: integer baisa throughout. 1 OMR = 1000 baisa, never a float. ══ */
+const BAISA = 1000;
+const omr = v => Math.round(v * BAISA);
+function fmt(b, dec = 3) {
+  if (b == null || Number.isNaN(b)) return '—';
+  const neg = b < 0, abs = Math.abs(Math.trunc(b));
+  const whole = (Math.floor(abs / BAISA)).toLocaleString('en-US');
+  return (neg ? '-' : '') + (dec === 0 ? whole : whole + '.' + String(abs % BAISA).padStart(3, '0'));
+}
+const rial = (b, dec = 0) => fmt(b, dec) + ' ر.ع';
+function parseOmr(text) {
+  const s = String(text).trim().replace(/,/g, '');
+  if (!/^\d+(\.\d{1,3})?$/.test(s)) return null;
+  const [w, f = ''] = s.split('.');
+  return Number(w) * BAISA + Number(f.padEnd(3, '0'));
+}
+
+/* Largest-remainder apportionment: the parts always sum to exactly `total`,
+   so no baisa is invented or lost by rounding. */
+function proRata(total, weights) {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return weights.map(() => 0);
+  const base = weights.map(w => Math.floor((total * w) / sum));
+  let rem = total - base.reduce((a, b) => a + b, 0);
+  const order = weights
+    .map((w, i) => ({ i, r: total * w - Math.floor((total * w) / sum) * sum }))
+    .sort((a, b) => b.r - a.r || a.i - b.i);
+  for (const { i } of order) { if (rem <= 0) break; base[i] += 1; rem -= 1; }
+  return base;
+}
+
+/* ══ ids, time, hashing ═══════════════════════════════════════════════════ */
+const nowIso = () => new Date().toISOString();
+function nextId(list, prefix) {
+  const year = new Date().getFullYear();
+  const n = list.filter(x => String(x.id).startsWith(prefix)).length + 1;
+  return prefix + '-' + year + '-' + String(n).padStart(4, '0');
+}
+/* FNV-1a 64. Enough to make tampering with a log row visible; the server-side
+   system chains SHA-256 instead. */
+function h64(str) {
+  const P = 0x100000001b3n, M = (1n << 64n) - 1n;
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < str.length; i += 1) { h ^= BigInt(str.charCodeAt(i)); h = (h * P) & M; }
+  return h.toString(16).padStart(16, '0');
+}
+function appendAudit(st, entry) {
+  const prev = st.audit.length ? st.audit[st.audit.length - 1].hash : '0'.repeat(16);
+  const row = Object.assign({ at: nowIso(), actor: SESSION.userId }, entry, { prev });
+  row.hash = h64(prev + '|' + JSON.stringify(row));
+  st.audit.push(row);
+}
+
+/* ══ derived reads ═══════════════════════════════════════════════════════ */
+const COUNTED  = new Set(['pending', 'confirmed', 'allocated']);
+const user  = id => STATE.users.find(u => u.id === id);
+const pool  = id => STATE.pools.find(p => p.id === id);
+const ordersOf = poolId => STATE.orders.filter(o => o.poolId === poolId);
+const raised   = poolId => ordersOf(poolId).filter(o => COUNTED.has(o.status)).reduce((s, o) => s + o.amount, 0);
+const allocatedOf = poolId => STATE.orders.filter(o => o.poolId === poolId && o.status === 'allocated');
+const uofTotal = p => p.uof.reduce((s, u) => s + u.amount, 0);
+const ceilingOf = p => Math.round((p.target * STATE.settings.overfundBps) / 10000);
+
+function rolling12m(userId) {
+  return STATE.orders.filter(o => o.userId === userId && COUNTED.has(o.status))
+                     .reduce((s, o) => s + o.amount, 0);
+}
+function perIssuer(userId, poolId) {
+  return STATE.orders.filter(o => o.userId === userId && o.poolId === poolId && COUNTED.has(o.status))
+                     .reduce((s, o) => s + o.amount, 0);
+}
+
+/* ══ eligibility: every reason a commitment can be refused, in one place ══ */
+function eligibility(u, p) {
+  const blocks = [];
+  if (!u) return { blocks: [['—', 'اختر مستثمرًا.']], available: 0 };
+  if (u.kyc !== 'approved') blocks.push(['BR-009', 'يلزم اكتمال التحقق من الهوية قبل إنشاء أي التزام.']);
+  if (u.suit === 'restricted') blocks.push(['FR-005', 'نتيجة اختبار الملاءمة لا تسمح بهذا النوع من الاستثمار.']);
+  if (!u.consents) blocks.push(['FR-006', 'يلزم قبول الشروط وإفصاح المخاطر وسياسة الخصوصية.']);
+  if (p.status !== 'funding') blocks.push(['FR-205', 'هذه الفرصة غير مفتوحة للاستثمار حاليًا.']);
+
+  const caps = STATE.settings.limits[u.cls] || { perIssuer: null, rolling12m: null };
+  const usedIssuer  = perIssuer(u.id, p.id);
+  const usedRolling = rolling12m(u.id);
+  const headIssuer  = caps.perIssuer  == null ? Infinity : Math.max(0, caps.perIssuer  - usedIssuer);
+  const headRolling = caps.rolling12m == null ? Infinity : Math.max(0, caps.rolling12m - usedRolling);
+  const poolLeft    = Math.max(0, ceilingOf(p) - raised(p.id));
+
+  const raw = Math.min(headIssuer, headRolling, poolLeft);
+  const available = Number.isFinite(raw) ? raw : poolLeft;
+
+  let binding = 'سعة الفرصة', bindingId = 'BR-017';
+  if (caps.perIssuer != null && headIssuer <= headRolling && headIssuer <= poolLeft) {
+    binding = 'حدّك لكل متقدم تمويل'; bindingId = 'BR-003';
+  } else if (caps.rolling12m != null && headRolling <= poolLeft) {
+    binding = 'حدّك خلال 12 شهرًا'; bindingId = u.cls === 'angel' ? 'BR-005' : 'BR-004';
+  }
+  if (available <= 0 && !blocks.length) blocks.push([bindingId, 'بلغت الحد المتاح لك في هذه الفرصة.']);
+
+  return { blocks, available, binding, bindingId, caps, usedIssuer, usedRolling, poolLeft };
+}
+
+/* ══ actions ═════════════════════════════════════════════════════════════ */
+function actCreateOrder(st, userId, poolId, amount) {
+  const u = STATE.users.find(x => x.id === userId), p = pool(poolId);
+  const v = eligibility(u, p);
+  if (v.blocks.length) throw new Error(v.blocks[0][1]);
+  if (amount == null) throw new Error('مبلغ غير صالح.');
+  if (amount < STATE.settings.minTicket) throw new Error('أقل من الحد الأدنى ' + rial(STATE.settings.minTicket) + '.');
+  if (amount > v.available) throw new Error('يتجاوز المتاح لك (' + rial(v.available) + ') — القيد: ' + v.binding + '.');
+  const id = nextId(st.orders, 'ORD');
+  st.orders.push({ id, poolId, userId, amount, status: 'pending', createdAt: nowIso() });
+  return { entity: id, detail: 'التزام بـ ' + rial(amount, 3) + ' في ' + p.ref };
+}
+
+function actCancelOrder(st, orderId) {
+  const o = st.orders.find(x => x.id === orderId);
+  if (!o) throw new Error('التزام غير موجود.');
+  if (o.status !== 'pending') throw new Error('لا يمكن الإلغاء إلا خلال مهلة العدول وقبل التأكيد.');
+  o.status = 'cancelled';
+  o.cancelledAt = nowIso();
+  return { entity: orderId, detail: 'إلغاء خلال مهلة العدول (' + STATE.settings.coolingOffHours + ' ساعة)' };
+}
+
+/* Closing decides the pool's fate by the rule, not by anyone's discretion:
+   below the minimum every baisa goes back; above the ceiling everyone is
+   scaled down pro rata and a share that falls under the minimum ticket is
+   refunded whole, its money redistributed. */
+function actClosePool(st, poolId) {
+  const p = st.pools.find(x => x.id === poolId);
+  if (!p) throw new Error('فرصة غير موجودة.');
+  if (p.status !== 'funding') throw new Error('لا تُغلق إلا فرصة مفتوحة للتمويل.');
+  const live = st.orders.filter(o => o.poolId === poolId && COUNTED.has(o.status));
+  const total = live.reduce((s, o) => s + o.amount, 0);
+
+  if (total < p.minClose) {
+    live.forEach(o => { o.status = 'refunded'; o.refundReason = 'target_not_reached'; });
+    p.status = 'refunding';
+    p.closedAt = nowIso();
+    return { entity: p.ref, detail: 'لم يبلغ الحد الأدنى — استُرد ' + rial(total) + ' على ' + live.length + ' التزامًا' };
+  }
+
+  const ceiling = ceilingOf(p);
+  if (total <= ceiling) {
+    live.forEach(o => { o.status = 'allocated'; o.allocated = o.amount; });
+  } else {
+    let alloc = proRata(ceiling, live.map(o => o.amount));
+    for (let pass = 0; pass < live.length; pass += 1) {
+      const under = alloc.map((a, i) => ({ a, i })).filter(x => x.a > 0 && x.a < st.settings.minTicket);
+      if (!under.length) break;
+      under.forEach(x => { alloc[x.i] = 0; });
+      const w = alloc.map((a, i) => (a > 0 ? live[i].amount : 0));
+      if (w.every(x => x === 0)) break;
+      alloc = proRata(ceiling, w);
+    }
+    live.forEach((o, i) => {
+      const got = Math.min(alloc[i], o.amount);
+      o.allocated = got;
+      o.refunded = o.amount - got;
+      o.status = got > 0 ? 'allocated' : 'refunded';
+      if (got === 0) o.refundReason = 'allocation_remainder';
+    });
+  }
+  p.status = 'funded';
+  p.fundedAt = nowIso();
+  const got = live.reduce((s, o) => s + (o.allocated || 0), 0);
+  return { entity: p.ref, detail: 'أُغلقت على ' + rial(got) + ' موزعة على ' + live.filter(o => o.status === 'allocated').length + ' مستثمرًا' };
+}
+
+function actRequestDisbursement(st, poolId, milestoneId, amount, evidence, byUserId) {
+  if (!evidence || evidence.trim().length < 6) throw new Error('يلزم وصف الدليل المرفق قبل طلب الصرف.');
+  const p = st.pools.find(x => x.id === poolId);
+  const m = p.milestones.find(x => x.id === milestoneId);
+  if (!m) throw new Error('مرحلة غير موجودة.');
+  if (m.state !== 'pending') throw new Error('هذه المرحلة صُرفت أو قيد الصرف.');
+  const id = nextId(st.disbursements, 'DSB');
+  st.disbursements.push({ id, poolId, milestoneId, amount, status: 'requested',
+    requestedBy: byUserId, requestedAt: nowIso(), approvedBy: null, approvedAt: null, evidence: evidence.trim() });
+  m.state = 'requested';
+  return { entity: id, detail: 'طلب صرف ' + rial(amount) + ' لمرحلة «' + m.label + '»' };
+}
+
+/* Dual control is enforced per transaction, not per role: the same person may
+   hold both permissions and still cannot approve what they requested. */
+function actApproveDisbursement(st, dsbId, byUserId) {
+  const d = st.disbursements.find(x => x.id === dsbId);
+  if (!d) throw new Error('طلب غير موجود.');
+  if (d.status !== 'requested') throw new Error('هذا الطلب اعتُمد أو نُفِّذ.');
+  if (d.requestedBy === byUserId) throw new Error('لا يعتمد الطلبَ من أنشأه — يلزم طرف ثانٍ.');
+  d.status = 'executed';
+  d.approvedBy = byUserId;
+  d.approvedAt = nowIso();
+  const p = st.pools.find(x => x.id === d.poolId);
+  const m = p.milestones.find(x => x.id === d.milestoneId);
+  if (m) m.state = 'executed';
+  if (p.status === 'funded') p.status = 'operating';
+  return { entity: dsbId, detail: 'اعتماد وصرف ' + rial(d.amount) + ' — طالب: ' + (user(d.requestedBy) || {}).name };
+}
+
+function actCreateDistribution(st, poolId, gross, period) {
+  const p = st.pools.find(x => x.id === poolId);
+  const holders = st.orders.filter(o => o.poolId === poolId && o.status === 'allocated');
+  if (!holders.length) throw new Error('لا يوجد مستثمرون مخصَّصون في هذه الفرصة.');
+  if (!gross || gross <= 0) throw new Error('مبلغ توزيع غير صالح.');
+  const shares = proRata(gross, holders.map(o => o.allocated || o.amount));
+  const id = nextId(st.distributions, 'DST');
+  st.distributions.push({ id, poolId, period, gross, paidAt: nowIso(),
+    shares: holders.map((o, i) => ({ userId: o.userId, orderId: o.id, amount: shares[i] })) });
+  return { entity: id, detail: 'توزيع ' + rial(gross) + ' على ' + holders.length + ' مستثمرًا في ' + p.ref };
+}
+
+function actSubmitReport(st, reportId, kpis, narrative, variance) {
+  const r = st.reports.find(x => x.id === reportId);
+  if (!r) throw new Error('تقرير غير موجود.');
+  if (!kpis.length) throw new Error('يلزم مؤشر واحد على الأقل.');
+  if (narrative.trim().length < 20) throw new Error('السرد قصير جدًا — 20 حرفًا على الأقل.');
+  if (/مضمون|ضمان العائد|بلا مخاطر/.test(narrative)) throw new Error('السرد يحتوي عبارة ضمان — غير مسموح.');
+  r.kpis = kpis; r.narrative = narrative.trim(); r.variance = variance.trim();
+  r.submittedAt = nowIso();
+  r.status = new Date() > new Date(r.dueAt + 'T23:59:59Z') ? 'late' : 'submitted';
+  return { entity: reportId, detail: 'تقديم تقرير ' + r.period + (r.status === 'late' ? ' (متأخر)' : '') };
+}
+
+function actPublishReport(st, reportId) {
+  const r = st.reports.find(x => x.id === reportId);
+  if (!r) throw new Error('تقرير غير موجود.');
+  if (!['submitted', 'late'].includes(r.status)) throw new Error('لا يُنشر إلا تقرير مُقدَّم.');
+  r.status = 'published';
+  r.publishedAt = nowIso();
+  return { entity: reportId, detail: 'نشر تقرير ' + r.period + ' للمستثمرين' };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SESSION — who you are looking as. Per-viewer only: it lives in this
+   browser, never in the shared document.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DEFAULT_SESSION = { role: 'investor', userId: 'u_inv1', view: 'inv.pools', poolId: 'p_cafe', tab: 'disclosure' };
+let SESSION = Object.assign({}, DEFAULT_SESSION);
+try {
+  const saved = localStorage.getItem('hissa.session');
+  if (saved) SESSION = Object.assign({}, DEFAULT_SESSION, JSON.parse(saved));
+} catch (e) { /* private window, blocked storage — defaults are fine */ }
+function setSession(patch) {
+  Object.assign(SESSION, patch);
+  try { localStorage.setItem('hissa.session', JSON.stringify(SESSION)); } catch (e) {}
+  render();
+}
+
+const ROLES = [
+  { k: 'investor', label: 'مستثمر' },
+  { k: 'owner',    label: 'صاحب مشروع' },
+  { k: 'staff',    label: 'فريق التشغيل' },
+];
+const NAV = {
+  investor: [
+    { k: 'inv.pools',     n: '01', label: 'الفرص' },
+    { k: 'inv.pool',      n: '02', label: 'تفاصيل الفرصة' },
+    { k: 'inv.invest',    n: '03', label: 'إنشاء التزام' },
+    { k: 'inv.portfolio', n: '04', label: 'محفظتي' },
+    { k: 'inv.inbox',     n: '05', label: 'الإشعارات' },
+  ],
+  owner: [
+    { k: 'own.project', n: '01', label: 'مشروعي' },
+    { k: 'own.funds',   n: '02', label: 'استخدام الأموال' },
+    { k: 'own.reports', n: '03', label: 'التقارير' },
+  ],
+  staff: [
+    { k: 'ops.dash',     n: '01', label: 'لوحة التشغيل' },
+    { k: 'ops.pipeline', n: '02', label: 'المسار والقطاعات' },
+    { k: 'ops.pools',    n: '03', label: 'إدارة الفرص' },
+    { k: 'ops.money',    n: '04', label: 'الصرف والاعتماد' },
+    { k: 'ops.dist',     n: '05', label: 'التوزيعات' },
+    { k: 'ops.audit',    n: '06', label: 'سجل التدقيق' },
+  ],
+};
+const usersOfRole = role => STATE.users.filter(u => u.role === role);
+const me = () => user(SESSION.userId) || usersOfRole(SESSION.role)[0];
+
+/* ══ view helpers ════════════════════════════════════════════════════════ */
+const esc = s => String(s == null ? '' : s)
+  .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dt = (iso, withTime) => {
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = new Intl.DateTimeFormat('ar-OM-u-nu-latn', Object.assign(
+    { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Muscat' },
+    withTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}));
+  return p.format(d);
+};
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+const POOL_STATUS = {
+  draft:     ['مسودة',            ''],
+  funding:   ['مفتوحة للتمويل',   'chip--brand'],
+  funded:    ['أُغلقت بنجاح',      'chip--pos'],
+  operating: ['قيد التشغيل',      'chip--pos'],
+  refunding: ['قيد الاسترداد',    'chip--crit'],
+  closed:    ['منتهية',           ''],
+};
+const ORDER_STATUS = {
+  pending:   ['قيد التأكيد', 'chip--warn'],
+  confirmed: ['مؤكد',        'chip--brand'],
+  allocated: ['مُخصَّص',      'chip--pos'],
+  refunded:  ['مُسترد',       'chip--crit'],
+  cancelled: ['مُلغى',        ''],
+};
+const REPORT_STATUS = {
+  scheduled: ['مجدول',   ''],
+  submitted: ['مُقدَّم',  'chip--warn'],
+  late:      ['متأخر',   'chip--crit'],
+  published: ['منشور',   'chip--pos'],
+};
+const REFUND_REASON = {
+  target_not_reached:   'لم يبلغ التمويل حدّه الأدنى',
+  allocation_remainder: 'حصة دون الحد الأدنى بعد التخصيص',
+  investor_cancellation:'إلغاء من المستثمر',
+};
+function chip(map, key) {
+  const e = map[key] || [key, ''];
+  return '<span class="chip ' + e[1] + '"><span class="chip__dot"></span>' + esc(e[0]) + '</span>';
+}
+
+const CAT = ['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)'];
+const ORD = ['var(--ord-1)', 'var(--ord-2)', 'var(--ord-3)', 'var(--ord-4)', 'var(--ord-5)'];
+const TONE = { good: 'var(--st-good)', warning: 'var(--st-warn)', serious: 'var(--st-serious)', critical: 'var(--st-crit)' };
+const TONE_AR = { good: 'سليم', warning: 'انتباه', serious: 'متأخر', critical: 'حرِج' };
+
+function compact(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (Math.round(v / 1e5) / 10) + 'M';
+  if (a >= 1e3) return (Math.round(v / 1e2) / 10) + 'k';
+  return String(Math.round(v));
+}
+
+let frameSeq = 0;
+/* Every chart ships the same numbers as a table. Colour alone never carries
+   the meaning, and a reader who cannot separate two hues still gets the data. */
+function frameHtml(o) {
+  frameSeq += 1;
+  const id = 'fr' + frameSeq;
+  return '<div class="frame" data-view="chart" id="' + id + '">'
+    + '<div class="frame__head"><div><h3>' + esc(o.title) + '</h3>'
+    + (o.sub ? '<p class="frame__sub">' + esc(o.sub) + '</p>' : '') + '</div>'
+    + '<button type="button" class="frame__toggle" data-act="toggleFrame" data-frame="' + id + '">عرض كجدول</button>'
+    + '</div><div class="frame__chart">' + o.chart + '</div>'
+    + '<div class="frame__table tablewrap"><table><thead><tr>'
+    + o.cols.map((c, i) => '<th' + (i ? ' class="n"' : '') + '>' + esc(c) + '</th>').join('')
+    + '</tr></thead><tbody>'
+    + (o.rows.length ? o.rows.map(r => '<tr>' + r.map((c, i) =>
+        '<td' + (i ? ' class="n"' : '') + '>' + c + '</td>').join('') + '</tr>').join('')
+      : '<tr><td colspan="' + o.cols.length + '" class="empty">لا بيانات بعد.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+
+function trendSvg(points, tickFmt) {
+  if (points.length < 2) return '<p class="empty">لا توجد نقاط كافية لرسم منحنى بعد.</p>';
+  const W = 720, H = 220, L = 48, R = 14, T = 12, B = 26;
+  const max = Math.max.apply(null, points.map(p => p.value)) || 1;
+  const step = (W - L - R) / (points.length - 1);
+  const x = i => L + i * step;
+  const y = v => T + (H - T - B) * (1 - v / max);
+  const line = points.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.value).toFixed(1)).join('');
+  const area = line + 'L' + x(points.length - 1).toFixed(1) + ',' + y(0) + 'L' + x(0).toFixed(1) + ',' + y(0) + 'Z';
+  const grid = [0, .25, .5, .75, 1].map(f => max * f).map(v =>
+    '<line class="axis" x1="' + L + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(v).toFixed(1) + '"></line>'
+    + '<text x="' + (L - 6) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end">' + tickFmt(v) + '</text>').join('');
+  const marks = [0, Math.floor(points.length / 2), points.length - 1];
+  const xl = marks.map(i => '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="'
+    + (i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle') + '">' + points[i].label + '</text>').join('');
+  const last = points[points.length - 1];
+  return '<svg class="plot" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="منحنى تراكمي ينتهي عند '
+    + tickFmt(last.value) + '">' + grid
+    + '<path d="' + area + '" style="fill:var(--cat-1);opacity:.13"></path>'
+    + '<path d="' + line + '" style="fill:none;stroke:var(--cat-1);stroke-width:2;stroke-linejoin:round"></path>'
+    + '<circle cx="' + x(points.length - 1).toFixed(1) + '" cy="' + y(last.value).toFixed(1) + '" r="3.5" style="fill:var(--cat-1)"></circle>'
+    + '<text x="' + (x(points.length - 1) - 6).toFixed(1) + '" y="' + (y(last.value) - 9).toFixed(1)
+    + '" text-anchor="end" style="font-weight:600;fill:var(--ink)">' + tickFmt(last.value) + '</text>'
+    + xl + '</svg>';
+}
+
+function barsHtml(items, valueFmt, colors) {
+  if (!items.length) return '<p class="empty">لا بيانات.</p>';
+  const max = Math.max.apply(null, items.map(i => i.value)) || 1;
+  return '<div class="bars">' + items.map((it, i) =>
+    '<div class="bars__row"><span class="bars__label">' + esc(it.label) + '</span>'
+    + '<span class="meter"><span class="meter__fill" style="width:' + ((it.value / max) * 100).toFixed(1)
+    + '%;background:' + (it.color || colors[i % colors.length]) + '"></span></span>'
+    + '<span class="bars__val">' + valueFmt(it.value) + '</span></div>').join('') + '</div>';
+}
+
+function funnelHtml(stages) {
+  const base = stages[0].value || 1;
+  return '<div class="funnel">' + stages.map((s, i) => {
+    const prev = i ? stages[i - 1].value : null;
+    const pct = prev ? Math.round((s.value / prev) * 1000) / 10 : null;
+    return '<div><div class="funnel__top"><span class="sm">' + esc(s.label) + '</span>'
+      + '<span class="funnel__val">' + s.value + '</span></div>'
+      + '<span class="meter" style="block-size:11px"><span class="meter__fill" style="width:'
+      + ((s.value / base) * 100).toFixed(1) + '%;background:' + ORD[i % ORD.length] + '"></span></span>'
+      + '<div class="xs muted">' + (pct === null ? 'الأساس' : pct + '% محمولة من المرحلة السابقة') + '</div></div>';
+  }).join('') + '</div>';
+}
+
+function meterRow(label, value, target, color, valueFmt) {
+  const pct = target ? Math.min(100, (value / target) * 100) : 0;
+  return '<div class="bars__row"><span class="bars__label">' + esc(label) + '</span>'
+    + '<span class="meter"><span class="meter__fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></span></span>'
+    + '<span class="bars__val">' + valueFmt(value) + ' <span class="xs muted">/ ' + valueFmt(target)
+    + ' · ' + Math.round(pct) + '%</span></span></div>';
+}
+
+function toast(msg, kind) {
+  const box = document.getElementById('toasts');
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' toast--' + kind : '');
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VIEWS — one screen at a time. Each returns {crumb, title, lede, body}.
+   ══════════════════════════════════════════════════════════════════════════ */
+const VIEWS = {};
+
+/* ── 01 investor · the opportunity list ───────────────────────────────── */
+VIEWS['inv.pools'] = () => ({
+  crumb: 'مستثمر', title: 'الفرص المتاحة',
+  lede: 'كل فرصة توسّع تشغيلي محدد لمنشأة قائمة — لا فكرة ولا شركة ناشئة. اضغط أي فرصة لقراءة إفصاحها كاملًا قبل أي التزام.',
+  body: '<div class="grid grid--2">' + STATE.pools.map(p => {
+    const got = raised(p.id), pct = Math.min(100, (got / p.target) * 100);
+    return '<div class="card"><div class="card__body">'
+      + '<div class="row row--tight">' + chip(POOL_STATUS, p.status)
+      + '<span class="chip">' + esc(p.sector) + '</span>'
+      + '<span class="mono xs muted spacer">' + p.ref + '</span></div>'
+      + '<h3>' + esc(p.title) + '</h3>'
+      + '<div class="sm muted">' + esc(p.issuer) + ' · ' + esc(p.governorate) + '</div>'
+      + '<span class="meter"><span class="meter__fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
+      + '<div class="row sm"><span class="num">' + fmt(got, 0) + ' / ' + fmt(p.target, 0) + ' ر.ع</span>'
+      + '<span class="muted spacer">' + Math.round(pct) + '% من الهدف</span></div>'
+      + '<div class="row"><button class="btn btn--sm" data-act="openPool" data-pool="' + p.id + '">الإفصاح والتفاصيل</button>'
+      + (p.status === 'funding'
+          ? '<button class="btn btn--sm btn--primary" data-act="investIn" data-pool="' + p.id + '">استثمر</button>' : '')
+      + '</div></div></div>';
+  }).join('') + '</div>'
+    + '<div class="note note--warn">قد تخسر كامل المبلغ المستثمر. لا ضمان للعائد ولا لرأس المال، ولا توجد سوق ثانوية لبيع حصتك قبل نهاية المدة.</div>',
+});
+
+/* ── 02 investor · one opportunity, in tabs ───────────────────────────── */
+VIEWS['inv.pool'] = () => {
+  const p = pool(SESSION.poolId) || STATE.pools[0];
+  const got = raised(p.id);
+  const TABS = [
+    ['disclosure', 'الإفصاح'], ['uof', 'استخدام الأموال'], ['scen', 'السيناريوهات'],
+    ['ms', 'المراحل'], ['risk', 'المخاطر'], ['rep', 'التقارير'],
+  ];
+  const tab = TABS.some(t => t[0] === SESSION.tab) ? SESSION.tab : 'disclosure';
+  let panel = '';
+
+  if (tab === 'disclosure') {
+    const ownerPct = (p.ownerStake * 10000) / (p.target + p.ownerStake) / 100;
+    panel = '<div class="grid grid--4">'
+      + [['الهدف', rial(p.target)], ['الحد الأدنى للإغلاق', rial(p.minClose)],
+         ['سقف الاكتتاب', rial(ceilingOf(p))], ['مساهمة صاحب المشروع', ownerPct.toFixed(1) + '%'],
+         ['المدة', p.tenorMonths + ' شهرًا'], ['الملتزم به', rial(got)],
+         ['نسخة الإفصاح', 'v' + p.disclosureVersion], ['إغلاق التمويل', dt(p.closesAt)]]
+        .map(kv => '<div class="kv"><div class="kv__k">' + kv[0] + '</div><div class="kv__v">' + kv[1] + '</div></div>').join('')
+      + '</div>'
+      + '<div class="note note--info">هذه النسخة رقم ' + p.disclosureVersion + ' من الإفصاح. أي التزام يُربط بالنسخة السارية وقت إنشائه، والنسخ المنشورة لا تُعدَّل — التغيير الجوهري يُنشئ نسخة جديدة ويفتح للمستثمرين حق العدول.</div>'
+      + '<div class="note">الرسوم المعلنة: رسم منصة ' + (STATE.settings.feeBps.platform / 100).toFixed(2)
+      + '% ورسم نجاح ' + (STATE.settings.feeBps.success / 100).toFixed(2) + '% — محسومة من التمويل المُحصَّل، ومعلنة قبل الالتزام لا بعده.</div>';
+  }
+  if (tab === 'uof') {
+    panel = '<div class="tablewrap"><table><thead><tr><th>البند</th><th>المورد</th><th class="n">المبلغ</th><th>عرض السعر</th></tr></thead><tbody>'
+      + p.uof.map(u => '<tr><td>' + esc(u.item) + '</td><td>' + esc(u.supplier) + '</td>'
+        + '<td class="n">' + fmt(u.amount, 0) + '</td><td><span class="mono xs">' + u.quote + '</span></td></tr>').join('')
+      + '</tbody><tfoot><tr><td colspan="2">الإجمالي</td><td class="n">' + fmt(uofTotal(p), 0) + '</td><td></td></tr></tfoot></table></div>'
+      + '<div class="note">يُصرف لكل مورد مباشرة أو وفق مراحل موثقة — لا تُحوَّل الأموال دفعة واحدة لحساب صاحب المشروع، ولا يعتمد الصرفَ من طلبه.</div>';
+  }
+  if (tab === 'scen') {
+    panel = '<div class="tablewrap"><table><thead><tr><th>السيناريو</th><th class="n">عائد نقدي سنوي</th><th>الفرضية</th></tr></thead><tbody>'
+      + p.scenarios.map(s => '<tr><td><strong>' + esc(s.name) + '</strong></td>'
+        + '<td class="n">' + (s.yieldBps / 100).toFixed(1) + '%</td><td class="sm">' + esc(s.basis) + '</td></tr>').join('')
+      + '</tbody></table></div>'
+      + '<div class="note note--warn">هذه توقعات مبنية على افتراضات قد لا تتحقق، وليست وعدًا بعائد. السيناريو المتحفظ معروض أولًا عمدًا.</div>';
+  }
+  if (tab === 'ms') {
+    panel = p.milestones.length
+      ? '<div class="tl">' + p.milestones.map(m => {
+          const cls = m.state === 'executed' ? 'tl__dot--done' : m.state === 'requested' ? 'tl__dot--now' : '';
+          const label = m.state === 'executed' ? 'صُرفت' : m.state === 'requested' ? 'بانتظار اعتماد طرف ثانٍ' : 'لم تُستوفَ بعد';
+          return '<div class="tl__item"><span class="tl__dot ' + cls + '"></span><div>'
+            + '<div class="tl__t">' + esc(m.label) + ' — <span class="num">' + fmt(m.amount, 0) + ' ر.ع</span></div>'
+            + '<div class="tl__d">شرط الصرف: ' + esc(m.condition) + ' · ' + label + '</div></div></div>';
+        }).join('') + '</div>'
+      : '<p class="empty">لا توجد مراحل صرف لهذه الفرصة.</p>';
+  }
+  if (tab === 'risk') {
+    panel = '<ul class="stack-s sm">' + p.risks.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul>'
+      + '<div class="note note--crit">المخاطر أعلاه ليست حصرية. الاستثمار في منشأة غير مدرجة عالي المخاطر وغير سائل، وقد تخسر كامل المبلغ.</div>';
+  }
+  if (tab === 'rep') {
+    const rs = STATE.reports.filter(r => r.poolId === p.id && r.status === 'published');
+    panel = rs.length ? rs.map(r => '<div class="card"><div class="card__body">'
+        + '<div class="row"><h3>' + esc(r.period) + '</h3>' + chip(REPORT_STATUS, r.status)
+        + '<span class="spacer xs muted">نُشر ' + dt(r.publishedAt) + '</span></div>'
+        + '<div class="tablewrap"><table><thead><tr><th>المؤشر</th><th class="n">الفعلي</th><th class="n">المتوقع</th><th class="n">الانحراف</th></tr></thead><tbody>'
+        + r.kpis.map(k => {
+            const dev = k.forecast ? Math.round(((k.actual - k.forecast) / k.forecast) * 1000) / 10 : null;
+            return '<tr><td>' + esc(k.metric) + '</td><td class="n">' + k.actual + '</td><td class="n">'
+              + (k.forecast == null ? '—' : k.forecast) + '</td><td class="n">'
+              + (dev === null ? '—' : '<span class="chip ' + (dev >= 0 ? 'chip--pos' : 'chip--warn') + '">'
+                 + (dev > 0 ? '+' : '') + dev + '%</span>') + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+        + '<p class="sm">' + esc(r.narrative) + '</p>'
+        + (r.variance ? '<div class="note note--warn">تفسير الانحراف: ' + esc(r.variance) + '</div>' : '')
+        + '</div></div>').join('')
+      : '<p class="empty">لم يُنشر تقرير لهذه الفرصة بعد.</p>';
+  }
+
+  return {
+    crumb: 'مستثمر · ' + p.ref, title: p.title,
+    lede: esc(p.issuer) + ' — ' + esc(p.sector) + ' · ' + esc(p.governorate),
+    body: '<div class="row">' + chip(POOL_STATUS, p.status)
+      + '<div class="field spacer" style="max-width:280px"><select data-act="pickPool">'
+      + STATE.pools.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(x.title) + '</option>').join('')
+      + '</select></div></div>'
+      + '<div class="tabs" role="tablist">' + TABS.map(t =>
+          '<button role="tab" aria-selected="' + (t[0] === tab) + '" data-act="setTab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('')
+      + '</div><div class="card"><div class="card__body">' + panel + '</div></div>',
+  };
+};
+
+/* ── 03 investor · the commitment gate ────────────────────────────────── */
+VIEWS['inv.invest'] = () => {
+  const u = me();
+  const open = STATE.pools.filter(p => p.status === 'funding');
+  const p = open.find(x => x.id === SESSION.poolId) || open[0];
+  if (!p) return { crumb: 'مستثمر', title: 'إنشاء التزام', lede: '', body: '<p class="empty">لا توجد فرصة مفتوحة للتمويل حاليًا.</p>' };
+
+  const v = eligibility(u, p);
+  const trace = [];
+  trace.push(['FR-002', 'تصنيفك: ' + ({ retail: 'أفراد', angel: 'ملائكي', sophisticated: 'متمرس' }[u.cls] || u.cls)]);
+  if (v.caps.perIssuer != null)
+    trace.push(['BR-003', 'لكل متقدم تمويل: استُخدم ' + fmt(v.usedIssuer, 0) + ' من ' + fmt(v.caps.perIssuer, 0) + ' ر.ع']);
+  if (v.caps.rolling12m != null)
+    trace.push([u.cls === 'angel' ? 'BR-005' : 'BR-004', 'خلال 12 شهرًا: استُخدم ' + fmt(v.usedRolling, 0) + ' من ' + fmt(v.caps.rolling12m, 0) + ' ر.ع']);
+  else
+    trace.push(['BR-006', 'لا حدّ مبلغ منشور لتصنيفك — لا يتجاوز النظام ما يعتمده الشريك المرخّص']);
+  trace.push(['BR-017', 'سعة الفرصة المتبقية حتى السقف: ' + fmt(v.poolLeft, 0) + ' ر.ع']);
+
+  const blocked = v.blocks.length > 0;
+  const alt = blocked ? open.find(x => x.id !== p.id && eligibility(u, x).available > 0) : null;
+  const ACKS = [
+    'أدرك أنني قد أخسر كامل المبلغ المستثمر.',
+    'أدرك أنه لا ضمان للعائد ولا لرأس المال.',
+    'أدرك عدم وجود سوق ثانوية لبيع حصتي قبل نهاية المدة.',
+    'قرأت الإفصاح نسخة v' + p.disclosureVersion + ' واستخدام الأموال والسيناريوهات.',
+    'أوافق على تحويل المبلغ عبر الشريك المرخّص إلى حساب ضمان منفصل.',
+  ];
+
+  return {
+    crumb: 'مستثمر', title: 'إنشاء التزام',
+    lede: 'قبل إنشاء أي التزام يفحص النظام التحقق والملاءمة والموافقات وحدودك، ثم يعرض المبلغ المتاح لك دون كشف القاعدة الداخلية التي أنتجته.',
+    body: '<div class="grid grid--2">'
+      + '<div class="card"><div class="card__head"><h2>الطلب</h2></div><div class="card__body">'
+      + '<div class="field"><label for="ipool">الفرصة</label><select id="ipool" data-act="pickPool">'
+      + open.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(x.title) + '</option>').join('')
+      + '</select></div>'
+      + '<div class="field"><label for="iamt">المبلغ (ر.ع)</label>'
+      + '<input id="iamt" class="num" dir="ltr" inputmode="decimal" value="500.000">'
+      + '<span class="field__hint">الريال العُماني بثلاث منازل. الحد الأدنى ' + rial(STATE.settings.minTicket) + '.</span></div>'
+      + '<div class="stack-s">' + ACKS.map((a, i) =>
+          '<label class="check"><input type="checkbox" class="ack" id="ack' + i + '"><span>' + esc(a) + '</span></label>').join('')
+      + '</div>'
+      + '<button class="btn btn--primary" data-act="submitOrder" data-pool="' + p.id + '"' + (blocked ? ' disabled' : '') + '>'
+      + 'إنشاء الالتزام</button>'
+      + '<p class="xs muted">تُقبل الإقرارات الخمسة صراحةً، وتُسجَّل مع الالتزام في سجل التدقيق. لك مهلة عدول '
+      + STATE.settings.coolingOffHours + ' ساعة تُلغي فيها الالتزام دون سبب.</p>'
+      + '</div></div>'
+      + '<div class="card"><div class="card__head"><h2>قرار الأهلية</h2>'
+      + '<span class="spacer">' + (blocked ? '<span class="chip chip--crit"><span class="chip__dot"></span>غير متاح</span>'
+                                            : '<span class="chip chip--pos"><span class="chip__dot"></span>متاح</span>') + '</span>'
+      + '</div><div class="card__body">'
+      + (blocked
+          ? '<div class="note note--crit">' + v.blocks.map(b => esc(b[1])).join(' ') + '</div>'
+            + (alt ? '<div class="note note--info">«' + esc(alt.title) + '» ما زالت بها سعة — '
+                     + '<button class="btn btn--sm" data-act="investIn" data-pool="' + alt.id + '">انتقل إليها</button></div>' : '')
+          : '<div class="note note--pos">المتاح لك في هذه الفرصة <strong class="num">' + rial(v.available)
+            + '</strong>. القيد الفعّال: ' + esc(v.binding) + '.</div>')
+      + '<div class="tablewrap"><table><thead><tr><th>القاعدة</th><th>ما فحصه النظام</th></tr></thead><tbody>'
+      + v.blocks.map(b => '<tr><td><span class="mono xs">' + b[0] + '</span></td><td class="sm">' + esc(b[1]) + '</td></tr>').join('')
+      + trace.map(t => '<tr><td><span class="mono xs">' + t[0] + '</span></td><td class="sm">' + esc(t[1]) + '</td></tr>').join('')
+      + '</tbody></table></div></div></div></div>',
+  };
+};
+
+/* ── 04 investor · holdings ───────────────────────────────────────────── */
+VIEWS['inv.portfolio'] = () => {
+  const u = me();
+  const mine = STATE.orders.filter(o => o.userId === u.id);
+  const live = mine.filter(o => COUNTED.has(o.status));
+  const committed = live.reduce((s, o) => s + o.amount, 0);
+  const dists = STATE.distributions.flatMap(d =>
+    (d.shares || []).filter(s => s.userId === u.id).map(s => ({ d, s })));
+  const received = dists.reduce((s, x) => s + x.s.amount, 0);
+  const bySector = {};
+  live.forEach(o => { const p = pool(o.poolId); bySector[p.sector] = (bySector[p.sector] || 0) + o.amount; });
+  const sectorItems = Object.keys(bySector).map(k => ({ label: k, value: bySector[k] })).sort((a, b) => b.value - a.value);
+
+  return {
+    crumb: 'مستثمر', title: 'محفظتي',
+    lede: 'كل التزام أنشأته، وحالته الحالية، وما وصلك من توزيعات نقدية.',
+    body: '<div class="grid grid--4">'
+      + [['الملتزم به', rial(committed)], ['عدد الالتزامات القائمة', String(live.length)],
+         ['توزيعات مستلمة', rial(received, 3)],
+         ['المتبقي من حدّك السنوي', STATE.settings.limits[u.cls].rolling12m == null ? 'بلا حدّ منشور'
+            : rial(Math.max(0, STATE.settings.limits[u.cls].rolling12m - rolling12m(u.id)))]]
+        .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
+      + '</div>'
+      + '<div class="card"><div class="card__head"><h2>الالتزامات</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th><th class="n">المخصَّص</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>'
+      + (mine.length ? mine.slice().reverse().map(o => {
+          const p = pool(o.poolId);
+          return '<tr><td><span class="mono xs">' + o.id + '</span></td><td class="sm">' + esc(p.title) + '</td>'
+            + '<td class="n">' + fmt(o.amount, 0) + '</td>'
+            + '<td class="n">' + (o.allocated != null ? fmt(o.allocated, 0) : '—') + '</td>'
+            + '<td>' + chip(ORDER_STATUS, o.status)
+            + (o.refundReason ? '<div class="xs muted">' + esc(REFUND_REASON[o.refundReason] || o.refundReason) + '</div>' : '') + '</td>'
+            + '<td class="sm">' + dt(o.createdAt) + '</td>'
+            + '<td>' + (o.status === 'pending'
+                ? '<button class="btn btn--sm btn--danger" data-act="cancelOrder" data-order="' + o.id + '">إلغاء</button>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="7" class="empty">لا التزامات بعد.</td></tr>')
+      + '</tbody></table></div></div></div>'
+      + '<div class="grid grid--2">'
+      + '<div class="card"><div class="card__body">' + frameHtml({
+          title: 'توزُّع التزاماتك على القطاعات',
+          sub: 'تركّز المحفظة في قطاع واحد يزيد أثر تعثّره عليك.',
+          chart: barsHtml(sectorItems, v => fmt(v, 0), CAT),
+          cols: ['القطاع', 'المبلغ (ر.ع)'],
+          rows: sectorItems.map(s => [esc(s.label), fmt(s.value, 0)]),
+        }) + '</div></div>'
+      + '<div class="card"><div class="card__head"><h2>التوزيعات المستلمة</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>الفترة</th><th class="n">حصتك</th><th>التاريخ</th></tr></thead><tbody>'
+      + (dists.length ? dists.map(x => '<tr><td><span class="mono xs">' + x.d.id + '</span></td>'
+          + '<td class="sm">' + esc(x.d.period) + '</td><td class="n">' + fmt(x.s.amount) + '</td>'
+          + '<td class="sm">' + dt(x.d.paidAt) + '</td></tr>').join('')
+        : '<tr><td colspan="4" class="empty">لا توزيعات بعد.</td></tr>')
+      + '</tbody></table></div></div></div></div>',
+  };
+};
+
+/* ── 05 investor · inbox, derived from what actually happened ─────────── */
+VIEWS['inv.inbox'] = () => {
+  const u = me();
+  const items = [];
+  STATE.orders.filter(o => o.userId === u.id).forEach(o => {
+    const p = pool(o.poolId);
+    items.push({ at: o.createdAt, topic: 'استثمار', tone: 'chip--brand',
+      text: 'أُنشئ التزامك ' + o.id + ' بمبلغ ' + rial(o.amount, 3) + ' في «' + p.title + '».' });
+    if (o.status === 'refunded') items.push({ at: o.cancelledAt || o.createdAt, topic: 'استرداد', tone: 'chip--warn',
+      text: 'استُرد التزامك ' + o.id + ' — السبب: ' + (REFUND_REASON[o.refundReason] || 'غير محدد') + '.' });
+    if (o.status === 'allocated') items.push({ at: p.fundedAt || o.createdAt, topic: 'تخصيص', tone: 'chip--pos',
+      text: 'خُصص لك ' + rial(o.allocated || o.amount) + ' في «' + p.title + '» بعد إغلاق التمويل.' });
+  });
+  STATE.distributions.forEach(d => (d.shares || []).filter(s => s.userId === u.id).forEach(s => {
+    items.push({ at: d.paidAt, topic: 'توزيع', tone: 'chip--pos',
+      text: 'وصلك توزيع ' + rial(s.amount, 3) + ' عن ' + d.period + ' (' + d.id + ').' });
+  }));
+  STATE.reports.filter(r => r.status === 'published').forEach(r => {
+    const holds = STATE.orders.some(o => o.userId === u.id && o.poolId === r.poolId && o.status === 'allocated');
+    if (holds) items.push({ at: r.publishedAt, topic: 'تقرير', tone: 'chip--brand',
+      text: 'نُشر تقرير ' + r.period + ' لـ«' + pool(r.poolId).title + '».' });
+  });
+  items.sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  return {
+    crumb: 'مستثمر', title: 'الإشعارات',
+    lede: 'كل إشعار مولَّد من حدث فعلي في السجل. لا تحتوي أي رسالة على رقم هوية أو حساب بنكي أو مستند.',
+    body: '<div class="card"><div class="card__body">'
+      + (items.length ? '<div class="stack-s">' + items.map(i =>
+          '<div class="note"><div class="row row--tight"><span class="chip ' + i.tone + '">' + i.topic + '</span>'
+          + '<span class="spacer xs muted">' + dt(i.at, true) + '</span></div>'
+          + '<div class="sm">' + esc(i.text) + '</div></div>').join('') + '</div>'
+        : '<p class="empty">لا إشعارات.</p>')
+      + '</div></div>',
+  };
+};
+
+/* ── owner · my project ───────────────────────────────────────────────── */
+function ownerPool() {
+  const u = me();
+  return pool(u.pool) || STATE.pools[0];
+}
+VIEWS['own.project'] = () => {
+  const p = ownerPool(), got = raised(p.id);
+  const steps = [
+    { t: 'تقديم الطلب', d: 'المستندات التأسيسية والقوائم المالية وعروض الأسعار', done: true },
+    { t: 'الفحص النافي للجهالة', d: 'تحقق من المنشأة والمُلاك وعروض الموردين', done: true },
+    { t: 'قرار اللجنة', d: 'موافقة بشروط: مساهمة المالك لا تقل عن المعلن', done: true },
+    { t: 'بناء الإفصاح ونشره', d: 'نسخة v' + p.disclosureVersion + ' منشورة في ' + dt(p.publishedAt), done: true },
+    { t: 'فترة التمويل', d: 'تُغلق في ' + dt(p.closesAt), done: p.status !== 'funding', now: p.status === 'funding' },
+    { t: 'الإغلاق والتخصيص', d: p.fundedAt ? 'أُغلقت في ' + dt(p.fundedAt) : 'لم تُغلق بعد', done: !!p.fundedAt },
+    { t: 'الصرف على المراحل', d: 'بموافقة طرفين ودليل لكل مرحلة', done: p.milestones.some(m => m.state === 'executed'), now: p.status === 'operating' },
+    { t: 'التقارير الدورية', d: 'ربع سنوية طوال المدة', done: STATE.reports.some(r => r.poolId === p.id && r.status === 'published') },
+  ];
+  return {
+    crumb: 'صاحب مشروع · ' + p.ref, title: p.title,
+    lede: 'حالة مشروعك في المسار، من الطلب حتى نهاية المدة.',
+    body: '<div class="grid grid--4">'
+      + [['الحالة', POOL_STATUS[p.status][0]], ['الملتزم به', rial(got)],
+         ['الهدف', rial(p.target)], ['نسبة الإنجاز', Math.round((got / p.target) * 100) + '%']]
+        .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
+      + '</div>'
+      + '<div class="card"><div class="card__head"><h2>المسار</h2></div><div class="card__body"><div class="tl">'
+      + steps.map(s => '<div class="tl__item"><span class="tl__dot ' + (s.done ? 'tl__dot--done' : s.now ? 'tl__dot--now' : '') + '"></span>'
+        + '<div><div class="tl__t">' + esc(s.t) + '</div><div class="tl__d">' + esc(s.d) + '</div></div></div>').join('')
+      + '</div></div></div>'
+      + '<div class="note note--warn">لا يجوز لك أو لأي طرف نيابة عنك وعدُ المستثمرين بعائد أو بضمان رأس المال، في التقارير أو خارج المنصة.</div>',
+  };
+};
+
+/* ── owner · use of funds and milestone requests ──────────────────────── */
+VIEWS['own.funds'] = () => {
+  const p = ownerPool();
+  const pend = p.milestones.filter(m => m.state === 'pending');
+  const canRequest = p.status === 'funded' || p.status === 'operating';
+  return {
+    crumb: 'صاحب مشروع · ' + p.ref, title: 'استخدام الأموال والمراحل',
+    lede: 'الأموال مفصَّلة على بنود ومورّدين. طلب صرف أي مرحلة يحتاج دليلًا، ويعتمده طرف ثانٍ من فريق المالية.',
+    body: '<div class="card"><div class="card__head"><h2>البنود المعتمدة</h2>'
+      + '<span class="spacer num sm">' + rial(uofTotal(p)) + '</span></div>'
+      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>البند</th><th>المورد</th><th class="n">المبلغ</th><th>عرض السعر</th></tr></thead><tbody>'
+      + p.uof.map(u => '<tr><td>' + esc(u.item) + '</td><td>' + esc(u.supplier) + '</td>'
+        + '<td class="n">' + fmt(u.amount, 0) + '</td><td><span class="mono xs">' + u.quote + '</span></td></tr>').join('')
+      + '</tbody></table></div></div></div>'
+      + '<div class="card"><div class="card__head"><h2>المراحل</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرحلة</th><th>شرط الصرف</th><th class="n">المبلغ</th><th>الحالة</th></tr></thead><tbody>'
+      + (p.milestones.length ? p.milestones.map(m => '<tr><td>' + esc(m.label) + '</td>'
+          + '<td class="sm">' + esc(m.condition) + '</td><td class="n">' + fmt(m.amount, 0) + '</td>'
+          + '<td>' + (m.state === 'executed' ? '<span class="chip chip--pos"><span class="chip__dot"></span>صُرفت</span>'
+                     : m.state === 'requested' ? '<span class="chip chip--warn"><span class="chip__dot"></span>بانتظار اعتماد</span>'
+                     : '<span class="chip">لم تُطلب</span>') + '</td></tr>').join('')
+        : '<tr><td colspan="4" class="empty">لا مراحل.</td></tr>')
+      + '</tbody></table></div></div></div>'
+      + '<div class="card"><div class="card__head"><h2>طلب صرف مرحلة</h2></div><div class="card__body">'
+      + (!canRequest
+          ? '<div class="note note--warn">لا يبدأ الصرف قبل إغلاق التمويل بنجاح.</div>'
+          : !pend.length
+            ? '<div class="note note--pos">كل المراحل طُلبت أو صُرفت.</div>'
+            : '<div class="field"><label for="msel">المرحلة</label><select id="msel">'
+              + pend.map(m => '<option value="' + m.id + '">' + esc(m.label) + ' — ' + fmt(m.amount, 0) + ' ر.ع</option>').join('')
+              + '</select></div>'
+              + '<div class="field"><label for="mev">وصف الدليل المرفق</label>'
+              + '<textarea id="mev" placeholder="رقم المحضر أو الفاتورة وما تثبته"></textarea>'
+              + '<span class="field__hint">يُسجَّل الوصف مع الطلب ويراه المعتمد والمدقق.</span></div>'
+              + '<button class="btn btn--primary" data-act="requestDsb" data-pool="' + p.id + '">إرسال طلب الصرف</button>')
+      + '</div></div>',
+  };
+};
+
+/* ── owner · reporting duty ───────────────────────────────────────────── */
+VIEWS['own.reports'] = () => {
+  const p = ownerPool();
+  const rs = STATE.reports.filter(r => r.poolId === p.id);
+  const openR = rs.find(r => ['scheduled', 'late'].includes(r.status));
+  return {
+    crumb: 'صاحب مشروع · ' + p.ref, title: 'التقارير',
+    lede: 'التقرير ليس نصًا حرًا: يحمل مؤشرات فعلية مقابل ما نشره الإفصاح، وتفسيرًا لأي انحراف.',
+    body: '<div class="card"><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>الفترة</th><th>الاستحقاق</th><th>الحالة</th><th>التقديم</th><th>النشر</th></tr></thead><tbody>'
+      + (rs.length ? rs.map(r => '<tr><td>' + esc(r.period) + '</td><td class="sm">' + dt(r.dueAt) + '</td>'
+          + '<td>' + chip(REPORT_STATUS, r.status) + '</td><td class="sm">' + dt(r.submittedAt) + '</td>'
+          + '<td class="sm">' + dt(r.publishedAt) + '</td></tr>').join('')
+        : '<tr><td colspan="5" class="empty">لا يبدأ جدول التقارير قبل إغلاق التمويل بنجاح.</td></tr>')
+      + '</tbody></table></div></div></div>'
+      + (openR
+        ? '<div class="card"><div class="card__head"><h2>تقديم تقرير ' + esc(openR.period) + '</h2>'
+          + '<span class="spacer xs muted">الاستحقاق ' + dt(openR.dueAt) + '</span></div><div class="card__body">'
+          + '<div class="note note--info">لا يرى المستثمر هذا التقرير قبل مراجعته ونشره من فريق المتابعة.</div>'
+          + '<div id="kpiRows" class="stack-s">' + kpiRowHtml(0) + '</div>'
+          + '<button class="btn btn--sm" data-act="addKpi">+ مؤشر</button>'
+          + '<div class="field"><label for="rnarr">السرد</label>'
+          + '<textarea id="rnarr" placeholder="ما الذي حدث في الفترة، وما سببه"></textarea>'
+          + '<span class="field__hint">20 حرفًا على الأقل، ويُفحص من عبارات ضمان العائد.</span></div>'
+          + '<div class="field"><label for="rvar">تفسير الانحراف</label><textarea id="rvar"></textarea></div>'
+          + '<button class="btn btn--primary" data-act="submitReport" data-report="' + openR.id + '">تقديم التقرير</button>'
+          + '</div></div>'
+        : '<div class="note note--pos">لا يوجد تقرير مستحق التقديم الآن.</div>'),
+  };
+};
+let kpiSeq = 0;
+function kpiRowHtml() {
+  kpiSeq += 1;
+  return '<div class="row kpirow" style="gap:.4rem">'
+    + '<input class="k-metric" placeholder="اسم المؤشر" style="flex:2 1 10rem">'
+    + '<input class="k-actual num" dir="ltr" type="number" step="any" placeholder="الفعلي" style="flex:1 1 6rem">'
+    + '<input class="k-forecast num" dir="ltr" type="number" step="any" placeholder="المتوقع" style="flex:1 1 6rem">'
+    + '</div>';
+}
+
+/* ── ops · what needs attention ───────────────────────────────────────── */
+function healthCounters() {
+  const now = Date.now();
+  const openCases = STATE.cases.filter(c => c.status === 'open');
+  const overSla = openCases.filter(c => now - new Date(c.openedAt).getTime() > c.slaDays * 86400000);
+  const recon = openCases.filter(c => c.kind === 'مطابقة');
+  const lateReports = STATE.reports.filter(r =>
+    r.status === 'late' || (r.status === 'scheduled' && now > new Date(r.dueAt + 'T23:59:59Z').getTime()));
+  const dueSoon = STATE.reports.filter(r => r.status === 'scheduled'
+    && new Date(r.dueAt + 'T23:59:59Z').getTime() - now < 45 * 86400000
+    && new Date(r.dueAt + 'T23:59:59Z').getTime() >= now);
+  const awaiting = STATE.disbursements.filter(d => d.status === 'requested');
+  return { openCases, overSla, recon, lateReports, dueSoon, awaiting };
+}
+function commitmentSeries(days) {
+  const end = new Date(); end.setUTCHours(0, 0, 0, 0);
+  const start = new Date(end.getTime() - (days - 1) * 86400000);
+  const buckets = new Map();
+  STATE.orders.forEach(o => {
+    const d = new Date(o.createdAt); d.setUTCHours(0, 0, 0, 0);
+    if (d < start) { buckets.set('before', (buckets.get('before') || 0) + o.amount); return; }
+    const k = d.toISOString().slice(0, 10);
+    buckets.set(k, (buckets.get(k) || 0) + o.amount);
+  });
+  let run = buckets.get('before') || 0;
+  const pts = [];
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(start.getTime() + i * 86400000);
+    const k = d.toISOString().slice(0, 10);
+    run += buckets.get(k) || 0;
+    pts.push({ label: k.slice(5), value: run, amount: buckets.get(k) || 0 });
+  }
+  return pts;
+}
+VIEWS['ops.dash'] = () => {
+  const h = healthCounters();
+  const totalCommitted = STATE.orders.filter(o => COUNTED.has(o.status)).reduce((s, o) => s + o.amount, 0);
+  const fundedGmv = STATE.pools.filter(p => ['funded', 'operating'].includes(p.status))
+    .reduce((s, p) => s + allocatedOf(p.id).reduce((a, o) => a + (o.allocated || o.amount), 0), 0);
+  const investors = usersOfRole('investor');
+  const kycOk = investors.filter(u => u.kyc === 'approved').length;
+  const withOrders = new Set(STATE.orders.map(o => o.userId));
+  const repeat = [...withOrders].filter(id => new Set(STATE.orders.filter(o => o.userId === id).map(o => o.poolId)).size > 1).length;
+  const fundingTimes = STATE.pools.filter(p => p.fundedAt && p.publishedAt).map(p => daysBetween(p.publishedAt, p.fundedAt));
+  const avgFunding = fundingTimes.length ? Math.round(fundingTimes.reduce((a, b) => a + b, 0) / fundingTimes.length) : null;
+
+  const tiles = [
+    { k: 'فروقات مطابقة مفتوحة', v: h.recon.length, tone: h.recon.length ? 'warning' : 'good',
+      s: h.recon.length ? 'تحتاج تسوية مع كشف الضمان' : 'لا فروقات' },
+    { k: 'حالات مفتوحة', v: h.openCases.length,
+      tone: h.overSla.length > 2 ? 'critical' : h.overSla.length ? 'serious' : h.openCases.length ? 'warning' : 'good',
+      s: h.overSla.length + ' تجاوزت الـSLA' },
+    { k: 'تقارير متأخرة', v: h.lateReports.length,
+      tone: h.lateReports.length > 1 ? 'critical' : h.lateReports.length ? 'serious' : 'good',
+      s: h.dueSoon.length + ' مستحقة قريبًا' },
+    { k: 'بانتظار اعتماد مالي', v: h.awaiting.length, tone: h.awaiting.length > 3 ? 'warning' : 'good',
+      s: 'يلزم طرف ثانٍ لكل طلب' },
+  ];
+  const pts = commitmentSeries(90);
+
+  return {
+    crumb: 'فريق التشغيل', title: 'لوحة التشغيل',
+    lede: 'الملخّص قبل التفصيل: ما الذي يحتاج انتباهًا الآن، ثم ما يفسّره. كل الأرقام محسوبة من السجل الحيّ لا من قيم مكتوبة.',
+    body: '<div class="grid grid--4">' + tiles.map(t =>
+        '<div class="tile" style="--tone:' + TONE[t.tone] + '"><div class="tile__k">' + esc(t.k) + '</div>'
+        + '<div class="tile__v">' + t.v + '</div>'
+        + '<div class="tile__s"><span class="chip__dot"></span><span class="tile__state">' + TONE_AR[t.tone] + '</span>'
+        + '<span>· ' + esc(t.s) + '</span></div></div>').join('') + '</div>'
+      + '<div class="grid grid--4">'
+      + [['إجمالي الملتزم به', rial(totalCommitted)],
+         ['تمويل مكتمل', rial(fundedGmv)],
+         ['زمن التمويل', avgFunding == null ? '—' : avgFunding + ' يومًا'],
+         ['اكتمال التحقق', Math.round((kycOk / investors.length) * 100) + '%'],
+         ['مستثمر متعدد الفرص', withOrders.size ? Math.round((repeat / withOrders.size) * 100) + '%' : '—']]
+        .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
+      + '</div>'
+      + '<div class="card"><div class="card__body">' + frameHtml({
+          title: 'الالتزامات التراكمية — 90 يومًا',
+          sub: 'بالألف ريال عُماني. مجموع كل التزام قائم حتى كل يوم — المحور الزمني يُرسم من اليسار إلى اليمين في اللغتين.',
+          chart: trendSvg(pts, v => compact(v / 1000)),
+          cols: ['التاريخ', 'التزامات اليوم', 'التراكمي'],
+          rows: pts.filter((p, i) => p.amount > 0 || i === pts.length - 1).map(p => [p.label, fmt(p.amount, 0), fmt(p.value, 0)]),
+        }) + '</div></div>'
+      + '<div class="card"><div class="card__head"><h2>ما هو مفتوح الآن</h2></div>'
+      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>النوع</th><th>الموضوع</th><th>الفرصة</th><th>مفتوحة منذ</th><th>SLA</th></tr></thead><tbody>'
+      + (h.openCases.length ? h.openCases.map(c => {
+          const age = Math.floor((Date.now() - new Date(c.openedAt).getTime()) / 86400000);
+          const over = age > c.slaDays;
+          return '<tr><td><span class="mono xs">' + c.id + '</span></td><td class="sm">' + esc(c.kind) + '</td>'
+            + '<td class="sm">' + esc(c.subject) + '</td><td class="sm">' + esc(pool(c.poolId).ref) + '</td>'
+            + '<td class="n">' + age + ' يوم</td>'
+            + '<td>' + (over ? '<span class="chip chip--crit"><span class="chip__dot"></span>تجاوز</span>'
+                             : '<span class="chip chip--pos"><span class="chip__dot"></span>ضمن المهلة</span>') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="empty">لا حالات مفتوحة.</td></tr>')
+      + '</tbody></table></div></div></div>',
+  };
+};
+
+/* ── ops · pipeline ───────────────────────────────────────────────────── */
+VIEWS['ops.pipeline'] = () => {
+  const investors = usersOfRole('investor');
+  const kycOk = investors.filter(u => u.kyc === 'approved');
+  const suitOk = kycOk.filter(u => u.suit === 'pass' && u.consents);
+  const ordered = new Set(STATE.orders.map(o => o.userId));
+  const held = new Set(STATE.orders.filter(o => ['confirmed', 'allocated'].includes(o.status)).map(o => o.userId));
+  const stages = [
+    { label: 'مستثمرون مسجَّلون', value: investors.length },
+    { label: 'اكتمل التحقق من الهوية', value: kycOk.length },
+    { label: 'اجتازوا الملاءمة وأقرّوا الموافقات', value: suitOk.length },
+    { label: 'أنشؤوا التزامًا', value: ordered.size },
+    { label: 'التزام مؤكد أو مخصَّص', value: held.size },
+  ];
+  const bySector = {};
+  STATE.orders.filter(o => COUNTED.has(o.status)).forEach(o => {
+    const p = pool(o.poolId); bySector[p.sector] = (bySector[p.sector] || 0) + o.amount;
+  });
+  const sectors = Object.keys(bySector).map(k => ({ label: k, value: bySector[k] })).sort((a, b) => b.value - a.value);
+
+  return {
+    crumb: 'فريق التشغيل', title: 'المسار والقطاعات',
+    lede: 'أين يتوقف الناس في الرحلة، وأين يتركّز المال.',
+    body: '<div class="grid grid--2">'
+      + '<div class="card"><div class="card__body">' + frameHtml({
+          title: 'قمع التحويل',
+          sub: 'كل مرحلة مجموعة فرعية من التي قبلها — النسبة هي المحمول من المرحلة السابقة، لا من الأساس.',
+          chart: funnelHtml(stages),
+          cols: ['المرحلة', 'العدد', 'من السابقة', 'من الأساس'],
+          rows: stages.map((s, i) => [esc(s.label), s.value,
+            i ? (Math.round((s.value / stages[i - 1].value) * 1000) / 10) + '%' : '—',
+            (Math.round((s.value / stages[0].value) * 1000) / 10) + '%']),
+        }) + '</div></div>'
+      + '<div class="card"><div class="card__body">' + frameHtml({
+          title: 'التمويل حسب القطاع',
+          sub: 'المبالغ الملتزم بها فعلًا، لا الأهداف المعلنة.',
+          chart: barsHtml(sectors, v => fmt(v, 0), CAT),
+          cols: ['القطاع', 'الملتزم به (ر.ع)'],
+          rows: sectors.map(s => [esc(s.label), fmt(s.value, 0)]),
+        }) + '</div></div></div>'
+      + '<div class="card"><div class="card__body">' + frameHtml({
+          title: 'تقدّم كل فرصة نحو هدفها',
+          sub: 'ما دون الحد الأدنى عند انتهاء المدة يُسترد بالكامل — الهدف ليس شرط الإغلاق.',
+          chart: '<div class="bars">' + STATE.pools.map(p => meterRow(
+              p.title.split('—')[0].trim(), raised(p.id), p.target,
+              p.status === 'refunding' ? TONE.critical : p.status === 'funding' ? CAT[0] : TONE.good,
+              v => fmt(v, 0))).join('') + '</div>',
+          cols: ['الفرصة', 'الملتزم به', 'الحد الأدنى', 'الهدف', 'الحالة'],
+          rows: STATE.pools.map(p => [esc(p.title), fmt(raised(p.id), 0), fmt(p.minClose, 0),
+            fmt(p.target, 0), POOL_STATUS[p.status][0]]),
+        }) + '</div></div>',
+  };
+};
+
+/* ── ops · pool management: closing is a rule, not a judgement call ───── */
+VIEWS['ops.pools'] = () => ({
+  crumb: 'فريق التشغيل', title: 'إدارة الفرص',
+  lede: 'إغلاق التمويل يُنفّذ القاعدة كما هي: دون الحد الأدنى يُسترد كل شيء، وفوق السقف يُخصَّص الجميع تناسبيًا بطريقة أكبر باقٍ.',
+  body: '<div class="card"><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+    + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">الملتزم به</th><th class="n">الحد الأدنى</th>'
+    + '<th class="n">السقف</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'
+    + STATE.pools.map(p => {
+        const got = raised(p.id);
+        const verdict = p.status !== 'funding' ? null
+          : got < p.minClose ? ['crit', 'الإغلاق الآن يعني استرداد الجميع']
+          : got > ceilingOf(p) ? ['warn', 'مكتتب فوق السقف — سيُخصَّص تناسبيًا']
+          : ['pos', 'يتجاوز الحد الأدنى — إغلاق ناجح'];
+        return '<tr><td><span class="mono xs">' + p.ref + '</span></td><td class="sm">' + esc(p.title) + '</td>'
+          + '<td class="n">' + fmt(got, 0) + '</td><td class="n">' + fmt(p.minClose, 0) + '</td>'
+          + '<td class="n">' + fmt(ceilingOf(p), 0) + '</td><td>' + chip(POOL_STATUS, p.status) + '</td>'
+          + '<td>' + (p.status === 'funding'
+              ? '<button class="btn btn--sm" data-act="closePool" data-pool="' + p.id + '">إغلاق التمويل</button>'
+                + '<div class="xs" style="color:var(--' + (verdict[0] === 'pos' ? 'pos' : verdict[0] === 'warn' ? 'warn' : 'crit') + ')">'
+                + verdict[1] + '</div>'
+              : '<span class="xs muted">—</span>') + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div></div></div>'
+    + '<div class="card"><div class="card__head"><h2>محاكاة التخصيص قبل الإغلاق</h2></div><div class="card__body">'
+    + allocationPreview() + '</div></div>',
+});
+
+/* Shows exactly what closing would do to each investor — before anyone
+   clicks. The balance check is the point: allocated + refunded must equal
+   requested, to the baisa. */
+function allocationPreview() {
+  const p = STATE.pools.find(x => x.status === 'funding');
+  if (!p) return '<p class="empty">لا توجد فرصة مفتوحة للتمويل.</p>';
+  const live = STATE.orders.filter(o => o.poolId === p.id && COUNTED.has(o.status));
+  if (!live.length) return '<p class="empty">لا التزامات قائمة في ' + esc(p.ref) + '.</p>';
+  const total = live.reduce((s, o) => s + o.amount, 0);
+  const ceiling = ceilingOf(p);
+
+  let alloc;
+  if (total < p.minClose) alloc = live.map(() => 0);
+  else if (total <= ceiling) alloc = live.map(o => o.amount);
+  else {
+    alloc = proRata(ceiling, live.map(o => o.amount));
+    for (let pass = 0; pass < live.length; pass += 1) {
+      const under = alloc.map((a, i) => ({ a, i })).filter(x => x.a > 0 && x.a < STATE.settings.minTicket);
+      if (!under.length) break;
+      under.forEach(x => { alloc[x.i] = 0; });
+      const w = alloc.map((a, i) => (a > 0 ? live[i].amount : 0));
+      if (w.every(x => x === 0)) break;
+      alloc = proRata(ceiling, w);
+    }
+  }
+  let tReq = 0, tGot = 0, tRef = 0, tUnits = 0;
+  const rows = live.map((o, i) => {
+    const got = Math.min(alloc[i], o.amount), ref = o.amount - got;
+    const units = Math.floor(got / STATE.settings.unitPrice);
+    tReq += o.amount; tGot += got; tRef += ref; tUnits += units;
+    return '<tr><td class="sm">' + esc((user(o.userId) || {}).name) + '</td>'
+      + '<td><span class="mono xs">' + o.id + '</span></td>'
+      + '<td class="n">' + fmt(o.amount, 0) + '</td><td class="n">' + fmt(got, 0) + '</td>'
+      + '<td class="n">' + (ref ? fmt(ref, 0) : '—') + '</td><td class="n">' + units + '</td></tr>';
+  }).join('');
+
+  const balanced = tGot + tRef === tReq && (total < p.minClose || tGot === Math.min(total, ceiling));
+  const verdict = total < p.minClose
+    ? 'الملتزم به ' + fmt(total, 0) + ' دون الحد الأدنى ' + fmt(p.minClose, 0) + ' — الإغلاق الآن يسترد كل شيء.'
+    : total > ceiling
+      ? 'الملتزم به ' + fmt(total, 0) + ' فوق السقف ' + fmt(ceiling, 0) + ' — يُخصَّص الجميع تناسبيًا.'
+      : 'الملتزم به ' + fmt(total, 0) + ' بين الحد الأدنى والسقف — يُخصَّص كل التزام بالكامل.';
+
+  return '<div class="note note--info">' + esc(p.ref) + ' — ' + verdict + '</div>'
+    + '<div class="tablewrap"><table><thead><tr><th>المستثمر</th><th>الالتزام</th>'
+    + '<th class="n">الطلب</th><th class="n">المخصَّص</th><th class="n">المسترد</th><th class="n">الوحدات</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody><tfoot><tr><td colspan="2">الإجمالي</td>'
+    + '<td class="n">' + fmt(tReq, 0) + '</td><td class="n">' + fmt(tGot, 0) + '</td>'
+    + '<td class="n">' + fmt(tRef, 0) + '</td><td class="n">' + tUnits + '</td></tr></tfoot></table></div>'
+    + '<div class="note note--' + (balanced ? 'pos' : 'crit') + '">'
+    + (balanced
+        ? 'المطابقة تامة: المخصَّص زائد المسترد يساوي إجمالي الطلبات ' + fmt(tReq, 0) + ' ر.ع بالضبط — لا بايسة تُفقد أو تُستحدث.'
+        : 'انحراف في المطابقة — لا يُغلق حتى يُحل.') + '</div>';
+}
+
+/* ── ops · money: dual control, enforced per transaction ──────────────── */
+VIEWS['ops.money'] = () => {
+  const u = me();
+  const staff = STATE.users.filter(x => x.role === 'staff' && (x.perms || []).includes('funds.approve'));
+  const requested = STATE.disbursements.filter(d => d.status === 'requested');
+  const done = STATE.disbursements.filter(d => d.status === 'executed');
+  const canApprove = (u.perms || []).includes('funds.approve');
+
+  return {
+    crumb: 'فريق التشغيل', title: 'الصرف والاعتماد',
+    lede: 'الرقابة الثنائية مطبَّقة على المعاملة لا على الدور: نفس الشخص قد يملك صلاحيتَي الطلب والاعتماد، ويظل ممنوعًا من اعتماد ما طلبه بنفسه.',
+    body: '<div class="note note--info">أنت الآن <strong>' + esc(u.name) + '</strong>'
+      + (canApprove ? ' — تملك صلاحية الطلب والاعتماد معًا.' : ' — لا تملك صلاحية الاعتماد.')
+      + ' بدّل الشخص من الشريط العلوي لتجربة الاعتماد كطرف ثانٍ.</div>'
+      + '<div class="card"><div class="card__head"><h2>طلبات بانتظار الاعتماد</h2>'
+      + '<span class="spacer chip ' + (requested.length ? 'chip--warn' : 'chip--pos') + '">' + requested.length + '</span></div>'
+      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>الفرصة</th><th>المرحلة</th><th class="n">المبلغ</th><th>الطالب</th><th>الدليل</th><th>الاعتماد</th></tr></thead><tbody>'
+      + (requested.length ? requested.map(d => {
+          const p = pool(d.poolId), m = p.milestones.find(x => x.id === d.milestoneId) || {};
+          const self = d.requestedBy === u.id;
+          return '<tr><td><span class="mono xs">' + d.id + '</span></td><td class="sm">' + esc(p.ref) + '</td>'
+            + '<td class="sm">' + esc(m.label || '—') + '</td><td class="n">' + fmt(d.amount, 0) + '</td>'
+            + '<td class="sm">' + esc((user(d.requestedBy) || {}).name) + '</td>'
+            + '<td class="sm">' + esc(d.evidence) + '</td>'
+            + '<td>' + (!canApprove
+                ? '<span class="xs muted">لا صلاحية</span>'
+                : self
+                  ? '<span class="chip chip--crit"><span class="chip__dot"></span>أنت الطالب</span>'
+                  : '<button class="btn btn--sm btn--primary" data-act="approveDsb" data-dsb="' + d.id + '">اعتماد وصرف</button>')
+            + '</td></tr>';
+        }).join('') : '<tr><td colspan="7" class="empty">لا طلبات معلّقة.</td></tr>')
+      + '</tbody></table></div></div></div>'
+      + '<div class="card"><div class="card__head"><h2>إنشاء طلب صرف</h2></div><div class="card__body">'
+      + createDsbForm()
+      + '</div></div>'
+      + '<div class="card"><div class="card__head"><h2>ما صُرف فعلًا</h2></div>'
+      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th><th>الطالب</th><th>المعتمِد</th><th>التاريخ</th></tr></thead><tbody>'
+      + (done.length ? done.map(d => '<tr><td><span class="mono xs">' + d.id + '</span></td>'
+          + '<td class="sm">' + esc(pool(d.poolId).ref) + '</td><td class="n">' + fmt(d.amount, 0) + '</td>'
+          + '<td class="sm">' + esc((user(d.requestedBy) || {}).name) + '</td>'
+          + '<td class="sm">' + esc((user(d.approvedBy) || {}).name) + '</td>'
+          + '<td class="sm">' + dt(d.approvedAt) + '</td></tr>').join('')
+        : '<tr><td colspan="6" class="empty">لا صرف بعد.</td></tr>')
+      + '</tbody></table></div></div></div>',
+  };
+};
+function createDsbForm() {
+  const opts = [];
+  STATE.pools.forEach(p => {
+    if (!['funded', 'operating'].includes(p.status)) return;
+    p.milestones.filter(m => m.state === 'pending').forEach(m => {
+      opts.push('<option value="' + p.id + '|' + m.id + '">' + esc(p.ref) + ' — ' + esc(m.label)
+        + ' (' + fmt(m.amount, 0) + ' ر.ع)</option>');
+    });
+  });
+  if (!opts.length) return '<div class="note note--pos">لا توجد مرحلة قابلة للطلب الآن.</div>';
+  return '<div class="field"><label for="dpick">المرحلة</label><select id="dpick">' + opts.join('') + '</select></div>'
+    + '<div class="field"><label for="dev">وصف الدليل</label><textarea id="dev" placeholder="رقم المحضر أو الفاتورة وما تثبته"></textarea></div>'
+    + '<button class="btn btn--primary" data-act="createDsb">إنشاء الطلب</button>'
+    + '<p class="xs muted">سيُسجَّل باسمك، ولن تستطيع اعتماده بنفسك بعدها.</p>';
+}
+
+/* ── ops · distributions ──────────────────────────────────────────────── */
+VIEWS['ops.dist'] = () => {
+  const payable = STATE.pools.filter(p => allocatedOf(p.id).length > 0);
+  const p = payable.find(x => x.id === SESSION.poolId) || payable[0];
+  const holders = p ? allocatedOf(p.id) : [];
+  return {
+    crumb: 'فريق التشغيل', title: 'التوزيعات',
+    lede: 'يُقسَّم مبلغ التوزيع على المستثمرين بنسبة ما خُصص لكل منهم، بطريقة أكبر باقٍ — فمجموع الحصص يساوي المبلغ بالضبط.',
+    body: (!p ? '<p class="empty">لا توجد فرصة بمستثمرين مخصَّصين بعد.</p>'
+      : '<div class="card"><div class="card__head"><h2>توزيع جديد</h2></div><div class="card__body">'
+        + '<div class="field"><label for="dpool">الفرصة</label><select id="dpool" data-act="pickPool">'
+        + payable.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>'
+          + esc(x.title) + '</option>').join('') + '</select></div>'
+        + '<div class="field"><label for="dper">الفترة</label><input id="dper" value="الربع الثالث 2026"></div>'
+        + '<div class="field"><label for="dgross">المبلغ الإجمالي (ر.ع)</label>'
+        + '<input id="dgross" class="num" dir="ltr" inputmode="decimal" value="2100.000"></div>'
+        + '<button class="btn btn--primary" data-act="createDist" data-pool="' + p.id + '">تنفيذ التوزيع</button>'
+        + '<div class="tablewrap"><table><thead><tr><th>المستثمر</th><th class="n">المخصَّص</th><th class="n">الوزن</th></tr></thead><tbody>'
+        + holders.map(o => {
+            const tot = holders.reduce((s, x) => s + (x.allocated || x.amount), 0);
+            const a = o.allocated || o.amount;
+            return '<tr><td class="sm">' + esc((user(o.userId) || {}).name) + '</td>'
+              + '<td class="n">' + fmt(a, 0) + '</td><td class="n">' + ((a / tot) * 100).toFixed(2) + '%</td></tr>';
+          }).join('')
+        + '</tbody></table></div></div></div>')
+      + '<div class="card"><div class="card__head"><h2>سجل التوزيعات</h2></div>'
+      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>المرجع</th><th>الفرصة</th><th>الفترة</th><th class="n">الإجمالي</th><th class="n">الحصص</th><th>التاريخ</th></tr></thead><tbody>'
+      + (STATE.distributions.length ? STATE.distributions.slice().reverse().map(d => {
+          const sum = (d.shares || []).reduce((s, x) => s + x.amount, 0);
+          return '<tr><td><span class="mono xs">' + d.id + '</span></td><td class="sm">' + esc(pool(d.poolId).ref) + '</td>'
+            + '<td class="sm">' + esc(d.period) + '</td><td class="n">' + fmt(d.gross, 0) + '</td>'
+            + '<td class="n">' + (d.shares ? fmt(sum, 0) + ' على ' + d.shares.length : '—') + '</td>'
+            + '<td class="sm">' + dt(d.paidAt) + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="empty">لا توزيعات.</td></tr>')
+      + '</tbody></table></div></div></div>',
+  };
+};
+
+/* ── ops · the audit log ──────────────────────────────────────────────── */
+VIEWS['ops.audit'] = () => {
+  const rows = STATE.audit.slice().reverse();
+  let broken = 0;
+  for (let i = 1; i < STATE.audit.length; i += 1) {
+    if (STATE.audit[i].prev !== STATE.audit[i - 1].hash) broken += 1;
+  }
+  return {
+    crumb: 'فريق التشغيل', title: 'سجل التدقيق',
+    lede: 'كل إجراء يُلحق بالسجل ولا يُعدَّل ولا يُحذف. كل سطر يحمل تجزئة السطر الذي قبله، فأي تغيير لاحق يكسر السلسلة ويظهر.',
+    body: '<div class="note note--' + (broken ? 'crit' : 'pos') + '">'
+      + (broken ? 'السلسلة مكسورة في ' + broken + ' موضعًا.'
+                : 'السلسلة سليمة عبر ' + STATE.audit.length + ' سطرًا — كل سطر يطابق تجزئة سابقه.')
+      + '</div>'
+      + '<div class="card"><div class="card__body card__body--flush"><div class="tablewrap"><table>'
+      + '<thead><tr><th>الوقت</th><th>المنفِّذ</th><th>الإجراء</th><th>التفصيل</th><th>التجزئة</th></tr></thead><tbody>'
+      + (rows.length ? rows.map(r => '<tr><td class="sm">' + dt(r.at, true) + '</td>'
+          + '<td class="sm">' + esc((user(r.actor) || {}).name || r.actor) + '</td>'
+          + '<td class="sm">' + esc(r.action) + '</td>'
+          + '<td class="sm">' + esc(r.detail || r.entity || '') + '</td>'
+          + '<td><span class="mono xs">' + r.hash.slice(0, 12) + '…</span></td></tr>').join('')
+        : '<tr><td colspan="5" class="empty">لم يُسجَّل إجراء بعد — نفّذ إجراءً من أي شاشة وسيظهر هنا.</td></tr>')
+      + '</tbody></table></div></div></div>'
+      + '<p class="xs muted">التجزئة هنا FNV-1a بطول 64 بت لتعمل داخل المتصفح دون اتصال؛ النظام الخادم يسلسل SHA-256 ويمنع التعديل والحذف بمُشغِّلات على مستوى قاعدة البيانات.</p>',
+  };
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHELL + ROUTER
+   ══════════════════════════════════════════════════════════════════════════ */
+function navBadge(key) {
+  const h = healthCounters();
+  if (key === 'inv.portfolio') return STATE.orders.filter(o => o.userId === SESSION.userId && COUNTED.has(o.status)).length || '';
+  if (key === 'ops.money')  return h.awaiting.length || '';
+  if (key === 'ops.audit')  return STATE.audit.length || '';
+  if (key === 'ops.dash')   return h.openCases.length || '';
+  if (key === 'own.reports') return STATE.reports.filter(r =>
+    r.poolId === (me().pool || '') && ['scheduled', 'late'].includes(r.status)).length || '';
+  return '';
+}
+
+function render() {
+  const nav = NAV[SESSION.role];
+  if (!nav.some(n => n.k === SESSION.view)) SESSION.view = nav[0].k;
+  const view = VIEWS[SESSION.view]();
+  const people = usersOfRole(SESSION.role);
+  if (!people.some(u => u.id === SESSION.userId)) SESSION.userId = people[0].id;
+
+  const modeLabel = MODE === 'live' ? 'حيّ · يُحفظ للجميع'
+                  : MODE === 'local' ? 'قراءة فقط · لا يُحفظ' : 'جارٍ الاتصال…';
+
+  document.getElementById('root').innerHTML =
+    '<div class="riskbar">قد تخسر كامل المبلغ المستثمر. لا ضمان للعائد أو لرأس المال، ولا توجد سوق ثانوية.</div>'
+  + '<header class="topbar">'
+  +   '<div class="brand"><div class="brand__mark">ح</div><div>'
+  +     '<div class="brand__name">حِصّة</div>'
+  +     '<div class="brand__sub">تمويل جماعي لمشاريع تشغيلية — سلطنة عُمان</div></div></div>'
+  +   '<div class="spacer"></div>'
+  +   '<div class="seg" role="group" aria-label="الدور">'
+  +     ROLES.map(r => '<button data-act="setRole" data-role="' + r.k + '" aria-pressed="'
+        + (r.k === SESSION.role) + '">' + r.label + '</button>').join('')
+  +   '</div>'
+  +   '<div class="field topbar__who"><select data-act="setUser" aria-label="الشخص">'
+  +     people.map(u => '<option value="' + u.id + '"' + (u.id === SESSION.userId ? ' selected' : '') + '>'
+        + esc(u.name) + '</option>').join('')
+  +   '</select></div>'
+  +   '<button class="iconbtn" data-act="theme">المظهر</button>'
+  + '</header>'
+  + '<div class="layout">'
+  +   '<nav class="side">'
+  +     '<div class="side__group">' + (ROLES.find(r => r.k === SESSION.role) || {}).label + '</div>'
+  +     nav.map(n => {
+          const b = navBadge(n.k);
+          return '<button class="navlink" data-act="go" data-view="' + n.k + '" aria-current="' + (n.k === SESSION.view) + '">'
+            + '<span class="navlink__n">' + n.n + '</span><span>' + n.label + '</span>'
+            + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</button>';
+        }).join('')
+  +     '<div class="side__group">الحالة</div>'
+  +     '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '') + '" style="padding:.4rem .6rem">'
+  +       '<span class="savebar__dot"></span><span>' + modeLabel + '</span></div>'
+  +   '</nav>'
+  +   '<main class="main"><div class="main__inner">'
+  +     '<div class="pagehead"><div class="pagehead__crumb">' + esc(view.crumb) + '</div>'
+  +       '<h1>' + esc(view.title) + '</h1>'
+  +       (view.lede ? '<p class="pagehead__lede">' + view.lede + '</p>' : '') + '</div>'
+  +     view.body
+  +   '</div></main>'
+  + '</div>';
+}
+
+/* ══ actions ═════════════════════════════════════════════════════════════ */
+const ACTS = {
+  setRole: d => setSession({ role: d.role, view: NAV[d.role][0].k, userId: usersOfRole(d.role)[0].id }),
+  go:      d => setSession({ view: d.view }),
+  setTab:  d => setSession({ tab: d.tab }),
+  openPool:d => setSession({ poolId: d.pool, view: 'inv.pool', tab: 'disclosure' }),
+  investIn:d => setSession({ poolId: d.pool, view: 'inv.invest' }),
+  theme:   () => {
+    const root = document.documentElement;
+    const dark = root.getAttribute('data-theme') === 'dark'
+      || (!root.hasAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    try { localStorage.setItem('hissa.theme', dark ? 'light' : 'dark'); } catch (e) {}
+  },
+  toggleFrame: (d, el) => {
+    const f = document.getElementById(d.frame);
+    const toTable = f.dataset.view === 'chart';
+    f.dataset.view = toTable ? 'table' : 'chart';
+    el.textContent = toTable ? 'عرض كرسم' : 'عرض كجدول';
+  },
+  addKpi: () => {
+    const box = document.getElementById('kpiRows');
+    if (box) box.insertAdjacentHTML('beforeend', kpiRowHtml());
+  },
+
+  submitOrder: async d => {
+    const acks = [...document.querySelectorAll('.ack')];
+    if (!acks.every(a => a.checked)) { toast('يلزم قبول الإقرارات الخمسة صراحةً.', 'bad'); return; }
+    const amount = parseOmr(document.getElementById('iamt').value);
+    if (amount == null) { toast('مبلغ غير صالح — مثال: 500.000', 'bad'); return; }
+    const ok = await commit('إنشاء التزام', st => actCreateOrder(st, SESSION.userId, d.pool, amount));
+    if (ok) toast('أُنشئ الالتزام. لك ' + STATE.settings.coolingOffHours + ' ساعة للعدول.', 'good');
+  },
+  cancelOrder: async d => {
+    const ok = await commit('إلغاء التزام', st => actCancelOrder(st, d.order));
+    if (ok) toast('أُلغي الالتزام خلال مهلة العدول.', 'good');
+  },
+  closePool: async d => {
+    const ok = await commit('إغلاق تمويل', st => actClosePool(st, d.pool));
+    if (ok) toast('نُفِّذ الإغلاق وفق القاعدة.', 'good');
+  },
+  requestDsb: async d => {
+    const mid = document.getElementById('msel').value;
+    const ev  = document.getElementById('mev').value;
+    const p = pool(d.pool), m = p.milestones.find(x => x.id === mid);
+    const ok = await commit('طلب صرف مرحلة', st => actRequestDsb(st, d.pool, mid, m.amount, ev, SESSION.userId));
+    if (ok) toast('أُرسل الطلب — يحتاج اعتماد طرف ثانٍ.', 'good');
+  },
+  createDsb: async () => {
+    const [pid, mid] = document.getElementById('dpick').value.split('|');
+    const ev = document.getElementById('dev').value;
+    const p = pool(pid), m = p.milestones.find(x => x.id === mid);
+    const ok = await commit('طلب صرف مرحلة', st => actRequestDsb(st, pid, mid, m.amount, ev, SESSION.userId));
+    if (ok) toast('أُنشئ الطلب باسمك — لا يمكنك اعتماده بنفسك.', 'good');
+  },
+  approveDsb: async d => {
+    const ok = await commit('اعتماد صرف', st => actApproveDisbursement(st, d.dsb, SESSION.userId));
+    if (ok) toast('اعتُمد وصُرف.', 'good');
+  },
+  createDist: async d => {
+    const gross = parseOmr(document.getElementById('dgross').value);
+    const period = document.getElementById('dper').value.trim() || 'غير محددة';
+    if (gross == null) { toast('مبلغ غير صالح.', 'bad'); return; }
+    const ok = await commit('تنفيذ توزيع', st => actCreateDistribution(st, d.pool, gross, period));
+    if (ok) toast('وُزّع المبلغ تناسبيًا على المستثمرين.', 'good');
+  },
+  submitReport: async d => {
+    const kpis = [...document.querySelectorAll('.kpirow')].map(r => ({
+      metric: r.querySelector('.k-metric').value.trim(),
+      actual: Number(r.querySelector('.k-actual').value),
+      forecast: r.querySelector('.k-forecast').value === '' ? null : Number(r.querySelector('.k-forecast').value),
+    })).filter(k => k.metric && !Number.isNaN(k.actual) && r_ok(k));
+    const ok = await commit('تقديم تقرير', st => actSubmitReport(st, d.report, kpis,
+      document.getElementById('rnarr').value, document.getElementById('rvar').value));
+    if (ok) toast('قُدِّم التقرير — بانتظار مراجعة فريق المتابعة.', 'good');
+  },
+  publishReport: async d => {
+    const ok = await commit('نشر تقرير', st => actPublishReport(st, d.report));
+    if (ok) toast('نُشر التقرير للمستثمرين.', 'good');
+  },
+};
+const r_ok = k => k.metric.length > 0;
+const actRequestDsb = actRequestDisbursement;
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t || t.tagName === 'SELECT') return;
+  const fn = ACTS[t.dataset.act];
+  if (fn) { e.preventDefault(); fn(t.dataset, t, e); }
+});
+document.addEventListener('change', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t || t.tagName !== 'SELECT') return;
+  if (t.dataset.act === 'setUser') setSession({ userId: t.value });
+  if (t.dataset.act === 'pickPool') setSession({ poolId: t.value });
+});
+
+/* ══ boot ════════════════════════════════════════════════════════════════ */
+try {
+  const th = localStorage.getItem('hissa.theme');
+  if (th) document.documentElement.setAttribute('data-theme', th);
+} catch (e) {}
+
+render();
+
+/* The writer resolves later, never during this first run, and may never
+   resolve at all — the app is fully usable before it does. */
+if (window.claude && typeof window.claude.use === 'function') {
+  window.claude.use('artifact').then(ns => {
+    WRITER = ns;
+    MODE = ns ? 'live' : 'local';
+    render();
+  }).catch(() => { MODE = 'local'; render(); });
+} else {
+  MODE = 'local';
+  render();
+}
+})();
+</script>
