@@ -5,12 +5,13 @@ import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { useAuth } from '../../lib/auth.tsx';
 import {
-  Badge, Card, ErrorNotice, Field, Loading, StatusBadge, statusLabel,
+  Badge, Card, ErrorNotice, Field, Loading, StatusBadge, useStatusLabel,
 } from '../../components/ui.tsx';
 
 export function Account() {
   const { t, locale, formatDate } = useI18n();
   const auth = useAuth();
+  const statusLabel = useStatusLabel();
 
   if (auth.loading) return <Loading rows={6} />;
   if (!auth.user) return null;

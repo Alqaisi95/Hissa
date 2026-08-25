@@ -7,7 +7,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n.tsx';
 import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
-import { Card, ErrorNotice, Loading, Money, StatusBadge, Badge, reasonLabel } from '../../components/ui.tsx';
+import { Card, ErrorNotice, Loading, Money, StatusBadge, Badge, Reason } from '../../components/ui.tsx';
 
 export function OrderStatus() {
   const { id = '' } = useParams();
@@ -116,7 +116,7 @@ export function OrderStatus() {
                   <tr key={refund.id}>
                     <td className="num"><Money baisa={refund.amount} /></td>
                     <td><StatusBadge status={refund.status} /></td>
-                    <td>{reasonLabel(refund.reason)}</td>
+                    <td><Reason code={refund.reason} /></td>
                     <td>{formatDate(refund.settled_at ?? refund.created_at)}</td>
                   </tr>
                 ))}

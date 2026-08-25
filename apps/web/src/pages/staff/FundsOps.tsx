@@ -7,7 +7,7 @@ import { useI18n } from '../../lib/i18n.tsx';
 import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { useAuth } from '../../lib/auth.tsx';
-import { Badge, Card, Empty, ErrorNotice, Loading, Money, StatusBadge, Stat, reasonLabel } from '../../components/ui.tsx';
+import { Badge, Card, Empty, ErrorNotice, Loading, Money, StatusBadge, Stat, Reason } from '../../components/ui.tsx';
 
 export function FundsOps() {
   const { t, locale, formatDate } = useI18n();
@@ -162,7 +162,7 @@ export function FundsOps() {
                     <tr key={refund.id}>
                       <td>{refund.title_ar}</td>
                       <td className="num"><Money baisa={refund.amount} /></td>
-                      <td className="small">{reasonLabel(refund.reason)}</td>
+                      <td className="small"><Reason code={refund.reason} /></td>
                       <td><StatusBadge status={refund.status} /></td>
                       <td>
                         {refund.status === 'requested' ? (

@@ -56,7 +56,8 @@ export function statusTone(status: string): Tone {
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
-  return <Badge tone={statusTone(status)}>{label ?? statusLabel(status)}</Badge>;
+  const { locale } = useI18n();
+  return <Badge tone={statusTone(status)}>{label ?? statusLabel(status, locale)}</Badge>;
 }
 
 const STATUS_LABELS: Record<string, { ar: string; en: string }> = {
@@ -113,10 +114,18 @@ const STATUS_LABELS: Record<string, { ar: string; en: string }> = {
   sophisticated: { ar: 'متمرس', en: 'Sophisticated' },
 };
 
-let activeLocale: 'ar' | 'en' = 'ar';
-export function setStatusLocale(locale: 'ar' | 'en') { activeLocale = locale; }
-export function statusLabel(status: string): string {
-  return STATUS_LABELS[status]?.[activeLocale] ?? status;
+/**
+ * Locale is passed in rather than read from a module variable: a badge must
+ * re-render when the reader switches language, and only props or context do that.
+ */
+export function statusLabel(status: string, locale: 'ar' | 'en'): string {
+  return STATUS_LABELS[status]?.[locale] ?? status;
+}
+
+/** Hook form, for call sites that need the string rather than the badge. */
+export function useStatusLabel(): (status: string) => string {
+  const { locale } = useI18n();
+  return (status: string) => statusLabel(status, locale);
 }
 
 /** System-generated reason codes, rendered in the reader's language. */
@@ -135,9 +144,15 @@ const REASON_LABELS: Record<string, { ar: string; en: string }> = {
   },
 };
 
-export function reasonLabel(reason: string | null | undefined): string {
+export function reasonLabel(reason: string | null | undefined, locale: 'ar' | 'en'): string {
   if (!reason) return '—';
-  return REASON_LABELS[reason]?.[activeLocale] ?? reason;
+  return REASON_LABELS[reason]?.[locale] ?? reason;
+}
+
+/** Renders a system reason code in the reader's language. */
+export function Reason({ code }: { code: string | null | undefined }) {
+  const { locale } = useI18n();
+  return <>{reasonLabel(code, locale)}</>;
 }
 
 export function Progress({ bps, label }: { bps: number; label?: ReactNode }) {

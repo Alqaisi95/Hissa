@@ -1,18 +1,13 @@
-import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useI18n } from '../lib/i18n.tsx';
 import { useAuth, STAFF_ROLES } from '../lib/auth.tsx';
 import { useQuery } from '../lib/useApi.ts';
-import { setStatusLocale } from './ui.tsx';
 
 export function Layout() {
   const { t, locale, setLocale, pick } = useI18n();
   const auth = useAuth();
   const location = useLocation();
   const banner = useQuery<{ banner: any }>('/public/banner', [auth.user?.id]);
-
-  // Keep the shared status vocabulary in step with the active locale.
-  useEffect(() => { setStatusLocale(locale); }, [locale]);
 
   const isStaff = auth.has(...STAFF_ROLES);
   const isOwner = auth.has('project_owner');
