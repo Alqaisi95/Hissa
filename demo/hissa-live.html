@@ -70,7 +70,7 @@
   p, ul, ol { margin: 0; }
   ul, ol { padding-inline-start: 1.2rem; }
   /* mixed Arabic + Latin resolves per paragraph, not per document */
-  p, li, td, th, dd, dt, .txt, .lede { unicode-bidi: plaintext; }
+  p, li, td, th, dd, dt, .lede { unicode-bidi: plaintext; }
   a { color: var(--brand); }
   img, svg { max-width: 100%; }
   .num, .mono { font-family: var(--mo); font-variant-numeric: tabular-nums; }
@@ -271,16 +271,6 @@
   .meter { display: block; background: var(--panel-2); border-radius: 999px; block-size: 8px; overflow: hidden; }
   .meter__fill { display: block; block-size: 100%; border-radius: 999px; background: var(--brand); }
 
-  .tile {
-    background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r);
-    border-inline-start: 3px solid var(--tone, var(--brand));
-    padding: .8rem .9rem; display: flex; flex-direction: column; gap: .2rem;
-  }
-  .tile__k { font-size: .76rem; color: var(--ink-3); }
-  .tile__v { font-family: var(--mo); font-size: 1.6rem; font-weight: 600; line-height: 1.15; }
-  .tile__s { font-size: .72rem; color: var(--ink-2); display: flex; align-items: center; gap: .35rem; }
-  .tile__s .chip__dot { background: var(--tone, var(--brand)); }
-  .tile__state { font-weight: 600; color: var(--tone, var(--brand)); }
 
   .frame { display: flex; flex-direction: column; gap: .5rem; }
   .frame__head { display: flex; align-items: flex-start; gap: .6rem; }
@@ -391,7 +381,6 @@
     border: 1px solid var(--rule); border-radius: var(--r); background: var(--panel);
     padding: 1rem; display: flex; flex-direction: column; gap: .5rem;
   }
-  .classcard--hi { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-wash); }
   .classcard__name { font-weight: 600; }
   .classcard dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .7rem; font-size: .82rem; margin: 0; }
   .classcard dt { color: var(--ink-3); }
@@ -529,7 +518,6 @@
     .exc__row > :last-child { grid-column: 1 / -1; }
   }
 
-  .filterbar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
   .segsm { display: flex; background: var(--panel-2); border-radius: 999px; padding: 2px; gap: 2px; }
   .segsm button {
     font: inherit; font-size: .74rem; border: 0; cursor: pointer; white-space: nowrap;
@@ -739,21 +727,12 @@ function actCreateOrder(st, userId, poolId, amount) {
   st.orders.push({ id, poolId, userId, amount, status: 'pending', createdAt: nowIso() });
   return { entity: id, detail: 'التزام بـ ' + rial(amount, 3) + ' في ' + p.ref };
 }
-
-function actCancelOrder(st, orderId) {
-  const o = st.orders.find(x => x.id === orderId);
-  if (!o) throw new Error('التزام غير موجود.');
-  if (o.status !== 'pending') throw new Error('لا يمكن الإلغاء إلا خلال مهلة العدول وقبل التأكيد.');
-  o.status = 'cancelled';
-  o.cancelledAt = nowIso();
-  return { entity: orderId, detail: 'إلغاء خلال مهلة العدول (' + STATE.settings.coolingOffHours + ' ساعة)' };
-}
-
 /* Closing decides the pool's fate by the rule, not by anyone's discretion:
    below the minimum every baisa goes back; above the ceiling everyone is
    scaled down pro rata and a share that falls under the minimum ticket is
    refunded whole, its money redistributed. */
 function actClosePool(st, poolId) {
+  assertPerm('pool.manage');
   const p = st.pools.find(x => x.id === poolId);
   if (!p) throw new Error('فرصة غير موجودة.');
   if (p.status !== 'funding') throw new Error('لا تُغلق إلا فرصة مفتوحة للتمويل.');
@@ -795,6 +774,7 @@ function actClosePool(st, poolId) {
 }
 
 function actRequestDisbursement(st, poolId, milestoneId, amount, evidence, byUserId) {
+  assertPerm('funds.request');
   if (!evidence || evidence.trim().length < 6) throw new Error('يلزم وصف الدليل المرفق قبل طلب الصرف.');
   const p = st.pools.find(x => x.id === poolId);
   const m = p.milestones.find(x => x.id === milestoneId);
@@ -810,6 +790,7 @@ function actRequestDisbursement(st, poolId, milestoneId, amount, evidence, byUse
 /* Dual control is enforced per transaction, not per role: the same person may
    hold both permissions and still cannot approve what they requested. */
 function actApproveDisbursement(st, dsbId, byUserId) {
+  assertPerm('funds.approve');
   const d = st.disbursements.find(x => x.id === dsbId);
   if (!d) throw new Error('طلب غير موجود.');
   if (d.status !== 'requested') throw new Error('هذا الطلب اعتُمد أو نُفِّذ.');
@@ -825,6 +806,7 @@ function actApproveDisbursement(st, dsbId, byUserId) {
 }
 
 function actCreateDistribution(st, poolId, gross, period) {
+  assertPerm('distribution.create');
   const p = st.pools.find(x => x.id === poolId);
   const holders = st.orders.filter(o => o.poolId === poolId && o.status === 'allocated');
   if (!holders.length) throw new Error('لا يوجد مستثمرون مخصَّصون في هذه الفرصة.');
@@ -849,6 +831,7 @@ function actSubmitReport(st, reportId, kpis, narrative, variance) {
 }
 
 function actPublishReport(st, reportId) {
+  assertPerm('report.publish');
   const r = st.reports.find(x => x.id === reportId);
   if (!r) throw new Error('تقرير غير موجود.');
   if (!['submitted', 'late'].includes(r.status)) throw new Error('لا يُنشر إلا تقرير مُقدَّم.');
@@ -1002,6 +985,7 @@ function actUpdateApplication(st, appId, draft, ownerId) {
 }
 
 function actReviewApplication(st, appId, action, note, byUserId) {
+  assertPerm('application.review');
   const a = st.applications.find(x => x.id === appId);
   if (!a) throw new Error('طلب غير موجود.');
   if (['published', 'rejected'].includes(a.status)) throw new Error('هذا الطلب محسوم.');
@@ -1039,6 +1023,7 @@ function actReviewApplication(st, appId, action, note, byUserId) {
    discloses comes from the approved application, so the owner cannot be shown
    one thing and the investor another. */
 function actPublishApplication(st, appId) {
+  assertPerm('application.review');
   const a = st.applications.find(x => x.id === appId);
   if (!a) throw new Error('طلب غير موجود.');
   if (a.status !== 'approved') throw new Error('لا يُنشر إلا طلب موافَق عليه.');
@@ -1126,6 +1111,12 @@ const JOB_AR = {
 const CLASS_AR = { retail: 'أفراد', angel: 'ملائكي', sophisticated: 'متمرس' };
 const ROLE_AR  = { investor: 'مستثمر', owner: 'صاحب مشروع', staff: 'فريق التشغيل' };
 
+/* A hidden button is not a control. Every mutation that a permission is
+   supposed to gate asserts it here, so the rule holds even if a screen forgets
+   to hide the affordance or someone dispatches the action directly. */
+function assertPerm(perm) {
+  if (!can(me(), perm)) throw new Error('لا تملك صلاحية تنفيذ هذا الإجراء.');
+}
 function can(u, perm) {
   if (!u) return false;
   if (u.role === 'investor' || u.role === 'owner') return false;
@@ -1158,6 +1149,7 @@ function withdrawOpenUntil(o) {
 }
 
 function actAmendDisclosure(st, poolId, summary, material, byUserId) {
+  assertPerm('pool.manage');
   const p = st.pools.find(x => x.id === poolId);
   if (!p) throw new Error('فرصة غير موجودة.');
   if (!['funding', 'funded', 'operating'].includes(p.status))
@@ -1235,6 +1227,7 @@ function actOpenCase(st, kind, subject, body, poolId, byUserId) {
    against the forecast the disclosure published, then publishes it or sends
    it back with a reason — the owner never edits a report after it is live. */
 function actReturnReport(st, reportId, note, byUserId) {
+  assertPerm('report.publish');
   const r = st.reports.find(x => x.id === reportId);
   if (!r) throw new Error('تقرير غير موجود.');
   if (!['submitted', 'late'].includes(r.status)) throw new Error('لا يُعاد إلا تقرير مُقدَّم.');
@@ -1249,6 +1242,7 @@ function actReturnReport(st, reportId, note, byUserId) {
 /* Reporting continues for the life of the project, so publishing one period
    schedules the next rather than leaving the duty to memory. */
 function actScheduleReport(st, poolId, period, dueAt) {
+  assertPerm('report.publish');
   const p = st.pools.find(x => x.id === poolId);
   if (!p) throw new Error('فرصة غير موجودة.');
   if (!period.trim()) throw new Error('اكتب اسم الفترة.');
@@ -1270,6 +1264,7 @@ const CASE_STATUS = {
   resolved: ['مُغلقة',    'chip--pos'],
 };
 function actTakeCase(st, caseId, byUserId) {
+  assertPerm('case.work');
   const c = st.cases.find(x => x.id === caseId);
   if (!c) throw new Error('حالة غير موجودة.');
   if (c.status === 'resolved') throw new Error('هذه الحالة مغلقة.');
@@ -1279,6 +1274,7 @@ function actTakeCase(st, caseId, byUserId) {
   return { entity: caseId, detail: 'تولّي الحالة ' + caseId };
 }
 function actNoteCase(st, caseId, note, byUserId) {
+  assertPerm('case.work');
   const c = st.cases.find(x => x.id === caseId);
   if (!c) throw new Error('حالة غير موجودة.');
   if (!note || note.trim().length < 5) throw new Error('اكتب الملاحظة.');
@@ -1286,6 +1282,7 @@ function actNoteCase(st, caseId, note, byUserId) {
   return { entity: caseId, detail: 'ملاحظة على الحالة ' + caseId };
 }
 function actResolveCase(st, caseId, note, byUserId) {
+  assertPerm('case.work');
   const c = st.cases.find(x => x.id === caseId);
   if (!c) throw new Error('حالة غير موجودة.');
   if (c.status === 'resolved') throw new Error('مغلقة بالفعل.');
@@ -1348,6 +1345,7 @@ function parseSetting(kind, text) {
 }
 
 function actProposeSetting(st, key, value, reason, effectiveFrom, byUserId) {
+  assertPerm('admin.users');
   const field = SETTING_FIELDS.find(f => f.k === key);
   if (!field) throw new Error('إعداد غير معروف.');
   if (!reason || reason.trim().length < 10) throw new Error('اكتب مبرر التغيير — يُقرأ في التدقيق.');
@@ -1363,6 +1361,7 @@ function actProposeSetting(st, key, value, reason, effectiveFrom, byUserId) {
     + fmtSetting(field.kind, before) + ' إلى ' + fmtSetting(field.kind, value) };
 }
 function actDecideSetting(st, id, approve, byUserId) {
+  assertPerm('admin.users');
   const pr = st.settingProposals.find(x => x.id === id);
   if (!pr) throw new Error('اقتراح غير موجود.');
   if (pr.status !== 'pending') throw new Error('هذا الاقتراح محسوم.');
@@ -1422,6 +1421,7 @@ const INVITE_STATE = {
 };
 
 function actIssueInvite(st, job, note, byUserId) {
+  assertPerm('admin.enrol');
   const spec = STAFF_JOBS.find(j => j.k === job);
   if (!spec) throw new Error('وظيفة غير معروفة.');
   const code = newCode();
@@ -1434,6 +1434,7 @@ function actIssueInvite(st, job, note, byUserId) {
   return { entity: code, detail: 'إصدار كود دعوة لوظيفة ' + (JOB_AR[job] || job) };
 }
 function actRevokeInvite(st, code, byUserId) {
+  assertPerm('admin.enrol');
   const inv = st.invites.find(x => x.code === code);
   if (!inv) throw new Error('كود غير موجود.');
   if (inv.usedBy) throw new Error('لا يُلغى كود استُخدم بالفعل.');
@@ -1461,6 +1462,7 @@ function actEnrolStaff(st, code, name, email, salt, pw) {
 }
 
 function actSetSuspended(st, userId, suspended, byUserId) {
+  assertPerm('admin.users');
   const t = st.users.find(x => x.id === userId);
   if (!t) throw new Error('حساب غير موجود.');
   if (t.id === byUserId) throw new Error('لا توقف حسابك بنفسك.');
@@ -1472,6 +1474,7 @@ function actSetSuspended(st, userId, suspended, byUserId) {
   return { entity: t.id, detail: (suspended ? 'إيقاف حساب ' : 'إعادة تفعيل حساب ') + t.name };
 }
 function actSetJob(st, userId, job, byUserId) {
+  assertPerm('admin.users');
   const t = st.users.find(x => x.id === userId);
   const spec = STAFF_JOBS.find(j => j.k === job);
   if (!t || !spec) throw new Error('بيانات غير صالحة.');
@@ -1536,7 +1539,7 @@ const STAFF_NAV = [
   { k: 'ops.adash',    label: 'لوحة إدارة النظام', perm: 'admin.users' },
   { k: 'ops.dash',     label: 'لوحة التشغيل',     perm: 'dashboard.read' },
   { k: 'ops.pipeline', label: 'التحليلات',        perm: 'dashboard.read' },
-  { k: 'ops.apps',     label: 'طلبات التمويل',    perm: 'application.review' },
+  { k: 'ops.apps',     label: 'طلبات التمويل',    anyOf: ['application.review', 'application.read'] },
   { k: 'ops.pools',    label: 'إدارة الفرص',      perm: 'pool.manage' },
   { k: 'ops.money',    label: 'الصرف والاعتماد',  perm: 'funds.read' },
   { k: 'ops.dist',     label: 'التوزيعات',        perm: 'distribution.create' },
@@ -1574,7 +1577,6 @@ const dt = (iso, withTime) => {
     withTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}));
   return p.format(d);
 };
-const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
 const POOL_STATUS = {
   draft:     ['مسودة',            ''],
@@ -1614,7 +1616,6 @@ function chip(map, key) {
 const CAT = ['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)', 'var(--cat-4)', 'var(--cat-5)'];
 const ORD = ['var(--ord-1)', 'var(--ord-2)', 'var(--ord-3)', 'var(--ord-4)', 'var(--ord-5)'];
 const TONE = { good: 'var(--st-good)', warning: 'var(--st-warn)', serious: 'var(--st-serious)', critical: 'var(--st-crit)' };
-const TONE_AR = { good: 'سليم', warning: 'انتباه', serious: 'متأخر', critical: 'حرِج' };
 
 function compact(v) {
   const a = Math.abs(v);
@@ -1642,33 +1643,6 @@ function frameHtml(o) {
       : '<tr><td colspan="' + o.cols.length + '" class="empty">لا بيانات بعد.</td></tr>')
     + '</tbody></table></div></div>';
 }
-
-function trendSvg(points, tickFmt) {
-  if (points.length < 2) return '<p class="empty">لا توجد نقاط كافية لرسم منحنى بعد.</p>';
-  const W = 720, H = 220, L = 48, R = 14, T = 12, B = 26;
-  const max = Math.max.apply(null, points.map(p => p.value)) || 1;
-  const step = (W - L - R) / (points.length - 1);
-  const x = i => L + i * step;
-  const y = v => T + (H - T - B) * (1 - v / max);
-  const line = points.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.value).toFixed(1)).join('');
-  const area = line + 'L' + x(points.length - 1).toFixed(1) + ',' + y(0) + 'L' + x(0).toFixed(1) + ',' + y(0) + 'Z';
-  const grid = [0, .25, .5, .75, 1].map(f => max * f).map(v =>
-    '<line class="axis" x1="' + L + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(v).toFixed(1) + '"></line>'
-    + '<text x="' + (L - 6) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end">' + tickFmt(v) + '</text>').join('');
-  const marks = [0, Math.floor(points.length / 2), points.length - 1];
-  const xl = marks.map(i => '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="'
-    + (i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle') + '">' + points[i].label + '</text>').join('');
-  const last = points[points.length - 1];
-  return '<svg class="plot" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="منحنى تراكمي ينتهي عند '
-    + tickFmt(last.value) + '">' + grid
-    + '<path d="' + area + '" style="fill:var(--cat-1);opacity:.13"></path>'
-    + '<path d="' + line + '" style="fill:none;stroke:var(--cat-1);stroke-width:2;stroke-linejoin:round"></path>'
-    + '<circle cx="' + x(points.length - 1).toFixed(1) + '" cy="' + y(last.value).toFixed(1) + '" r="3.5" style="fill:var(--cat-1)"></circle>'
-    + '<text x="' + (x(points.length - 1) - 6).toFixed(1) + '" y="' + (y(last.value) - 9).toFixed(1)
-    + '" text-anchor="end" style="font-weight:600;fill:var(--ink)">' + tickFmt(last.value) + '</text>'
-    + xl + '</svg>';
-}
-
 function barsHtml(items, valueFmt, colors) {
   if (!items.length) return '<p class="empty">لا بيانات.</p>';
   const max = Math.max.apply(null, items.map(i => i.value)) || 1;
@@ -1691,15 +1665,6 @@ function funnelHtml(stages) {
       + '<div class="xs muted">' + (pct === null ? 'الأساس' : pct + '% محمولة من المرحلة السابقة') + '</div></div>';
   }).join('') + '</div>';
 }
-
-function meterRow(label, value, target, color, valueFmt) {
-  const pct = target ? Math.min(100, (value / target) * 100) : 0;
-  return '<div class="bars__row"><span class="bars__label">' + esc(label) + '</span>'
-    + '<span class="meter"><span class="meter__fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></span></span>'
-    + '<span class="bars__val">' + valueFmt(value) + ' <span class="xs muted">/ ' + valueFmt(target)
-    + ' · ' + Math.round(pct) + '%</span></span></div>';
-}
-
 /* ── stacked part-to-whole bar ─────────────────────────────────────────
    2px surface gaps between segments (never borders), a legend because
    there are more than two series, and a native per-segment tooltip. */
@@ -2323,7 +2288,7 @@ VIEWS['own.new'] = () => {
       + APP.uof.map((r, i) => '<tr class="uofrow">'
         + '<td><input class="u-item" value="' + esc(r.item) + '" placeholder="تجهيزات وديكور"></td>'
         + '<td><input class="u-sup" value="' + esc(r.supplier) + '" placeholder="اسم المورّد"></td>'
-        + '<td><input class="u-amt num" dir="ltr" value="' + money(r.amount) + '" data-act="uofLive"></td>'
+        + '<td><input class="u-amt num" dir="ltr" value="' + money(r.amount) + '" data-live="uof"></td>'
         + '<td><input class="u-q" dir="ltr" value="' + esc(r.quote) + '" placeholder="Q-2026-001"></td>'
         + '<td>' + (APP.uof.length > MIN_UOF_LINES
             ? '<button class="btn btn--sm" data-act="uofDel" data-i="' + i + '">×</button>' : '') + '</td></tr>').join('')
@@ -2347,7 +2312,7 @@ VIEWS['own.new'] = () => {
           ? '<button class="btn btn--sm spacer" data-act="msDel" data-i="' + i + '">حذف</button>' : '') + '</div>'
       + '<div class="grid grid--2">'
       + '<div class="field"><label>العنوان</label><input class="m-label" value="' + esc(m.label) + '" placeholder="توريد المعدات"></div>'
-      + '<div class="field"><label>المبلغ (ر.ع)</label><input class="m-amt num" dir="ltr" value="' + money(m.amount) + '" data-act="msLive"></div>'
+      + '<div class="field"><label>المبلغ (ر.ع)</label><input class="m-amt num" dir="ltr" value="' + money(m.amount) + '" data-live="ms"></div>'
       + '</div>'
       + '<div class="field"><label>شرط الصرف والدليل المطلوب</label>'
       + '<input class="m-cond" value="' + esc(m.condition) + '" placeholder="فاتورة مورّد ومحضر استلام موقّع">'
@@ -2914,26 +2879,6 @@ function healthCounters() {
   const awaiting = STATE.disbursements.filter(d => d.status === 'requested');
   return { openCases, overSla, recon, lateReports, dueSoon, awaiting };
 }
-function commitmentSeries(days) {
-  const end = new Date(); end.setUTCHours(0, 0, 0, 0);
-  const start = new Date(end.getTime() - (days - 1) * 86400000);
-  const buckets = new Map();
-  STATE.orders.forEach(o => {
-    const d = new Date(o.createdAt); d.setUTCHours(0, 0, 0, 0);
-    if (d < start) { buckets.set('before', (buckets.get('before') || 0) + o.amount); return; }
-    const k = d.toISOString().slice(0, 10);
-    buckets.set(k, (buckets.get(k) || 0) + o.amount);
-  });
-  let run = buckets.get('before') || 0;
-  const pts = [];
-  for (let i = 0; i < days; i += 1) {
-    const d = new Date(start.getTime() + i * 86400000);
-    const k = d.toISOString().slice(0, 10);
-    run += buckets.get(k) || 0;
-    pts.push({ label: k.slice(5), value: run, amount: buckets.get(k) || 0 });
-  }
-  return pts;
-}
 /* ══════════════════════════════════════════════════════════════════════════
    ops · the operations dashboard
    Four bands, each headed by the question it answers, in the order an
@@ -3483,9 +3428,10 @@ VIEWS['ops.money'] = () => {
             + '</td></tr>';
         }).join('') : '<tr><td colspan="7" class="empty">لا طلبات معلّقة.</td></tr>')
       + '</tbody></table></div></div></div>'
-      + '<div class="card"><div class="card__head"><h2>إنشاء طلب صرف</h2></div><div class="card__body">'
-      + createDsbForm()
-      + '</div></div>'
+      + (can(u, 'funds.request')
+          ? '<div class="card"><div class="card__head"><h2>إنشاء طلب صرف</h2></div><div class="card__body">'
+            + createDsbForm() + '</div></div>'
+          : '')
       + '<div class="card"><div class="card__head"><h2>ما صُرف فعلًا</h2></div>'
       + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
       + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th><th>الطالب</th><th>المعتمِد</th><th>التاريخ</th></tr></thead><tbody>'
@@ -3896,7 +3842,7 @@ VIEWS['ops.cases'] = () => {
    an approval path rather than by a deploy. */
 VIEWS['ops.settings'] = () => {
   const u = me();
-  const canPropose = can(u, 'settings.propose') || can(u, 'admin.users');
+  const canPropose = can(u, 'admin.users');
   const pending = STATE.settingProposals.filter(x => x.status === 'pending');
   const decided = STATE.settingProposals.filter(x => x.status !== 'pending');
 
@@ -4004,6 +3950,7 @@ VIEWS['ops.settings'] = () => {
 
 /* ── ops · the audit log ──────────────────────────────────────────────── */
 VIEWS['ops.audit'] = () => {
+  const u = me();
   const rows = STATE.audit.slice().reverse();
   let broken = 0;
   for (let i = 1; i < STATE.audit.length; i += 1) {
@@ -4025,9 +3972,109 @@ VIEWS['ops.audit'] = () => {
           + '<td><span class="mono xs">' + r.hash.slice(0, 12) + '…</span></td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لم يُسجَّل إجراء بعد — نفّذ إجراءً من أي شاشة وسيظهر هنا.</td></tr>')
       + '</tbody></table></div></div></div>'
+      + exportPanel(u)
       + '<p class="xs muted">التجزئة هنا FNV-1a بطول 64 بت لتعمل داخل المتصفح دون اتصال؛ النظام الخادم يسلسل SHA-256 ويمنع التعديل والحذف بمُشغِّلات على مستوى قاعدة البيانات.</p>',
   };
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EXPORT
+   An auditor's work leaves the screen. Every dataset here is built from what
+   the signed-in account is already allowed to read, and credentials are
+   never among the columns — a salt and a password hash have no business in
+   a spreadsheet, whoever is asking.
+   ══════════════════════════════════════════════════════════════════════════ */
+let SAVER = null;   // the downloads namespace, once resolved
+
+/* RFC 4180 quoting, and a BOM so Arabic opens correctly in Excel. */
+function toCsv(cols, rows) {
+  const cell = v => {
+    const t = v == null ? '' : String(v);
+    return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  return '﻿' + [cols.map(cell).join(',')]
+    .concat(rows.map(r => r.map(cell).join(',')))
+    .join('\r\n') + '\r\n';
+}
+
+const EXPORTS = {
+  audit: {
+    label: 'سجل التدقيق', perm: 'audit.read',
+    build: () => ({
+      cols: ['الوقت', 'المنفِّذ', 'الإجراء', 'التفصيل', 'المرجع', 'تجزئة السابق', 'التجزئة'],
+      rows: STATE.audit.map(r => [r.at, (user(r.actor) || {}).name || r.actor || '',
+        r.action, r.detail || '', r.entity || '', r.prev, r.hash]),
+    }),
+  },
+  orders: {
+    label: 'الالتزامات', perm: 'audit.read',
+    build: () => ({
+      cols: ['المرجع', 'الفرصة', 'المستثمر', 'الصنف', 'المبلغ (بايسة)', 'المخصَّص (بايسة)',
+             'الحالة', 'سبب الاسترداد', 'التاريخ'],
+      rows: STATE.orders.map(o => {
+        const iu = user(o.userId) || {}, p = pool(o.poolId) || {};
+        return [o.id, p.ref || o.poolId, iu.name || o.userId, CLASS_AR[iu.cls] || '',
+          o.amount, o.allocated == null ? '' : o.allocated,
+          (ORDER_STATUS[o.status] || [o.status])[0],
+          o.refundReason ? (REFUND_REASON[o.refundReason] || o.refundReason) : '', o.createdAt];
+      }),
+    }),
+  },
+  disbursements: {
+    label: 'الصرف', perm: 'funds.read',
+    build: () => ({
+      cols: ['المرجع', 'الفرصة', 'المرحلة', 'المبلغ (بايسة)', 'الحالة', 'الطالب',
+             'تاريخ الطلب', 'المعتمِد', 'تاريخ الاعتماد', 'الدليل'],
+      rows: STATE.disbursements.map(d => {
+        const p = pool(d.poolId) || {};
+        const m = (p.milestones || []).find(x => x.id === d.milestoneId) || {};
+        return [d.id, p.ref || d.poolId, m.label || '', d.amount, d.status,
+          (user(d.requestedBy) || {}).name || '', d.requestedAt,
+          (user(d.approvedBy) || {}).name || '', d.approvedAt || '', d.evidence || ''];
+      }),
+    }),
+  },
+  pools: {
+    label: 'الفرص', perm: 'dashboard.read',
+    build: () => ({
+      cols: ['المرجع', 'العنوان', 'المنشأة', 'القطاع', 'المحافظة', 'الحالة',
+             'الهدف (بايسة)', 'الحد الأدنى', 'السقف', 'الملتزم به', 'نسخة الإفصاح', 'الإغلاق'],
+      rows: STATE.pools.map(p => [p.ref, p.title, p.issuer, p.sector, p.governorate,
+        (POOL_STATUS[p.status] || [p.status])[0], p.target, p.minClose, ceilingOf(p),
+        raised(p.id), p.disclosureVersion, p.closesAt || '']),
+    }),
+  },
+  access: {
+    label: 'الحسابات والصلاحيات', perm: 'admin.users',
+    /* Deliberately no salt, no hash, no e-mail beyond the identifier the
+       administrator already sees on screen. */
+    build: () => ({
+      cols: ['المعرّف', 'الاسم', 'البريد', 'الصفة', 'الوظيفة', 'الحالة', 'مصدر الحساب', 'الصلاحيات'],
+      rows: STATE.users.filter(x => x.role === 'staff').map(x => [x.id, x.name, x.email || '',
+        ROLE_AR[x.role], JOB_AR[x.job] || x.job || '', x.suspended ? 'موقوف' : 'نشط',
+        x.enrolledVia || 'مُنشأ ابتداءً', (x.perms || []).join(' ')]),
+    }),
+  },
+};
+
+function exportPanel(u) {
+  const mine = Object.keys(EXPORTS).filter(k => can(u, EXPORTS[k].perm));
+  if (!mine.length) return '';
+  return '<div class="card"><div class="card__head"><h2>تصدير</h2>'
+    + '<span class="spacer xs muted" id="expstate">' + (SAVER === null ? 'جارٍ التحقق…'
+        : SAVER ? 'متاح' : 'غير متاح في هذا العرض') + '</span></div>'
+    + '<div class="card__body">'
+    + '<div class="row">' + mine.map(k => {
+        const e = EXPORTS[k];
+        const n = e.build().rows.length;
+        return '<button class="btn btn--sm" data-act="exportCsv" data-set="' + k + '"'
+          + (SAVER ? '' : ' disabled') + '>' + esc(e.label) + ' <span class="xs muted">(' + n + ')</span></button>';
+      }).join('') + '</div>'
+    + '<div id="experr"></div>'
+    + '<p class="xs muted">يُبنى كل ملف مما يسمح به حسابك فقط. لا يحتوي أي تصدير على كلمة مرور '
+    + 'ولا مِلحها ولا تجزئتها — هذه لا مكان لها في جدول، مهما كان طالبها.</p>'
+    + '</div></div>';
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    SHELL + ROUTER
@@ -4679,6 +4726,40 @@ const ACTS = {
     toast('أُرسل طلبك وسُجِّل بمهلته.', 'good');
   },
 
+  exportCsv: async (d, el) => {
+    const spec = EXPORTS[d.set];
+    const box = document.getElementById('experr');
+    const say = (m, bad) => { if (box) box.innerHTML = '<div class="note note--'
+      + (bad ? 'crit' : 'pos') + ' sm">' + esc(m) + '</div>'; };
+    if (!spec || !SAVER) return;
+    if (!can(me(), spec.perm)) { say('لا تملك صلاحية تصدير هذه البيانات.', true); return; }
+    const { cols, rows } = spec.build();
+    const csv = toCsv(cols, rows);
+    const stamp = nowIso().slice(0, 10);
+    const base = 'hissa-' + d.set + '-' + stamp;
+    el.disabled = true;
+    try {
+      await SAVER.save({ filename: base + '.csv', data: csv });
+      say('حُفظ ' + spec.label + ' — ' + rows.length + ' سطرًا.');
+    } catch (err) {
+      const code = err && err.code;
+      if (code === 'extension_not_enabled') {
+        /* csv is an extended type and may be off for this view; the same
+           bytes are still readable as text. */
+        try {
+          await SAVER.save({ filename: base + '.txt', data: csv });
+          say('لا يقبل هذا العرض ملفات CSV، فحُفظ المحتوى نفسه بصيغة نصية.');
+        } catch (e2) {
+          say(e2 && e2.code === 'declined' ? 'أُلغي الحفظ.' : 'تعذّر الحفظ.', e2 && e2.code !== 'declined');
+        }
+      } else if (code === 'declined') say('أُلغي الحفظ.');
+      else if (code === 'rate_limited') say('نافذة حفظ مفتوحة بالفعل — أغلقها ثم أعد المحاولة.', true);
+      else if (code === 'too_large') say('الملف أكبر من الحد المسموح.', true);
+      else say('تعذّر الحفظ في هذا العرض.', true);
+    }
+    el.disabled = false;
+  },
+
   /* ── monitoring ───────────────────────────────────────────────────── */
   publishReport: async d => {
     const ok = await commit('نشر تقرير', st => actPublishReport(st, d.report));
@@ -4885,6 +4966,7 @@ const ACTS = {
 
   approveKyc: async d => {
     const ok = await commit('اعتماد تحقق', st => {
+      assertPerm('kyc.approve');
       const t = st.users.find(x => x.id === d.user);
       if (!t) throw new Error('حساب غير موجود.');
       if (t.kyc === 'approved') throw new Error('معتمد بالفعل.');
@@ -4898,6 +4980,7 @@ const ACTS = {
   },
   rejectKyc: async d => {
     const ok = await commit('رفض تحقق', st => {
+      assertPerm('kyc.approve');
       const t = st.users.find(x => x.id === d.user);
       if (!t) throw new Error('حساب غير موجود.');
       t.kyc = 'rejected';
@@ -4946,10 +5029,6 @@ const ACTS = {
     if (amount == null) { toast('مبلغ غير صالح — مثال: 500.000', 'bad'); return; }
     const ok = await commit('إنشاء التزام', st => actCreateOrder(st, SESSION.authUserId, d.pool, amount));
     if (ok) toast('أُنشئ الالتزام. لك ' + STATE.settings.coolingOffHours + ' ساعة للعدول.', 'good');
-  },
-  cancelOrder: async d => {
-    const ok = await commit('إلغاء التزام', st => actCancelOrder(st, d.order));
-    if (ok) toast('أُلغي الالتزام خلال مهلة العدول.', 'good');
   },
   closePool: async d => {
     const ok = await commit('إغلاق تمويل', st => actClosePool(st, d.pool));
@@ -5003,7 +5082,7 @@ document.addEventListener('click', e => {
 /* Amount fields retotal as you type — the balance rule is the whole point of
    these two steps, so it must not wait for a step change to show. */
 document.addEventListener('input', e => {
-  const t = e.target.closest('[data-act="uofLive"], [data-act="msLive"], .a_live');
+  const t = e.target.closest('[data-live="uof"], [data-live="ms"], .a_live');
   if (!t) return;
   captureApp();
   const target = APP.ask.target;
@@ -5059,8 +5138,13 @@ if (window.claude && typeof window.claude.use === 'function') {
     MODE = ns ? 'live' : 'local';
     render();
   }).catch(() => { MODE = 'local'; render(); });
+  /* Saving resolves separately and may never resolve: the export panel
+     renders disabled until it does, and stays disabled if it does not. */
+  window.claude.use('downloads').then(ns => { SAVER = ns || false; render(); })
+    .catch(() => { SAVER = false; render(); });
 } else {
   MODE = 'local';
+  SAVER = false;
   render();
 }
 })();
