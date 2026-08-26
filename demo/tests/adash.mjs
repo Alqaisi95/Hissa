@@ -24,7 +24,9 @@ fs.writeFileSync('serve/many.html', fs.readFileSync('/tmp/app.html', 'utf8').rep
   '<script id="appstate" type="application/json">'
     + JSON.stringify(st).replace(/</g, '\\u003c') + '</' + 'script>'));
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 let bad = 0;
 const ok = (l, v, extra) => {
   if (!v) bad += 1;

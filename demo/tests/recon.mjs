@@ -36,7 +36,9 @@ const over = JSON.parse(JSON.stringify(base));
 }
 write('over.html', over);
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 let bad = 0;
 const ok = (l, v, extra) => { if (!v) bad += 1;
   console.log((v ? '  ✓ ' : '  ✗ ') + l + (extra ? ' — ' + extra : '')); };

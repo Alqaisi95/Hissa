@@ -40,7 +40,9 @@ const srv = spawn(process.execPath, ['demo/tools/serve.mjs', 'site', String(PORT
   { stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 900));
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 const ctx = await b.newContext({ viewport: { width: 1400, height: 1000 }, locale: 'ar-OM' });
 const p = await ctx.newPage();
 const errs = [];

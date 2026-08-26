@@ -8,7 +8,9 @@ const wrap = st => `<!doctype html><html><head><meta charset="utf-8">
 fs.writeFileSync('serve/ancient.html', wrap(fs.readFileSync('state.ancient.json', 'utf8')));
 fs.writeFileSync('serve/gutted.html',  wrap(fs.readFileSync('state.gutted.json', 'utf8')));
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 for (const [name, file] of [['ancient (the previously published shape)', 'ancient.html'],
                             ['gutted  (every assumed field removed)', 'gutted.html']]) {
   const ctx = await b.newContext({ viewport: { width: 1400, height: 1000 }, locale: 'ar-OM' });

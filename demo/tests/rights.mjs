@@ -4,7 +4,9 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 fs.copyFileSync('/tmp/app.html', 'serve/index.html');
 const URL = 'http://127.0.0.1:8731/';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 const errs = [];
 const ok = (l, v) => console.log((v ? '  ✓ ' : '  ✗ ') + l);
 const saved = [];

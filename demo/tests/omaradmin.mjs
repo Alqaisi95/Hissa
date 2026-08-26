@@ -2,7 +2,9 @@ await import('./mk.mjs');
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 fs.copyFileSync('/tmp/app.html', 'serve/index.html');
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 const ctx = await b.newContext({ viewport: { width: 1440, height: 1100 }, locale: 'ar-OM', deviceScaleFactor: 2 });
 const p = await ctx.newPage();
 const errs = []; p.on('pageerror', e => errs.push(e.message));

@@ -55,7 +55,9 @@ const TARGETS = [
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+  /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
+  .catch(() => chromium.launch());
 const ctx = await b.newContext({ deviceScaleFactor: 1 });
 const p = await ctx.newPage();
 
