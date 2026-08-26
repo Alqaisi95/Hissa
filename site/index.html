@@ -596,7 +596,7 @@ const CLOSE = '</' + 'script>';
    it passes through here first, where every collection the code relies on is
    guaranteed to exist. What had to be filled is reported, not hidden.
    ══════════════════════════════════════════════════════════════════════════ */
-const SCHEMA = 4;
+const SCHEMA = 5;
 const MIGRATION = { from: null, filled: [] };
 
 function migrateState(raw) {
@@ -1707,6 +1707,128 @@ function signinCleared(email) {
   const all = signinRead();
   delete all[String(email).toLowerCase()];
   signinWrite(all);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   حقوق صاحب البيانات — DATA SUBJECT RIGHTS
+
+   The support screen has always offered «طلب بيانات» with a thirty-day
+   window and the words "a copy of your personal data, or its correction, or
+   its deletion". The footer cites the Personal Data Protection Law, and the
+   sign-up form asks you to consent under it. Nothing implemented any of the
+   three. A promise with no machine behind it is worse than no promise.
+
+   Three rights, and one of them cannot mean what its name says:
+
+   ACCESS      everything held about a person, gathered and downloadable.
+   RECTIFY     the person corrects their own name and e-mail.
+   ERASE       redaction, not deletion — and the screen says so.
+
+   Erasure is where an honest system has to refuse the easy answer. A
+   commitment, an allocation and a disbursement are a financial record; the
+   audit chain is what makes them provable. Deleting rows would destroy the
+   evidence that the money was handled correctly — including the evidence
+   that protects the very person asking. So erasure redacts the identifiers
+   that make a row personal and leaves the money and the chain standing.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Everything the document holds about one person, in one place. The
+   credential material is deliberately absent: a salt and a hash are not
+   facts about a person that they can act on, and putting them in a file
+   that leaves the screen is a hazard, not transparency. */
+function personalData(userId) {
+  const u = STATE.users.find(x => x.id === userId);
+  if (!u) return null;
+  const account = {};
+  Object.keys(u).forEach(k => {
+    if (k === 'salt' || k === 'pw') return;    // never, not even to its owner
+    account[k] = u[k];
+  });
+
+  const orders = STATE.orders.filter(o => o.userId === userId);
+  const shares = [];
+  STATE.distributions.forEach(d => (d.shares || [])
+    .filter(s => s.userId === userId)
+    .forEach(s => shares.push({ distribution: d.id, period: d.period,
+      paidAt: d.paidAt, amount: s.amount, orderId: s.orderId })));
+
+  return {
+    generatedAt: nowIso(),
+    subject: userId,
+    account,
+    orders,
+    distributionShares: shares,
+    cases: STATE.cases.filter(c => c.raisedBy === userId),
+    applications: STATE.applications.filter(a => a.ownerId === userId),
+    /* Rows the person caused or that name them. The chain is append-only, so
+       this is a read of the record, never a rewrite of it. */
+    auditRows: STATE.audit.filter(r => r.actor === userId || r.entity === userId),
+    notIncluded: ['ملح كلمة المرور وتجزئتها — لا تُصدَّر لأحد، ولا لصاحبها'],
+  };
+}
+
+/* The person corrects their own record. The e-mail is the sign-in identifier,
+   so changing it is verified with the password in the handler, exactly as a
+   password change is. */
+function actRectifyAccount(st, userId, name, email) {
+  const u = st.users.find(x => x.id === userId);
+  if (!u) throw new Error('حساب غير موجود.');
+  const nm = String(name || '').trim();
+  const em = String(email || '').trim().toLowerCase();
+  if (nm.length < 3) throw new Error('اكتب اسمك الكامل.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) throw new Error('بريد إلكتروني غير صالح.');
+  if (st.users.some(x => x.id !== userId && (x.email || '').toLowerCase() === em))
+    throw new Error('هذا البريد مسجَّل لحساب آخر.');
+  if (nm === u.name && em === (u.email || '')) throw new Error('لا تغيير.');
+  const before = { name: u.name, email: u.email };
+  u.name = nm;
+  u.email = em;
+  u.rectifiedAt = nowIso();
+  /* The detail names what changed, not the values: a correction is often made
+     precisely because the old value was wrong about a person. */
+  const what = [before.name !== nm ? 'الاسم' : null, before.email !== em ? 'البريد' : null]
+    .filter(Boolean).join(' و');
+  return { entity: u.id, detail: 'تصحيح بيانات الحساب — ' + what };
+}
+
+/* Erasure, meaning redaction. Refused while money is in flight: an account
+   with a live commitment still has to be paid or refunded, and you cannot
+   pay someone you have just made anonymous. */
+const LIVE_ORDER = new Set(['pending', 'confirmed', 'allocated']);
+function eraseBlockers(userId) {
+  const out = [];
+  const live = STATE.orders.filter(o => o.userId === userId && LIVE_ORDER.has(o.status));
+  if (live.length) out.push(live.length + ' التزامًا قائمًا — يُغلق أو يُسترد أولًا');
+  const apps = STATE.applications.filter(a => a.ownerId === userId
+    && !['published', 'rejected'].includes(a.status));
+  if (apps.length) out.push(apps.length + ' طلب تمويل قيد المعالجة — يُحسم أولًا');
+  const open = STATE.cases.filter(c => c.raisedBy === userId && c.status !== 'resolved');
+  if (open.length) out.push(open.length + ' طلب دعم مفتوح — يُغلق أولًا');
+  return out;
+}
+
+function actErasePersonalData(st, userId, byUserId) {
+  assertPerm('admin.users');
+  const u = st.users.find(x => x.id === userId);
+  if (!u) throw new Error('حساب غير موجود.');
+  if (u.role === 'staff') throw new Error('حسابات فريق التشغيل تُوقف ولا تُطمس — سجلّ من فعل ماذا يحتاج اسمًا.');
+  if (u.erasedAt) throw new Error('طُمست بيانات هذا الحساب بالفعل.');
+  if (userId === byUserId) throw new Error('لا تطمس حسابك بنفسك.');
+  const blockers = eraseBlockers(userId);
+  if (blockers.length) throw new Error('لا يُطمس قبل: ' + blockers.join('، ') + '.');
+
+  const was = u.name;
+  u.name = 'حساب مطموس';
+  u.email = null;
+  u.salt = null;
+  u.pw = null;                 // no credential remains, so no way back in
+  delete u.claimedCls;
+  u.kyc = 'erased';
+  u.erasedAt = nowIso();
+  u.erasedBy = byUserId;
+  /* The record of the money stays. Only the identifiers go. */
+  return { entity: u.id, detail: 'طمس البيانات الشخصية بطلب صاحبها — ' + was
+    + ' · تبقى سجلات المال وسلسلة التدقيق كما هي' };
 }
 
 function actSetSuspended(st, userId, suspended, byUserId) {
@@ -4766,7 +4888,7 @@ VIEWS['ops.admin'] = () => {
   const resets = STATE.resets.slice().reverse();
   const openRs = resets.filter(r => resetState(r) === 'open');
   /* One button, two tables: issuing a code is the same act whoever it is for. */
-  const resetBtn = t => (canReset && t.id !== u.id && !t.suspended
+  const resetBtn = t => (canReset && t.id !== u.id && !t.suspended && !t.erasedAt
     ? '<button class="btn btn--sm" data-act="issueReset" data-user="' + t.id + '">كود استرداد</button>'
     : '<span class="xs muted">—</span>');
   const invites = STATE.invites.slice().reverse();
@@ -4822,6 +4944,17 @@ VIEWS['ops.admin'] = () => {
                             : '<span class="chip chip--pos"><span class="chip__dot"></span>نشط</span>') + '</td>'
     + '<td class="sm">' + (t.lastSignInAt ? dt(t.lastSignInAt, true) : '<span class="xs muted">لم يدخل بعد</span>') + '</td>'
     + '<td>' + resetBtn(t) + '</td>'
+    + '<td>' + (() => {
+        if (!canReset) return '<span class="xs muted">—</span>';
+        if (t.erasedAt) return '<span class="chip">مطموس ' + dt(t.erasedAt) + '</span>';
+        const b = eraseBlockers(t.id);
+        /* A button that can only fail is not a control. Say what stands in the
+           way instead, so the administrator knows what to close first. */
+        return b.length
+          ? '<span class="xs muted" title="' + esc(b.join('، ')) + '">مانع قائم</span>'
+          : '<button class="btn btn--sm btn--danger" data-act="erasePerson" data-user="'
+            + t.id + '">طمس البيانات</button>';
+      })() + '</td>'
     + '<td>' + (canEnrol
         ? '<button class="btn btn--sm' + (t.suspended ? '' : ' btn--danger') + '" data-act="toggleSuspend" '
           + 'data-user="' + t.id + '" data-on="' + (t.suspended ? '0' : '1') + '">'
@@ -4889,8 +5022,13 @@ VIEWS['ops.admin'] = () => {
       + '<div class="card"><div class="card__head"><h2>المستثمرون وأصحاب المشاريع</h2>'
       + '<span class="spacer chip">' + members.length + '</span></div>'
       + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
-      + '<thead><tr><th>الحساب</th><th>الصفة</th><th>التحقق</th><th>الحالة</th><th>آخر دخول</th><th></th><th></th></tr></thead>'
-      + '<tbody>' + memberRows + '</tbody></table></div></div></div>',
+      + '<thead><tr><th>الحساب</th><th>الصفة</th><th>التحقق</th><th>الحالة</th><th>آخر دخول</th><th></th><th>حق الحذف</th><th></th></tr></thead>'
+      + '<tbody>' + memberRows + '</tbody></table></div>'
+      + '<p class="xs muted" style="padding:.6rem 1rem 0">«طمس البيانات» يُنفَّذ على طلب صاحب الحساب '
+      + 'ويحذف اسمه وبريده وبيانات دخوله. لا يحذف التزاماته ولا مبالغها ولا أسطر سجل التدقيق: '
+      + 'ذلك سجلّ مالي مُثبَت يبقى مرتبطًا بمعرّف الحساب. وحسابات فريق التشغيل لا تُطمس أصلًا — '
+      + 'سجلّ «من فعل ماذا» يحتاج اسمًا.</p>'
+      + '</div></div>',
   };
 };
 
@@ -4898,6 +5036,67 @@ VIEWS['ops.admin'] = () => {
 /* ══════════════════════════════════════════════════════════════════════════
    ACCOUNT — the one screen every role gets, whatever else it may open
    ══════════════════════════════════════════════════════════════════════════ */
+/* The three rights the support screen has always offered, on the screen where
+   the person can actually use them. Written to state what erasure does NOT do,
+   because the honest half of that right is the half people are not told. */
+function dataRightsHtml(u) {
+  const d = personalData(u.id);
+  const blockers = eraseBlockers(u.id);
+  const counts = [
+    ['التزاماتك', d.orders.length],
+    ['حصص التوزيعات', d.distributionShares.length],
+    ['طلبات الدعم', d.cases.length],
+    ['طلبات التمويل', d.applications.length],
+    ['أسطر في سجل التدقيق تخصّك', d.auditRows.length],
+  ];
+
+  return '<div class="card"><div class="card__head"><h2>بياناتي وحقوقي</h2>'
+    + '<span class="spacer chip">المرسوم السلطاني 6/2022</span></div>'
+    + '<div class="card__body">'
+
+    + '<h3>ما يحتفظ به النظام عنك</h3>'
+    + '<div class="grid grid--4">'
+    + counts.map(c => '<div class="kv"><div class="kv__k">' + esc(c[0]) + '</div>'
+        + '<div class="kv__v">' + c[1] + '</div></div>').join('')
+    + '</div>'
+    + '<div class="row"><button class="btn" data-act="downloadMyData"'
+    + (SAVER ? '' : ' disabled') + '>نزّل نسخة كاملة (JSON)</button>'
+    + '<span class="xs muted">' + (SAVER === null ? 'جارٍ التحقق…'
+        : SAVER ? 'ملف واحد يحمل كل ما سبق' : 'الحفظ غير متاح في هذا العرض') + '</span></div>'
+    + '<div id="pdErr"></div>'
+    + '<p class="xs muted">لا يحتوي الملف على ملح كلمة مرورك ولا تجزئتها. '
+    + 'هذه ليست حقيقة عنك تنفعك، وإخراجها من الشاشة خطر لا شفافية.</p>'
+
+    + '<h3>تصحيح بياناتك</h3>'
+    + '<div class="grid grid--2">'
+    + '<div class="field"><label for="rcName">الاسم</label>'
+    + '<input id="rcName" value="' + esc(u.name) + '"></div>'
+    + '<div class="field"><label for="rcEmail">البريد الإلكتروني</label>'
+    + '<input id="rcEmail" type="email" dir="ltr" value="' + esc(u.email || '') + '"></div>'
+    + '</div>'
+    + '<div class="field" style="max-width:22rem"><label for="rcPw">أكّد بكلمة مرورك</label>'
+    + '<input id="rcPw" type="password" dir="ltr" autocomplete="current-password"></div>'
+    + '<div id="rcErr"></div>'
+    + '<button class="btn btn--primary" data-act="rectify">حفظ التصحيح</button>'
+    + '<p class="xs muted">البريد هو معرّفك عند الدخول، فتغييره يحتاج كلمة مرورك. '
+    + 'يُسجَّل في التدقيق ما الذي تغيّر، لا قيمته القديمة.</p>'
+
+    + '<h3>حذف بياناتك</h3>'
+    + '<div class="note note--warn sm">'
+    + '<strong>ما يُحذف:</strong> اسمك وبريدك وبيانات دخولك — فلا يبقى للحساب باب.<br>'
+    + '<strong>ما يبقى ولا يُحذف:</strong> التزاماتك ومبالغها وما خُصص واستُرد، '
+    + 'وأسطر سجل التدقيق. هذه سجلّ مالي مُثبَت، وحذفه يُتلف الدليل الذي يحميك أنت '
+    + 'قبل غيرك: أن مالك عومل بالقاعدة. تبقى مرتبطة بمعرّف الحساب لا باسمك.'
+    + '</div>'
+    + (blockers.length
+        ? '<div class="note note--crit sm">لا يُنفَّذ الآن قبل: ' + esc(blockers.join('، ')) + '.</div>'
+        : '<div class="note sm">لا مانع قائم لدى حسابك الآن.</div>')
+    + '<p class="xs muted">يُنفّذه مدير النظام على طلبك — لا تُنفَّذ خطوة لا رجعة فيها بضغطة واحدة '
+    + 'ودون شاهد. افتح طلبًا من نوع «طلب بيانات» من شاشة الدعم، مهلته '
+    + (CASE_KINDS.find(k => k.k === 'طلب بيانات') || { sla: 30 }).sla + ' يومًا.</p>'
+    + '</div></div>';
+}
+
 VIEWS['acct.me'] = () => {
   const u = me();
   const sub = u.role === 'investor' ? CLASS_AR[u.cls]
@@ -4943,6 +5142,7 @@ VIEWS['acct.me'] = () => {
         ? '<div class="note note--warn">لحسابك كود استرداد قائم أصدره مدير النظام، ينتهي '
           + dt(openReset[0].expiresAt, true) + '. تغييرك لكلمة المرور من هنا يُلغيه فورًا.</div>'
         : '')
+      + (u.role !== 'staff' ? dataRightsHtml(u) : '')
       + '<div class="card"><div class="card__head"><h2>تغيير كلمة المرور</h2></div>'
       + '<div class="card__body">'
       + '<div class="field"><label for="cpwCur">كلمة المرور الحالية</label>'
@@ -5083,7 +5283,10 @@ const ACTS = {
         + (next > 0 ? ' بعد ' + n + ' محاولات، المحاولة التالية بعد ' + next + ' ثانية.' : ''));
     };
     const u = STATE.users.find(x => (x.email || '').toLowerCase() === email);
-    if (!u || !pw) { miss(); return; }
+    /* An erased account keeps no salt and no hash, so there is nothing to
+       derive against. It fails the same way a wrong address does — the door
+       is gone, and saying so would confirm the account once existed. */
+    if (!u || !pw || !u.salt || !u.pw) { miss(); return; }
     el.disabled = true; el.textContent = 'جارٍ التحقق…';
     const got = await derive(pw, u.salt);
     el.disabled = false; el.textContent = 'دخول';
@@ -5123,6 +5326,48 @@ const ACTS = {
     el.disabled = false; el.textContent = 'تغيير كلمة المرور';
     const done = await commit('تغيير كلمة المرور', st => actChangePassword(st, u.id, salt, hash));
     if (done) { box.innerHTML = ''; toast('غُيِّرت كلمة المرور. أي كود استرداد قائم لحسابك أُلغي.', 'good'); }
+  },
+
+  /* ── the three data-subject rights ────────────────────────────────────── */
+  downloadMyData: async (d, el) => {
+    const box = document.getElementById('pdErr');
+    const say = (m, bad) => { if (box) box.innerHTML = '<div class="note note--'
+      + (bad ? 'crit' : 'pos') + ' sm">' + esc(m) + '</div>'; };
+    if (!SAVER) { say('حفظ الملفات غير متاح في هذا العرض.', true); return; }
+    const data = personalData(SESSION.authUserId);
+    if (!data) { say('تعذّر تجميع بياناتك.', true); return; }
+    el.disabled = true;
+    try {
+      await SAVER.save({ filename: 'hissa-بياناتي-' + nowIso().slice(0, 10) + '.json',
+        data: JSON.stringify(data, null, 2) });
+      say('حُفظت نسخة كاملة من بياناتك.');
+    } catch (err) {
+      const code = err && err.code;
+      say(code === 'declined' ? 'أُلغي الحفظ.' : 'تعذّر الحفظ في هذا العرض.', code !== 'declined');
+    }
+    el.disabled = false;
+  },
+
+  rectify: async (d, el) => {
+    const name = document.getElementById('rcName').value;
+    const email = document.getElementById('rcEmail').value;
+    const pw = document.getElementById('rcPw').value;
+    const box = document.getElementById('rcErr');
+    const say = m => { box.innerHTML = '<div class="note note--crit sm">' + esc(m) + '</div>'; };
+    const u = me();
+    if (!pw) { say('أكّد بكلمة مرورك — البريد هو معرّفك عند الدخول.'); return; }
+    el.disabled = true; el.textContent = 'جارٍ التحقق…';
+    const ok = sameHash(await derive(pw, u.salt), u.pw);
+    el.disabled = false; el.textContent = 'حفظ التصحيح';
+    if (!ok) { say('كلمة المرور غير صحيحة.'); return; }
+    const done = await commit('تصحيح بيانات حساب', st => actRectifyAccount(st, u.id, name, email));
+    if (done) { box.innerHTML = ''; toast('صُحِّحت بياناتك.', 'good'); }
+  },
+
+  erasePerson: async d => {
+    const ok = await commit('طمس بيانات شخصية',
+      st => actErasePersonalData(st, d.user, SESSION.authUserId));
+    if (ok) toast('طُمست البيانات الشخصية. سجلات المال وسلسلة التدقيق كما هي.', 'bad');
   },
 
   /* ── administrator-issued recovery ────────────────────────────────────── */
@@ -5231,7 +5476,10 @@ const ACTS = {
         row.kyc = 'pending';
       }
       st.users.push(row);
-      return { entity: id, actor: id, detail: 'حساب جديد (' + ROLE_AR[REG.kind] + ') — ' + REG.email };
+      /* The identifier, not the e-mail: this row can never be rewritten, and a
+   person who later asks for erasure would find their address preserved
+   inside the one structure the system refuses to alter. */
+      return { entity: id, actor: id, detail: 'حساب جديد (' + ROLE_AR[REG.kind] + ')' };
     });
     if (!ok) return;
     REG = { step: 1, kind: 'investor', name: '', email: '', pw: '', cls: 'retail',
