@@ -20,9 +20,9 @@ const WORK = path.join(ROOT, '.demo-work');
 const PORT = 8731;
 
 /* المُشغِّلات التي تحتاج مجلد العمل والخادم، بترتيب التكلفة */
-const BROWSER = ['route', 'adash', 'recon', 'omaradmin', 'mig', 'erasperm', 'a11y', 'rt4', 'rights', 'acct', 'prop'];
-/* ومُشغِّلات تعمل من جذر المستودع مباشرة */
-const ROOTED = ['pwa'];
+const BROWSER = ['route', 'opsdash', 'adash', 'recon', 'omaradmin', 'mig', 'erasperm', 'a11y', 'rt4', 'rights', 'acct', 'prop'];
+/* ومُشغِّلات تعمل من جذر المستودع مباشرة، بلا متصفّح ولا خادم */
+const ROOTED = ['metrics', 'pwa'];
 
 const want = process.argv.slice(2);
 const pick = list => (want.length ? list.filter(n => want.includes(n)) : list);
@@ -55,6 +55,12 @@ function run(name, script, cwd) {
 const browser = pick(BROWSER);
 const rooted = pick(ROOTED);
 
+/* الرخيصة أولًا: كسرٌ بنيويّ يظهر في ثوانٍ بدل أن ينتظر أحد عشر متصفّحًا. */
+for (const n of rooted) {
+  if (fs.existsSync(path.join(ROOT, 'demo/tests', n + '.mjs')))
+    run(n, path.join('demo/tests', n + '.mjs'), ROOT);
+}
+
 if (browser.length) {
   prepare();
   const srv = spawn(process.execPath, [path.join(ROOT, 'demo/tools/serve.mjs'),
@@ -70,11 +76,6 @@ if (browser.length) {
     }
   } finally { srv.kill(); }
 }
-for (const n of rooted) {
-  if (fs.existsSync(path.join(ROOT, 'demo/tests', n + '.mjs')))
-    run(n, path.join('demo/tests', n + '.mjs'), ROOT);
-}
-
 const failed = results.filter(r => !r.ok);
 console.log('\n════════════════════════════════════');
 results.forEach(r => console.log((r.ok ? '  ✓ ' : '  ✗ ') + r.name));
