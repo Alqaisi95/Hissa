@@ -22,7 +22,7 @@ ok('يفتح على «لوحة إدارة النظام»',
 const navs = await p.$$eval('.navlink', l => l.map(x => x.textContent.trim()));
 console.log('  القائمة (' + navs.length + '):');
 navs.forEach(n => console.log('     ' + n));
-ok('يرى كل شاشات فريق التشغيل الثلاث عشرة + حسابي', navs.length === 14);
+ok('يرى كل شاشات فريق التشغيل الأربع عشرة + حسابي', navs.length === 15);
 
 // كل صلاحية في المصفوفة ممنوحة له
 await p.evaluate(() => {
@@ -41,7 +41,7 @@ const mine = await p.$$eval('.pmx tbody tr', rows => {
 });
 const missing = mine.filter(x => !x.on).map(x => x.perm);
 ok('كل الـ' + mine.length + ' صلاحية ممنوحة' + (missing.length ? ' — ناقصة: ' + missing.join(', ') : ''),
-  mine.length === 17 && missing.length === 0);
+  mine.length === 18 && missing.length === 0);
 
 /* السلسلة سليمة بعد الإضافة.
    يُختار الرقم بمعناه لا بموضعه: اللوحة صار فيها أكثر من hero، وأخذُ الأول

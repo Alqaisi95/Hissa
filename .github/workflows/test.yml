@@ -1,0 +1,70 @@
+# يشغّل مجموعة اختبارات النسخة التجريبية في المتصفح.
+#
+# نطاقه demo/ وحده عمدًا. اختبارات apps/api لم تُشغَّل في CI قطّ، ولا أعرف
+# حالتها؛ وإدخالها هنا الآن يجعل كل دفعة حمراء لسبب لا يخصّ ما تغيّر. من
+# يريد تشغيلها يضيف مهمة ثانية بعد أن يتأكد من خضرتها محليًّا.
+#
+# الاختبارات تفتح Chromium فعليًّا: تسجّل دخولًا، وتلصق كشفًا، وتقطع الشبكة،
+# وتزرع أزرارًا لترى المحرّك يرفضها. فهي أبطأ من اختبار وحدة وأصدق منه.
+
+name: اختبارات النسخة التجريبية
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'demo/**'
+      - 'site/**'
+      - 'package.json'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - 'demo/**'
+      - 'site/**'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # لا npm ci: مساحة العمل تحمل workspaces لا يلزم بناؤها لتشغيل
+      # اختبارات المتصفح، وتثبيتها كاملةً يضاعف زمن الدفعة بلا مقابل.
+      - name: تثبيت playwright وحده
+        run: npm install --no-save --no-audit --no-fund playwright@^1.55.0
+
+      - name: تنزيل Chromium
+        run: npx playwright install --with-deps chromium
+
+      # الأيقونات مولَّدة ومدفوعة، لكن إعادة توليدها تثبت أن المولِّد يعمل
+      - name: بناء النسخة العامة
+        run: npm run demo:site
+
+      - name: تشغيل الاختبارات
+        run: npm run demo:test
+
+      - name: حفظ اللقطات عند الفشل
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots
+          path: |
+            .demo-work/*.png
+            .demo-work/shots/**
+          if-no-files-found: ignore
+          retention-days: 7
