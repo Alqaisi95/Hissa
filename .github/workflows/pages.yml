@@ -1,0 +1,69 @@
+# ينشر site/ إلى GitHub Pages.
+#
+# حلّ محلّ ملفٍ كان يحمل امتداد .yml ويحتوي HTML لحاسبة نسبة مئوية، فكان
+# يفشل عند كل دفعة منذ إنشاء المستودع.
+#
+# enablement: true تُفعّل Pages عبر الـ API إن لم تكن مفعّلة، فلا يلزم ضبط
+# شيء من الواجهة. مستودع خاص على خطة مجانية سيفشل هنا برسالة صريحة —
+# وهذا مقصود: فشل واضح خير من صمت.
+
+name: نشر الموقع إلى GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# دفعة واحدة في كل مرة، ولا تُلغى دفعة جارية في منتصفها
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تفعيل Pages وضبطها
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # site/ صفحة واحدة ثابتة بلا Jekyll — .nojekyll يمنع تجاهل أي ملف
+      - name: تعطيل معالجة Jekyll
+        run: touch site/.nojekyll
+
+      - name: التحقق من خلوّ النسخة العامة من أي حساب حقيقي
+        run: |
+          if ! grep -q '@example\.om' site/index.html; then
+            echo "::error::لم يُعثر على حسابات البذرة — الملف ليس النسخة المتوقَّعة."
+            exit 1
+          fi
+          if grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' site/index.html \
+             | grep -vE '@(example\.om|hissa\.om)$' | sort -u > /tmp/foreign.txt; then
+            if [ -s /tmp/foreign.txt ]; then
+              echo "::error::عُثر على بريد خارج نطاقَي البذرة — لا يُنشر:"
+              cat /tmp/foreign.txt
+              exit 1
+            fi
+          fi
+          echo "نظيف: حسابات البذرة فقط."
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
