@@ -45,21 +45,35 @@ jobs:
       - name: تعطيل معالجة Jekyll
         run: touch site/.nojekyll
 
+      # يفحص site/ كلّها لا index.html وحدها: صار المجلد يحمل عامل خدمة
+      # ومانيفستًا وأيقونات، وحارسٌ يفحص ملفًا واحدًا من عدّة يُطمئن أكثر
+      # ممّا يحمي.
       - name: التحقق من خلوّ النسخة العامة من أي حساب حقيقي
         run: |
           if ! grep -q '@example\.om' site/index.html; then
             echo "::error::لم يُعثر على حسابات البذرة — الملف ليس النسخة المتوقَّعة."
             exit 1
           fi
-          if grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' site/index.html \
-             | grep -vE '@(example\.om|hissa\.om)$' | sort -u > /tmp/foreign.txt; then
-            if [ -s /tmp/foreign.txt ]; then
-              echo "::error::عُثر على بريد خارج نطاقَي البذرة — لا يُنشر:"
-              cat /tmp/foreign.txt
-              exit 1
-            fi
+          grep -rhoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' site/ \
+            | grep -vE '@(example\.om|hissa\.om)$' | sort -u > /tmp/foreign.txt || true
+          if [ -s /tmp/foreign.txt ]; then
+            echo "::error::عُثر على بريد خارج نطاقَي البذرة — لا يُنشر:"
+            cat /tmp/foreign.txt
+            exit 1
           fi
           echo "نظيف: حسابات البذرة فقط."
+
+      # وأن المولَّد مطابق لمصدره: لو دُفعت site/ قديمة لنُشرت نسخة لا تقابل
+      # أي شيء في المستودع، وبصمة عامل الخدمة تشير إلى محتوى غير المنشور.
+      - name: التحقق من أن site/ مبنيّة من demo/hissa-live.html الحالي
+        run: |
+          cp site/index.html /tmp/published.html
+          python3 demo/tools/make_public.py > /dev/null
+          if ! diff -q /tmp/published.html site/index.html > /dev/null; then
+            echo "::error::site/ ليست مبنيّة من النسخة الحالية — شغّل: npm run demo:site"
+            exit 1
+          fi
+          echo "site/ مطابقة لمصدرها."
 
       - uses: actions/upload-pages-artifact@v3
         with:

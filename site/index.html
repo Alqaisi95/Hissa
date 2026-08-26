@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0d5c58">
+<meta name="application-name" content="حِصّة">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="حِصّة">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
 <title>حِصّة | Hissa Pools</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -556,6 +564,37 @@
     .exc__row { grid-template-columns: auto minmax(0,1fr); }
     .exc__row > :last-child { grid-column: 1 / -1; }
   }
+
+  /* exception groups: a kind is a heading with its own count, so a long list
+     stays navigable without any of it being cut away */
+  .excg + .excg { border-block-start: 1px solid var(--rule); }
+  .excg__h {
+    display: flex; align-items: center; gap: .45rem;
+    padding-block: .7rem .2rem; font-size: .74rem; font-weight: 600;
+    color: var(--ink-3); letter-spacing: .02em;
+  }
+  .excg__n {
+    font-family: var(--mo); font-size: .68rem; font-weight: 500;
+    background: var(--panel-2); color: var(--ink-2);
+    border-radius: 999px; padding: .05rem .4rem;
+  }
+
+  /* one account's toxic combinations, each with the control that blocks it */
+  .sod { border: 1px solid var(--rule); border-radius: var(--r); padding: .6rem .7rem; }
+  .sod__h { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-block-end: .35rem; }
+  .sod__r {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: .6rem; align-items: start;
+    padding-block: .45rem; border-block-start: 1px dashed var(--rule);
+  }
+  @media (max-width: 720px) {
+    .sod__r { grid-template-columns: auto minmax(0, 1fr); }
+    .sod__r > :last-child { grid-column: 1 / -1; }
+  }
+  /* the flipped matrix carries counts, not marks: it has to stay readable at
+     thirty accounts, and a thirty-column mark grid does not */
+  .pmx--flip th:first-child, .pmx--flip td:first-child { min-inline-size: 10rem; }
+  .pmx--flip td { vertical-align: middle; }
 
   .segsm { display: flex; background: var(--panel-2); border-radius: 999px; padding: 2px; gap: 2px; }
   .segsm button {
@@ -1504,6 +1543,9 @@ const STAFF_JOBS = [
 ];
 const INVITE_TTL_DAYS = 7;
 const DORMANT_DAYS = 60;
+/* A privileged account made this recently and not yet used is ordinary; past
+   it, "never used" stops being a pending arrival and becomes a loose key. */
+const NEVER_USED_DAYS = 14;
 
 /* Ambiguous glyphs left out on purpose: a code gets read aloud and retyped. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1878,6 +1920,7 @@ const DEFAULT_SESSION = {
   authUserId: null,          // null → the public site; set → the application
   pub: 'landing',            // landing | login | register
   view: null, poolId: 'p_cafe', tab: 'disclosure', appId: null, ownPoolId: null, win: 90, settingKey: null,
+  excSev: 0,                 // 0 = every severity; the filter hides, never the screen
 };
 let SESSION = Object.assign({}, DEFAULT_SESSION);
 try {
@@ -2973,12 +3016,96 @@ const PERM_CATALOG = [
   { k: 'admin.enrol',         ar: 'إصدار دعوات الانضمام',       domain: 'النظام',   sensitive: true },
 ];
 
-const EXC_KIND_ORDER = { 'بيانات': 0, 'حوكمة': 1, 'صلاحية': 2, 'إعداد': 3, 'حساب': 4, 'دعوة': 5 };
+/* ══════════════════════════════════════════════════════════════════════════
+   SEGREGATION OF DUTIES
 
-/* What an administrator has to notice before someone else does. */
+   The permission matrix answers "who holds what". It does not answer the
+   question an administrator is actually accountable for: can one person walk
+   a whole path end to end without anyone else touching it?
+
+   That is a property of a *combination*, never of a single grant, so no
+   amount of staring at the matrix reveals it — which is why the first version
+   of this dashboard, matrix and all, could not have shown it. The
+   combinations are declared here rather than inferred, because a rule nobody
+   can read is a rule nobody can argue with.
+
+   `mitigation` is what separates a warning from a scare. Holding both halves
+   of the disbursement path is a real concentration of power, and
+   actApproveDisbursement still refuses to let the requester approve their own
+   request. Naming the first without the second is alarmism; naming neither is
+   what this screen did before.
+   ══════════════════════════════════════════════════════════════════════════ */
+const SOD_RULES = [
+  { k: 'mint', perms: ['admin.users', 'admin.enrol'], sev: 3,
+    label: 'إنشاء حساب ومنحه صلاحياته',
+    why: 'حاملها يصنع الطرفَ الثاني بنفسه — وكل رقابة ثنائية أخرى تفترض أن ذلك الطرف شخص آخر',
+    mitigation: null },
+  { k: 'pay', perms: ['funds.request', 'funds.approve'], sev: 2,
+    label: 'طلب الصرف واعتماده',
+    why: 'يملك طرفَي معاملة الصرف معًا',
+    mitigation: 'محجوب على مستوى المعاملة: لا يعتمد الطلبَ من أنشأه' },
+  { k: 'orig', perms: ['application.review', 'pool.manage'], sev: 2,
+    label: 'اعتماد الطلب ونشره وإغلاقه',
+    why: 'يوافق على المشروع ثم يبنيه فرصةً ويغلق تمويلها دون مراجع',
+    mitigation: null },
+  { k: 'onboard', perms: ['kyc.approve', 'application.review'], sev: 2,
+    label: 'اعتماد هوية المتقدّم ثم طلبه',
+    why: 'شرط اعتماد الطلب هو تحقّق هوية صاحبه — فيستوفيه بنفسه ثم يعتمد',
+    mitigation: null },
+  { k: 'narrate', perms: ['report.publish', 'pool.manage'], sev: 1,
+    label: 'تعديل الإفصاح ونشر تقريره',
+    why: 'يعدّل ما وعد به الإفصاح، وينشر التقرير الذي يُقاس عليه',
+    mitigation: null },
+];
+
+/* Which declared combinations an account actually holds. */
+function sodFindings(u) {
+  const held = u.perms || [];
+  return SOD_RULES.filter(r => r.perms.every(p => held.includes(p)));
+}
+
+/* An account's permissions against the standard grant of its own job. Nothing
+   forbids the drift — actSetJob resets perms, but a hand-built account keeps
+   whatever it was given. What is missing is any screen that says so. */
+function permDrift(u) {
+  const spec = STAFF_JOBS.find(j => j.k === u.job);
+  if (!spec) return null;
+  const held = new Set(u.perms || []);
+  const std = new Set(spec.perms);
+  const extra = [...held].filter(p => !std.has(p));
+  const missing = [...std].filter(p => !held.has(p));
+  return (extra.length || missing.length) ? { extra, missing, job: spec.k } : null;
+}
+const isSensitive = p => !!(PERM_CATALOG.find(x => x.k === p) || {}).sensitive;
+/* How much of the platform an account opens — the one number that makes two
+   accounts with different permission counts comparable. */
+const accessReach = u => STAFF_NAV.filter(n => canOpen(u, n)).length;
+
+/* A button that can only fail is not a control: mirror what actSetSuspended
+   itself refuses, so the row shows the reason instead of a dead button. */
+function suspendBlocker(t, byId) {
+  if (t.id === byId) return 'لا توقف حسابك بنفسك';
+  if (t.job === 'system_admin' && !t.suspended
+      && !STATE.users.some(x => x.job === 'system_admin' && !x.suspended && x.id !== t.id))
+    return 'آخر مدير نظام نشط';
+  return null;
+}
+
+/* Kinds in the order an administrator should meet them. The previous version
+   sorted by severity alone and cut the list at nine, so a structural finding
+   that shared a severity with seven routine warnings fell off the board
+   unseen. Nothing is cut now — this order only decides which group is read
+   first. */
+const EXC_KIND_ORDER = ['حوكمة', 'فصل مهام', 'صلاحية', 'انحراف', 'حساب', 'دعوة', 'إعداد', 'بيانات'];
+const excKindRank = k => { const i = EXC_KIND_ORDER.indexOf(k); return i < 0 ? 99 : i; };
+
+/* What an administrator has to notice before someone else does.
+   Every finding carries where it is fixed: `act` when it can be fixed from
+   this row, `view` when it needs the full screen. */
 function accessExceptions() {
   const now = Date.now();
   const out = [];
+  const meId = SESSION.authUserId;
   const staff = STATE.users.filter(x => x.role === 'staff');
   const active = staff.filter(x => !x.suspended);
 
@@ -3001,6 +3128,16 @@ function accessExceptions() {
       why: 'الرقابة الثنائية على الإعدادات تحتاج مديرَين — لا يمكن اعتماد أي اقتراح',
       ref: 'admin.users', view: 'ops.admin' });
 
+  /* Only the combinations nothing downstream blocks. A concentration the
+     engine already refuses per transaction is documented in band 02, not
+     raised here as work — an exception list that includes what is already
+     handled teaches an administrator to skim it. */
+  active.forEach(x => sodFindings(x).filter(r => !r.mitigation).forEach(r => {
+    out.push({ sev: r.sev, kind: 'فصل مهام', what: x.name + ' — ' + r.label,
+      why: r.why + ' · لا ضابط يمنعها بعد المنح',
+      ref: r.perms.join(' + '), view: 'ops.admin' });
+  }));
+
   staff.filter(x => !(x.perms || []).length && !x.suspended).forEach(x =>
     out.push({ sev: 2, kind: 'حساب', what: x.name, why: 'حساب نشط بلا أي صلاحية — لا يفتح شاشة واحدة',
       ref: x.email || x.id, view: 'ops.admin' }));
@@ -3008,7 +3145,9 @@ function accessExceptions() {
   staff.filter(x => x.suspended).forEach(x =>
     out.push({ sev: 1, kind: 'حساب', what: x.name,
       why: 'موقوف منذ ' + Math.floor((now - new Date(x.suspended).getTime()) / DAY) + ' يومًا',
-      ref: x.email || x.id, view: 'ops.admin' }));
+      ref: x.email || x.id,
+      act: { label: 'إعادة تفعيل', a: 'toggleSuspend', perm: 'admin.enrol',
+             d: { user: x.id, on: '0' } } }));
 
   STATE.invites.forEach(i => {
     const st = inviteState(i);
@@ -3016,26 +3155,64 @@ function accessExceptions() {
       const left = Math.ceil((new Date(i.expiresAt).getTime() - now) / DAY);
       if (left <= 2) out.push({ sev: 1, kind: 'دعوة', what: 'كود ' + i.code,
         why: 'صالح ' + (left <= 0 ? 'اليوم فقط' : left + ' يومًا') + ' لوظيفة '
-          + (JOB_AR[i.job] || i.job) + ' ولم يُستخدم', ref: i.code, view: 'ops.admin' });
+          + (JOB_AR[i.job] || i.job) + ' ولم يُستخدم', ref: i.code,
+        act: { label: 'إلغاء', a: 'revokeInvite', perm: 'admin.enrol', danger: true,
+               d: { code: i.code } } });
     } else if (st === 'expired') {
       out.push({ sev: 1, kind: 'دعوة', what: 'كود ' + i.code,
         why: 'انتهى دون استخدام — لوظيفة ' + (JOB_AR[i.job] || i.job), ref: i.code, view: 'ops.admin' });
     }
   });
 
-  /* A privileged account nobody has used in months is a key left in a door.
-     Only sensitive permissions count: a dormant read-only account is untidy,
-     not dangerous. */
-  active.filter(x => (x.perms || []).some(p => {
-    const pc = PERM_CATALOG.find(y => y.k === p);
-    return pc && pc.sensitive;
-  })).forEach(x => {
-    const days = x.lastSignInAt
-      ? Math.floor((now - new Date(x.lastSignInAt).getTime()) / DAY) : null;
-    if (days !== null && days >= DORMANT_DAYS)
+  /* A privileged account nobody has used is a key left in a door. The
+     previous rule read `days !== null && days >= DORMANT_DAYS`, so an account
+     that had *never* been signed into — lastSignInAt absent, days null — fell
+     straight through it. That is the worse case of the two: a key nobody has
+     ever turned, that nobody would miss. */
+  active.filter(x => (x.perms || []).some(isSensitive)).forEach(x => {
+    const blocker = suspendBlocker(x, meId);
+    const stop = blocker ? null
+      : { label: 'إيقاف', a: 'toggleSuspend', perm: 'admin.enrol', danger: true,
+          d: { user: x.id, on: '1' } };
+    if (!x.lastSignInAt) {
+      /* Newly provisioned and not yet used is ordinary — an account is made
+         before its holder first signs in. Provisioned weeks ago and still
+         never used is the finding. Without a createdAt there is nothing to
+         date it by, and the row says that rather than guessing. */
+      const age = x.createdAt ? Math.floor((now - new Date(x.createdAt).getTime()) / DAY) : null;
+      const fresh = age !== null && age < NEVER_USED_DAYS;
+      out.push({ sev: fresh ? 1 : 3, kind: 'حساب', what: x.name,
+        why: (fresh
+          ? 'حساب بصلاحيات حسّاسة أُنشئ قبل ' + age + ' يومًا ولم يُستخدم بعد'
+          : 'حساب بصلاحيات حسّاسة لم يُستخدم قط'
+            + (age !== null ? ' منذ إنشائه قبل ' + age + ' يومًا' : '، ولا تاريخ إنشاء يؤرّخه'))
+          + (blocker ? ' · ' + blocker : ''),
+        ref: x.email || x.id,
+        act: fresh ? null : stop, view: (fresh || !stop) ? 'ops.admin' : null });
+      return;
+    }
+    const days = Math.floor((now - new Date(x.lastSignInAt).getTime()) / DAY);
+    if (days >= DORMANT_DAYS)
       out.push({ sev: 2, kind: 'حساب', what: x.name,
-        why: 'حساب بصلاحيات حسّاسة لم يُستخدم منذ ' + days + ' يومًا',
-        ref: x.email || x.id, view: 'ops.admin' });
+        why: 'حساب بصلاحيات حسّاسة لم يُستخدم منذ ' + days + ' يومًا'
+          + (blocker ? ' · ' + blocker : ''),
+        ref: x.email || x.id, act: stop, view: stop ? null : 'ops.admin' });
+  });
+
+  /* Permissions that no longer match the job they are supposed to come from.
+     Nothing in the engine forbids it — an account built by hand keeps what it
+     was handed — and until now nothing showed it either. */
+  active.forEach(x => {
+    const d = permDrift(x);
+    if (!d) return;
+    const hot = d.extra.filter(isSensitive);
+    const parts = [];
+    if (d.extra.length) parts.push('تزيد ' + d.extra.length
+      + (hot.length ? ' منها ' + hot.length + ' حسّاسة' : ''));
+    if (d.missing.length) parts.push('تنقص ' + d.missing.length);
+    out.push({ sev: hot.length ? 2 : 1, kind: 'انحراف', what: x.name,
+      why: 'صلاحياته لا تطابق معيار وظيفة «' + (JOB_AR[d.job] || d.job) + '» — ' + parts.join(' و'),
+      ref: (d.extra[0] || d.missing[0] || ''), view: 'ops.admin' });
   });
 
   /* A recovery code still open is a second way into an account. */
@@ -3044,7 +3221,9 @@ function accessExceptions() {
     const hrs = Math.max(0, Math.ceil((new Date(r.expiresAt).getTime() - now) / 3600000));
     out.push({ sev: 2, kind: 'حساب', what: 'كود استرداد قائم لحساب ' + t.name,
       why: 'صالح ' + hrs + ' ساعة بعد — يفتح الحساب لمن يحمله ويعرف بريده',
-      ref: r.code, view: 'ops.admin' });
+      ref: r.code,
+      act: { label: 'إلغاء', a: 'revokeReset', perm: 'admin.users', danger: true,
+             d: { code: r.code } } });
   });
 
   if (MIGRATION.filled.length)
@@ -3062,13 +3241,22 @@ function accessExceptions() {
       ref: x.id, view: 'ops.settings' });
   });
 
-  /* Severity first, then kind. The tiebreaker matters: the list is cut at
-     nine, and seven routine "only one person holds this" warnings share a
-     severity with a finding that says the document itself arrived malformed.
-     Sorted by severity alone the structural finding sorts last and falls off
-     the board. A fixed kind order keeps it in view. */
   return out.sort((a, b) => b.sev - a.sev
-    || (EXC_KIND_ORDER[a.kind] ?? 9) - (EXC_KIND_ORDER[b.kind] ?? 9));
+    || excKindRank(a.kind) - excKindRank(b.kind)
+    || String(a.what).localeCompare(String(b.what), 'ar'));
+}
+
+/* The subset of the audit log that changed who can reach what. Every one of
+   these actions is already recorded; none of them was ever readable together,
+   so "did access change when I was not looking" had no answer. */
+const ACCESS_ACTIONS = new Set([
+  'إنشاء حساب', 'إنشاء حساب مدير نظام', 'انضمام موظف بدعوة', 'تغيير وظيفة',
+  'إيقاف حساب', 'إعادة تفعيل حساب', 'إصدار كود دعوة', 'إلغاء كود دعوة',
+  'إصدار كود استرداد', 'إلغاء كود استرداد', 'استرداد كلمة المرور',
+  'تغيير كلمة المرور', 'طمس بيانات شخصية', 'اعتماد تحقق', 'رفض تحقق',
+]);
+function accessChanges() {
+  return STATE.audit.filter(r => ACCESS_ACTIONS.has(r.action)).slice().reverse();
 }
 
 /* The chain is either intact or it is not; saying which row broke is the
@@ -3428,62 +3616,203 @@ VIEWS['ops.dash'] = () => {
 /* ══════════════════════════════════════════════════════════════════════════
    ops · the administration dashboard
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   ops · the administration dashboard
+
+   Five questions, in the order an administrator is accountable for them.
+   Operations asks where the money is; administration asks who can reach it,
+   whether anyone can reach it alone, what changed while nobody was looking,
+   and whether the record of who did what still hangs together.
+
+   Two rules this screen keeps that the first version did not:
+
+   Nothing is silently cut. The old list stopped at nine rows and said "and N
+   more" with no way to reach them, so a finding could be computed, counted,
+   and never seen. Every finding here is rendered; the filter is the reader's
+   choice, not the screen's.
+
+   Every row ends in the same place the fix does. Where the fix is one act —
+   revoke, suspend, reactivate — the row carries the button, and it goes
+   through the same commit(), the same assertPerm(), the same chained audit
+   row as it would from any other screen. No new mutation exists for this
+   dashboard: it gains the action without gaining a privilege.
+   ══════════════════════════════════════════════════════════════════════════ */
+const SEV_AR = { 3: ['crit', 'حرِج'], 2: ['warn', 'انتباه'], 1: ['', 'للعلم'] };
+
+/* Where a finding is fixed. A control the account cannot use is not shown as
+   a control — the reference is shown instead, so the row still identifies
+   what it is talking about. */
+function excTail(x, u) {
+  if (x.act && can(u, x.act.perm)) {
+    const attrs = Object.keys(x.act.d)
+      .map(k => ' data-' + k + '="' + esc(x.act.d[k]) + '"').join('');
+    return '<button class="btn btn--sm' + (x.act.danger ? ' btn--danger' : '')
+      + '" data-act="' + x.act.a + '"' + attrs + '>' + esc(x.act.label) + '</button>';
+  }
+  if (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view)))
+    return '<button class="btn btn--sm" data-act="go" data-view="' + x.view + '">افتح</button>';
+  return '<span class="xs muted mono">' + esc(x.ref || '') + '</span>';
+}
+
 VIEWS['ops.adash'] = () => {
   const u = me();
-  const days = SESSION.win || 90;
+  const days = SESSION.win === 30 ? 30 : 90;
   const exc = accessExceptions();
   const audit = auditIntegrity();
-  const activity = auditActivity(Math.min(days, 90));
+  const activity = auditActivity(days);
   const staff = STATE.users.filter(x => x.role === 'staff');
   const active = staff.filter(x => !x.suspended);
   const members = STATE.users.filter(x => x.role !== 'staff');
   const openInv = STATE.invites.filter(i => inviteState(i) === 'open');
   const pendingSet = STATE.settingProposals.filter(x => x.status === 'pending');
 
-  /* ── band 1 · access exceptions ── */
-  const SEV = { 3: ['crit', 'حرِج'], 2: ['warn', 'انتباه'], 1: ['', 'للعلم'] };
-  const b1 = exc.length
-    ? '<div class="card"><div class="card__body card__body--flush" style="padding:.4rem 1rem"><div class="exc">'
-      + exc.slice(0, 9).map(x => {
-          const sv = SEV[x.sev] || SEV[1];
-          return '<div class="exc__row">'
-            + '<span class="exc__age' + (sv[0] ? ' exc__age--' + sv[0] : '') + '">' + sv[1] + '</span>'
-            + '<span><span class="exc__what">' + esc(x.what) + '</span>'
-            + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
-            + (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view))
-                ? '<button class="btn btn--sm" data-act="go" data-view="' + x.view + '">افتح</button>'
-                : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
-            + '</div>';
-        }).join('')
-      + '</div>' + (exc.length > 9 ? '<p class="xs muted" style="padding:.5rem 0">و' + (exc.length - 9) + ' بندًا آخر.</p>' : '')
-      + '</div></div>'
-    : '<div class="note note--pos">لا خلل في الوصول: كل صلاحية حسّاسة يحملها أكثر من حساب نشط، ولا حسابات معطّلة الصلاحيات ولا دعوات منتهية.</div>';
+  /* ── band 1 · access exceptions, grouped and complete ── */
+  const bySev = { 3: 0, 2: 0, 1: 0 };
+  exc.forEach(x => { bySev[x.sev] += 1; });
+  const pick = [3, 2, 1].includes(SESSION.excSev) ? SESSION.excSev : 0;
+  const shown = pick ? exc.filter(x => x.sev === pick) : exc;
+  const filter = '<span class="segsm">'
+    + [[0, 'الكل (' + exc.length + ')'], [3, SEV_AR[3][1] + ' ' + bySev[3]],
+       [2, SEV_AR[2][1] + ' ' + bySev[2]], [1, SEV_AR[1][1] + ' ' + bySev[1]]]
+      .map(o => '<button data-act="setExcSev" data-sev="' + o[0] + '" aria-pressed="'
+        + (pick === o[0]) + '">' + esc(o[1]) + '</button>').join('')
+    + '</span>';
 
-  /* ── band 2 · who holds what ──
+  const groups = EXC_KIND_ORDER
+    .filter(k => shown.some(x => x.kind === k))
+    .map(k => ({ k, rows: shown.filter(x => x.kind === k) }));
+
+  const b1 = !exc.length
+    ? '<div class="note note--pos">لا خلل في الوصول: كل صلاحية حسّاسة يحملها أكثر من حساب نشط، '
+      + 'ولا تجميع بلا ضابط، ولا حساب مميَّز غير مستخدم، ولا دعوة أو كود استرداد معلّق.</div>'
+    : !shown.length
+      ? '<div class="note note--pos">لا بند بهذه الشدّة. غيّر المرشّح أعلاه لرؤية البقية.</div>'
+      : '<div class="card"><div class="card__body card__body--flush" style="padding:.2rem 1rem">'
+        + groups.map(g => '<div class="excg"><div class="excg__h">' + esc(g.k)
+            + '<span class="excg__n">' + g.rows.length + '</span></div>'
+            + '<div class="exc">' + g.rows.map(x => {
+                const sv = SEV_AR[x.sev] || SEV_AR[1];
+                return '<div class="exc__row">'
+                  + '<span class="exc__age' + (sv[0] ? ' exc__age--' + sv[0] : '') + '">' + sv[1] + '</span>'
+                  + '<span><span class="exc__what">' + esc(x.what) + '</span>'
+                  + '<span class="exc__why">' + esc(x.why) + '</span></span>'
+                  + excTail(x, u) + '</div>';
+              }).join('') + '</div></div>').join('')
+        + '</div></div>'
+        + '<p class="xs muted">معروض ' + shown.length + ' من ' + exc.length
+        + ' بندًا — لا يُقتطع شيء من هذه القائمة، والمرشّح وحده يخفي.</p>';
+
+  /* ── band 2 · segregation of duties ── */
+  const sodRows = active.map(x => ({ x, hits: sodFindings(x) })).filter(r => r.hits.length);
+  const naked = sodRows.filter(r => r.hits.some(h => !h.mitigation));
+  const sodList = sodRows.length
+    ? '<div class="stack-s">' + sodRows
+        .sort((a, b) => Math.max(...b.hits.map(h => h.sev)) - Math.max(...a.hits.map(h => h.sev)))
+        .map(r => '<div class="sod">'
+          + '<div class="sod__h"><strong class="sm">' + esc(r.x.name) + '</strong>'
+          + '<span class="chip">' + esc(JOB_AR[r.x.job] || r.x.job) + '</span>'
+          + '<span class="spacer xs muted">يفتح ' + accessReach(r.x) + ' من '
+          + STAFF_NAV.length + ' شاشة</span></div>'
+          + r.hits.map(h => '<div class="sod__r">'
+              + '<span class="exc__age' + (h.mitigation ? '' : ' exc__age--crit') + '">'
+              + (h.mitigation ? 'محجوب' : 'مكشوف') + '</span>'
+              + '<span><span class="exc__what">' + esc(h.label) + '</span>'
+              + '<span class="exc__why">' + esc(h.why) + '</span>'
+              + '<span class="exc__why mono">' + esc(h.perms.join(' + ')) + '</span></span>'
+              + '<span class="sm">' + (h.mitigation
+                  ? '<span class="chip chip--pos"><span class="chip__dot"></span>'
+                    + esc(h.mitigation) + '</span>'
+                  : '<span class="chip chip--crit"><span class="chip__dot"></span>'
+                    + 'لا ضابط بعد المنح</span>') + '</span>'
+              + '</div>').join('')
+          + '</div>').join('') + '</div>'
+    : '<div class="note note--pos">لا حساب نشط يجمع مسارًا كاملًا في يده.</div>';
+
+  const b2 = '<div class="grid grid--2 grid--top">'
+    + '<div class="card"><div class="card__body">'
+    + '<div class="hero"><span class="hero__v" style="color:'
+    + (naked.length ? 'var(--crit)' : 'var(--pos)') + '">' + naked.length + '</span>'
+    + '<span class="hero__k">حسابًا نشطًا يجمع مسارًا كاملًا لا يمنعه ضابط لاحق</span></div>'
+    + '<p class="xs muted">التجميع نفسه ليس خطأً دائمًا — فريق صغير يضطر إليه. الخطأ أن '
+    + 'يكون غير معروف. وحين يمنعه ضابط على مستوى المعاملة يُقال ذلك هنا صراحةً بدل '
+    + 'أن يُعرض كخطر قائم.</p>'
+    + '<div class="tablewrap"><table><thead><tr><th>التجميع</th><th class="n">الشدّة</th>'
+    + '<th>الضابط</th></tr></thead><tbody>'
+    + SOD_RULES.map(r => '<tr><td class="sm">' + esc(r.label)
+        + '<div class="xs muted mono">' + esc(r.perms.join(' + ')) + '</div></td>'
+        + '<td class="n">' + (SEV_AR[r.sev] || SEV_AR[1])[1] + '</td>'
+        + '<td class="xs">' + (r.mitigation ? esc(r.mitigation)
+            : '<span style="color:var(--crit)">لا شيء يمنعها بعد المنح</span>') + '</td></tr>').join('')
+    + '</tbody></table></div>'
+    + '</div></div>'
+    + '<div class="card"><div class="card__body">' + frameHtml({
+        title: 'من يجمع ماذا',
+        sub: 'كل حساب نشط يحمل تجميعًا معلنًا، ومعه الضابط الذي يمنعه — أو غيابه. '
+           + 'هذه هي المعلومة التي لا تظهر في مصفوفة الصلاحيات مهما طال النظر إليها، '
+           + 'لأنها خاصية اجتماع لا خاصية منحة.',
+        chart: sodList,
+        cols: ['الحساب', 'التجميع', 'الشدّة', 'الضابط المانع'],
+        rows: sodRows.flatMap(r => r.hits.map(h => [esc(r.x.name), esc(h.label),
+          (SEV_AR[h.sev] || SEV_AR[1])[1], h.mitigation ? esc(h.mitigation) : 'لا شيء'])),
+      }) + '</div></div></div>';
+
+  /* ── band 3 · who holds what ──
      Presence, not magnitude: a filled mark or an empty one, never a colour
-     ramp. The count column is where the risk shows. */
+     ramp. Above eight accounts the mark grid stops being readable — a column
+     per account was fine for the seeded six and unreadable at thirty — so the
+     rows and columns trade places and the marks become per-domain counts.
+     The table underneath carries the exact grants either way. */
+  const FLIP_AT = 8;
+  const flip = active.length > FLIP_AT;
   const cell = (has, sensitive) => has
     ? '<span class="pm pm--on' + (sensitive ? ' pm--hot' : '') + '" aria-label="ممنوحة"></span>'
     : '<span class="pm" aria-label="غير ممنوحة"></span>';
-  const matrix = '<div class="tablewrap"><table class="pmx"><thead><tr>'
-    + '<th>الصلاحية</th>'
-    + active.map(x => '<th class="pmx__who"><span>' + esc(x.name.split(' ')[0]) + '</span>'
-        + '<span class="xs muted">' + esc(JOB_AR[x.job] || '') + '</span></th>').join('')
-    + '<th class="n">من يملكها</th></tr></thead><tbody>'
-    + PERM_CATALOG.map(pc => {
-        const holders = active.filter(x => (x.perms || []).includes(pc.k));
-        const tone = !holders.length ? 'chip--crit' : holders.length === 1 && pc.sensitive ? 'chip--warn' : '';
-        return '<tr><td><div class="sm">' + esc(pc.ar) + (pc.sensitive ? ' <span class="pm pm--hot"></span>' : '') + '</div>'
-          + '<div class="xs muted mono">' + pc.k + '</div></td>'
-          + active.map(x => '<td class="pmx__c">' + cell((x.perms || []).includes(pc.k), pc.sensitive) + '</td>').join('')
-          + '<td class="n"><span class="chip ' + tone + '">' + holders.length + '</span></td></tr>';
-      }).join('')
-    + '</tbody></table></div>';
+  const DOMAINS = [...new Set(PERM_CATALOG.map(p => p.domain))];
 
-  const b2 = '<div class="card"><div class="card__body">' + frameHtml({
+  const matrix = flip
+    ? '<div class="tablewrap"><table class="pmx pmx--flip"><thead><tr><th>الحساب</th>'
+      + DOMAINS.map(d => '<th class="n">' + esc(d) + '</th>').join('')
+      + '<th class="n">حسّاسة</th><th class="n">مدى الوصول</th></tr></thead><tbody>'
+      + active.map(x => {
+          const held = x.perms || [];
+          const hot = held.filter(isSensitive).length;
+          return '<tr><td><div class="sm">' + esc(x.name) + '</div>'
+            + '<div class="xs muted">' + esc(JOB_AR[x.job] || '') + '</div></td>'
+            + DOMAINS.map(d => {
+                const all = PERM_CATALOG.filter(p => p.domain === d);
+                const n = all.filter(p => held.includes(p.k)).length;
+                return '<td class="n"><span class="chip' + (n === all.length ? ' chip--brand' : '')
+                  + '">' + n + '/' + all.length + '</span></td>';
+              }).join('')
+            + '<td class="n"><span class="chip' + (hot ? ' chip--warn' : '') + '">' + hot + '</span></td>'
+            + '<td class="n">' + accessReach(x) + '/' + STAFF_NAV.length + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div>'
+    : '<div class="tablewrap"><table class="pmx"><thead><tr><th>الصلاحية</th>'
+      + active.map(x => '<th class="pmx__who"><span>' + esc(x.name.split(' ')[0]) + '</span>'
+          + '<span class="xs muted">' + esc(JOB_AR[x.job] || '') + '</span></th>').join('')
+      + '<th class="n">من يملكها</th></tr></thead><tbody>'
+      + PERM_CATALOG.map(pc => {
+          const holders = active.filter(x => (x.perms || []).includes(pc.k));
+          const tone = !holders.length ? 'chip--crit' : holders.length === 1 && pc.sensitive ? 'chip--warn' : '';
+          return '<tr><td><div class="sm">' + esc(pc.ar) + (pc.sensitive ? ' <span class="pm pm--hot"></span>' : '') + '</div>'
+            + '<div class="xs muted mono">' + pc.k + '</div></td>'
+            + active.map(x => '<td class="pmx__c">' + cell((x.perms || []).includes(pc.k), pc.sensitive) + '</td>').join('')
+            + '<td class="n"><span class="chip ' + tone + '">' + holders.length + '</span></td></tr>';
+        }).join('')
+      + '</tbody></table></div>'
+      + '<div class="row row--tight xs muted" style="margin-block-start:.6rem">'
+      + active.map(x => '<span>' + esc(x.name) + ': ' + accessReach(x) + '/' + STAFF_NAV.length
+          + ' شاشة</span>').join('<span>·</span>') + '</div>';
+
+  const b3 = '<div class="card"><div class="card__body">' + frameHtml({
       title: 'من يملك ماذا',
-      sub: 'العلامة الممتلئة تعني ممنوحة، والفارغة غير ممنوحة — حضور لا مقدار، فلا تدرّج لوني. '
-         + 'العلامة الصغيرة بجانب الصلاحية تعني أنها حسّاسة، وعمود العدد هو موضع الخطر: صفر يعني عملًا متوقفًا، وواحد يعني اعتمادًا على شخص واحد.',
+      sub: flip
+        ? active.length + ' حسابًا نشطًا — فوق ' + FLIP_AT + ' حسابات تُقلب المصفوفة إلى '
+          + 'عدّ لكل مجال، لأن شبكة علامات بهذا العرض لا تُقرأ. الجدول تحتها يحمل المنح بدقّة.'
+        : 'العلامة الممتلئة ممنوحة والفارغة غير ممنوحة — حضور لا مقدار، فلا تدرّج لوني. '
+          + 'العلامة المستديرة الصغيرة تعني صلاحية حسّاسة، وعمود العدد هو موضع الخطر: '
+          + 'صفر عمل متوقف، وواحد اعتماد على شخص واحد.',
       chart: matrix,
       cols: ['الصلاحية', 'المفتاح', 'عدد من يملكها', 'من'],
       rows: PERM_CATALOG.map(pc => {
@@ -3493,49 +3822,70 @@ VIEWS['ops.adash'] = () => {
       }),
     }) + '</div></div>';
 
-  /* ── band 3 · is the record intact ── */
-  const b3 = '<div class="grid grid--2 grid--top">'
+  /* ── band 4 · what changed in access ── */
+  const cutoff = Date.now() - days * DAY;
+  const allChanges = accessChanges();
+  const changes = allChanges.filter(r => new Date(r.at).getTime() >= cutoff);
+  const older = allChanges.length - changes.length;
+  const b4 = '<div class="card"><div class="card__body">'
+    + (changes.length
+        ? '<div class="tl">' + changes.map(r => {
+            const who = (user(r.actor) || {}).name || 'غير معروف';
+            return '<div class="tl__item"><span class="tl__dot tl__dot--done"></span><div>'
+              + '<div class="tl__t">' + esc(r.action) + ' — <span class="sm">' + esc(who) + '</span></div>'
+              + '<div class="tl__d">' + dt(r.at, true) + '</div>'
+              + '<p class="sm">' + esc(r.detail || r.entity || '') + '</p></div></div>';
+          }).join('') + '</div>'
+        : '<p class="empty">لم يتغيّر شيء في الوصول خلال ' + days + ' يومًا.</p>')
+    + (older ? '<p class="xs muted">و' + older + ' تغييرًا أقدم من الفترة المختارة — '
+        + 'وسّع الفترة أعلاه أو افتح سجل التدقيق كاملًا.</p>' : '')
+    + '<p class="xs muted">كل سطر هنا موجود في سجل التدقيق منذ وقوعه. الجديد أنه يُقرأ '
+    + 'مجتمعًا: «هل تغيّر الوصول وأنا لا أنظر» سؤال لم يكن له جواب في شاشة واحدة.</p>'
+    + '</div></div>';
+
+  /* ── band 5 · is the record intact ── */
+  const topActor = audit.byActor[0];
+  const share = audit.total ? Math.round((topActor ? topActor.value : 0) / audit.total * 100) : 0;
+  const b5 = '<div class="grid grid--2 grid--top">'
     + '<div class="card"><div class="card__body">'
     + '<div class="hero"><span class="hero__v" style="color:' + (audit.intact ? 'var(--pos)' : 'var(--crit)') + '">'
     + (audit.intact ? 'سليمة' : 'مكسورة') + '</span>'
     + '<span class="hero__k">سلسلة التجزئة عبر ' + audit.total + ' سطرًا في سجل التدقيق</span></div>'
     + (audit.intact
-        ? '<div class="note note--pos sm">أُعيد حساب تجزئة كل سطر من محتواه ومن تجزئة سابقه، وطابقت المخزَّنة في كل الأسطر. '
-          + 'أي تعديل أو حذف لسطر واحد كان سيكسر كل ما بعده.</div>'
-        : '<div class="note note--crit sm">لا تطابق في '
-          + (audit.recomputed.length ? audit.recomputed.length + ' سطرًا عند إعادة الحساب' : '')
-          + (audit.breaks.length ? (audit.recomputed.length ? '، و' : '') + audit.breaks.length + ' وصلة بين سطرين' : '')
-          + '. أول موضع: السطر رقم ' + ((audit.recomputed[0] != null ? audit.recomputed[0] : audit.breaks[0]) + 1) + '.</div>')
+        ? '<div class="note note--pos sm">أُعيد حساب تجزئة كل سطر من محتواه ومن تجزئة سابقه، '
+          + 'وطابقت المخزَّنة في كل الأسطر. أي تعديل أو حذف لسطر واحد كان سيكسر كل ما بعده.</div>'
+        : (() => {
+            const i = audit.recomputed[0] != null ? audit.recomputed[0] : audit.breaks[0];
+            const r = STATE.audit[i] || {};
+            return '<div class="note note--crit sm">لا تطابق في '
+              + (audit.recomputed.length ? audit.recomputed.length + ' سطرًا عند إعادة الحساب' : '')
+              + (audit.breaks.length ? (audit.recomputed.length ? '، و' : '') + audit.breaks.length + ' وصلة بين سطرين' : '')
+              + '. أول موضع: السطر ' + (i + 1) + ' — «' + esc(r.action || '') + '» '
+              + dt(r.at, true) + ' · تجزئة مخزَّنة <span class="mono">'
+              + esc(String(r.hash || '').slice(0, 12)) + '…</span>. '
+              + 'السطر نفسه هو ما تغيّر، أو سطر قبله.</div>';
+          })())
     + '<div class="grid grid--3" style="gap:.6rem">'
     + [['أسطر السجل', String(audit.total)],
        ['أنواع الإجراءات', String(audit.byAction.length)],
        ['منفِّذون مختلفون', String(audit.byActor.length)]]
       .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
-    + '</div></div></div>'
+    + '</div>'
+    + '<div class="note ' + (share > 70 ? 'note--warn' : '') + ' sm">'
+    + (topActor
+        ? 'أكثر المنفِّذين: <strong>' + esc(topActor.name || topActor.label) + '</strong> بـ' + share + '% من الأسطر. '
+          + (share > 70 ? 'تركّز بهذا الحجم يجعل الرقابة الثنائية شكلية — طرفان في السجل واحدهما نادر.'
+                        : 'التوزّع معقول: لا حساب واحد يحمل السجل.')
+        : 'لا أسطر بعد.') + '</div>'
+    + '</div></div>'
     + '<div class="card"><div class="card__body">' + frameHtml({
         title: 'نشاط السجل يوميًّا',
-        sub: 'عدد الإجراءات المسجَّلة في كل يوم. الفراغ الطويل في نظام يُفترض أنه يعمل سؤال بحد ذاته.',
+        sub: 'عدد الإجراءات المسجَّلة في كل يوم خلال ' + days + ' يومًا. '
+           + 'الفراغ الطويل في نظام يُفترض أنه يعمل سؤال بحدّ ذاته.',
         chart: columnsSvg(activity.map(a => ({ label: a.label, value: a.value, count: a.count })),
           v => v + ' إجراء'),
         cols: ['اليوم', 'عدد الإجراءات'],
         rows: activity.filter(a => a.value > 0).map(a => [a.label, String(a.value)]),
-      }) + '</div></div></div>';
-
-  /* ── band 4 · governance ── */
-  const b4 = '<div class="grid grid--2 grid--top">'
-    + '<div class="card"><div class="card__body">' + frameHtml({
-        title: 'الإجراءات حسب نوعها',
-        sub: 'ما الذي يحدث في هذا النظام فعلًا، مرتَّبًا بالتكرار.',
-        chart: barsHtml(audit.byAction.slice(0, 8), v => String(v), CAT),
-        cols: ['الإجراء', 'المرات'],
-        rows: audit.byAction.map(a => [esc(a.label), String(a.value)]),
-      }) + '</div></div>'
-    + '<div class="card"><div class="card__body">' + frameHtml({
-        title: 'الإجراءات حسب المنفِّذ',
-        sub: 'تركّز كل الإجراءات في حساب واحد يعني أن الرقابة الثنائية شكلية.',
-        chart: barsHtml(audit.byActor.slice(0, 8), v => String(v), CAT),
-        cols: ['المنفِّذ', 'المرات'],
-        rows: audit.byActor.map(a => [esc(a.label), String(a.value)]),
       }) + '</div></div></div>'
     + '<div class="grid grid--4">'
     + [['حسابات فريق نشطة', String(active.length)],
@@ -3553,13 +3903,19 @@ VIEWS['ops.adash'] = () => {
 
   return {
     crumb: 'إدارة النظام', title: 'لوحة إدارة النظام',
-    lede: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يستطيع الوصول إليه، وهل يستطيع أحد وحده، وهل ما زال سجل «من فعل ماذا» متماسكًا.',
+    lede: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يصل إليه، وهل يصل أحد وحده، '
+        + 'وما الذي تغيّر في الوصول، وهل ما زال سجل «من فعل ماذا» متماسكًا.',
     body: '<div class="stack" style="gap:2rem">'
       + band('01', 'هل في الوصول خلل؟',
-             exc.length ? exc.length + ' بندًا، الأخطر أولًا' : 'لا شيء يستدعي تدخّلًا', b1)
-      + band('02', 'من يملك ماذا؟', PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا', b2)
-      + band('03', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b3, winPicker)
-      + band('04', 'ما الذي يجري في النظام؟', 'الإجراءات ومن ينفّذها، وحالة الحوكمة', b4)
+             exc.length ? exc.length + ' بندًا، لا يُقتطع منها شيء' : 'لا شيء يستدعي تدخّلًا',
+             b1, exc.length ? filter : '')
+      + band('02', 'من يستطيع أن يفعل ماذا وحده؟',
+             SOD_RULES.length + ' تجميعًا معلنًا على ' + active.length + ' حسابًا نشطًا', b2)
+      + band('03', 'من يملك ماذا؟',
+             PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا', b3)
+      + band('04', 'ما الذي تغيّر في الوصول؟',
+             changes.length + ' تغييرًا خلال ' + days + ' يومًا', b4, winPicker)
+      + band('05', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b5)
       + '</div>',
   };
 };
@@ -4464,10 +4820,23 @@ const EXPORTS = {
     /* Deliberately no salt, no hash, no e-mail beyond the identifier the
        administrator already sees on screen. */
     build: () => ({
-      cols: ['المعرّف', 'الاسم', 'البريد', 'الصفة', 'الوظيفة', 'الحالة', 'مصدر الحساب', 'الصلاحيات'],
-      rows: STATE.users.filter(x => x.role === 'staff').map(x => [x.id, x.name, x.email || '',
-        ROLE_AR[x.role], JOB_AR[x.job] || x.job || '', x.suspended ? 'موقوف' : 'نشط',
-        x.enrolledVia || 'مُنشأ ابتداءً', (x.perms || []).join(' ')]),
+      cols: ['المعرّف', 'الاسم', 'البريد', 'الصفة', 'الوظيفة', 'الحالة', 'مصدر الحساب',
+             'آخر دخول', 'مدى الوصول', 'تجميعات فصل المهام', 'مكشوفة بلا ضابط',
+             'انحراف عن معيار الوظيفة', 'الصلاحيات'],
+      rows: STATE.users.filter(x => x.role === 'staff').map(x => {
+        const hits = sodFindings(x);
+        const drift = permDrift(x);
+        return [x.id, x.name, x.email || '',
+          ROLE_AR[x.role], JOB_AR[x.job] || x.job || '', x.suspended ? 'موقوف' : 'نشط',
+          x.enrolledVia || 'مُنشأ ابتداءً',
+          x.lastSignInAt || 'لم يدخل قط',
+          accessReach(x) + '/' + STAFF_NAV.length,
+          hits.map(h => h.label).join(' | ') || '—',
+          hits.filter(h => !h.mitigation).map(h => h.label).join(' | ') || '—',
+          drift ? ['تزيد: ' + (drift.extra.join(' ') || '—'),
+                   'تنقص: ' + (drift.missing.join(' ') || '—')].join(' · ') : 'مطابق',
+          (x.perms || []).join(' ')];
+      }),
     }),
   },
 };
@@ -5226,6 +5595,18 @@ function appShell(u) {
   +     '<div class="side__group">الحالة</div>'
   +     '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '') + '" style="padding:.4rem .6rem">'
   +       '<span class="savebar__dot" aria-hidden="true"></span><span>' + modeLabel + '</span></div>'
+  /* Two different questions, so two lines: whether an action reaches anyone
+     else, and whether the page opens at all without a network. */
+  +     '<div class="savebar savebar--' + (OFFLINE === 'ready' ? 'live' : OFFLINE === 'arming' ? '' : 'ro')
+  +       '" style="padding:.4rem .6rem">'
+  +       '<span class="savebar__dot" aria-hidden="true"></span><span>'
+  +       esc(OFFLINE_LABEL[OFFLINE] || OFFLINE_LABEL.none) + '</span></div>'
+  +     (SW_WAITING
+        ? '<div class="note note--info xs" style="margin:.5rem .2rem 0">صدرت نسخة أحدث من التطبيق. '
+          + '<button class="linkbtn" data-act="applyUpdate">أعد التحميل لتطبيقها</button>'
+          + '<div class="xs muted" style="margin-block-start:.2rem">لا تُطبَّق من تلقائها: '
+          + 'القفز بالنسخة وأنت في منتصف نموذج ليس تحديثًا بل فقدان عمل.</div></div>'
+        : '')
   +     (u.role === 'investor' && u.kyc !== 'approved'
         ? '<div class="note note--warn xs" style="margin:.5rem .2rem 0">تحققك قيد المراجعة. التصفح متاح، وإنشاء الالتزام لا.</div>' : '')
   +   '</nav>'
@@ -5802,6 +6183,13 @@ const ACTS = {
     if (box) box.innerHTML = jobPermsHtml(el.value);
   },
   setWin:  d => setSession({ win: Number(d.win) }),
+  setExcSev: d => setSession({ excSev: Number(d.sev) }),
+  /* The reader decides when a newer version takes over, not the worker. */
+  applyUpdate: () => {
+    if (!SW_WAITING) { location.reload(); return; }
+    SW_RELOADING = true;
+    SW_WAITING.postMessage('hissa:skip-waiting');
+  },
   setTab:  d => setSession({ tab: d.tab }),
   openPool:d => setSession({ poolId: d.pool, view: 'inv.pool', tab: 'disclosure' }),
   investIn:d => setSession({ poolId: d.pool, view: 'inv.invest' }),
@@ -5923,6 +6311,84 @@ document.addEventListener('change', e => {
   if (fn) fn(t.dataset, t, e);
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+   OFFLINE AND INSTALLABILITY
+
+   A service worker needs two things this document does not always have: a
+   top-level browsing context, and a same-origin script it is allowed to
+   register. On the published share link the page runs inside a frame and
+   there is no path on that origin to put a worker at — blob: and data: URLs
+   are refused by the specification, and an iframed document is not
+   installable. So registration is not attempted there, and the status line
+   says which of the two the app is running as instead of implying an offline
+   capability it does not have.
+
+   The trigger is the manifest link, which only the static build writes. One
+   code path, no injected script, nothing to keep in sync between the two
+   copies.
+   ══════════════════════════════════════════════════════════════════════════ */
+const FRAMED = (() => { try { return window.top !== window.self; } catch (e) { return true; } })();
+let OFFLINE = 'none';      // none | framed | unsupported | arming | ready | failed
+let SW_WAITING = null;     // a newer worker, installed and waiting to take over
+let SW_RELOADING = false;
+
+const OFFLINE_LABEL = {
+  ready:       'يعمل دون اتصال',
+  arming:      'جارٍ تجهيز العمل دون اتصال…',
+  framed:      'داخل إطار — لا عمل دون اتصال',
+  unsupported: 'هذا المتصفح لا يدعم العمل دون اتصال',
+  failed:      'تعذّر تجهيز العمل دون اتصال',
+  none:        'يحتاج اتصالًا',
+};
+
+function offerUpdate(worker) {
+  SW_WAITING = worker;
+  render();
+}
+
+function armOffline() {
+  /* No manifest means this is not the static build: nothing to register. */
+  if (!document.querySelector('link[rel="manifest"]')) {
+    OFFLINE = FRAMED ? 'framed' : 'none';
+    return;
+  }
+  if (FRAMED) { OFFLINE = 'framed'; return; }
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+    OFFLINE = 'unsupported';
+    return;
+  }
+  /* A controller already attached is the whole answer: this page is being
+     served by the worker right now. Waiting for register() to resolve before
+     saying so is wrong twice over — it is slower than the fact, and while
+     offline the registration's update fetch may not settle at all, which left
+     the status reading «جارٍ التجهيز» on a page that was demonstrably already
+     working without a network. */
+  OFFLINE = navigator.serviceWorker.controller ? 'ready' : 'arming';
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    if (navigator.serviceWorker.controller) OFFLINE = 'ready';
+    if (reg.waiting) offerUpdate(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        /* Only an update: with no controller yet this is the first install,
+           and there is nothing for the reader to decide. */
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(nw);
+      });
+    });
+    render();
+  }).catch(() => { OFFLINE = 'failed'; render(); });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (SW_RELOADING) { location.reload(); return; }
+    OFFLINE = 'ready';
+    render();
+  });
+
+  addEventListener('online', () => toast('عاد الاتصال.', 'good'));
+  addEventListener('offline', () => toast('انقطع الاتصال — التطبيق يعمل، وما تغيّره يبقى في هذا المتصفح.', 'bad'));
+}
+
 /* ══ boot ════════════════════════════════════════════════════════════════ */
 try {
   const th = localStorage.getItem('hissa.theme');
@@ -5930,6 +6396,7 @@ try {
 } catch (e) {}
 
 render();
+armOffline();
 
 /* The writer resolves later, never during this first run, and may never
    resolve at all — the app is fully usable before it does. */

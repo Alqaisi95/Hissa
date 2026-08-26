@@ -7,3 +7,6 @@ apps/api/data/
 .env
 .env.local
 .DS_Store
+
+# مجلد عمل الاختبارات — يُهيّأ في كل تشغيل
+.demo-work/

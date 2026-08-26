@@ -43,8 +43,13 @@ const missing = mine.filter(x => !x.on).map(x => x.perm);
 ok('كل الـ' + mine.length + ' صلاحية ممنوحة' + (missing.length ? ' — ناقصة: ' + missing.join(', ') : ''),
   mine.length === 17 && missing.length === 0);
 
-// السلسلة سليمة بعد الإضافة
-const integ = await p.$eval('.hero__v', e => e.textContent.trim());
+/* السلسلة سليمة بعد الإضافة.
+   يُختار الرقم بمعناه لا بموضعه: اللوحة صار فيها أكثر من hero، وأخذُ الأول
+   كان يقرأ عدّاد فصل المهام ويحكم به على سلامة السلسلة. */
+const integ = await p.$$eval('.hero', ns => {
+  const h = ns.find(n => /سلسلة التجزئة/.test(n.querySelector('.hero__k').textContent));
+  return h ? h.querySelector('.hero__v').textContent.trim() : '(لم يُعثر على بطاقة السلسلة)';
+});
 ok('سلسلة التدقيق: ' + integ, integ === 'سليمة');
 
 // الرقابة الثنائية ما زالت قائمة رغم الصلاحيات المطلقة

@@ -1,0 +1,465 @@
+<title>خارطة حِصّة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Kufi+Arabic:wght@500;700&display=swap">
+
+<style>
+  /* ═══ tokens ═══════════════════════════════════════════════════════════
+     الحياد هنا مائل إلى الأخضر لا رماديًا محضًا — الرماد المحض يبدو
+     موروثًا لا مختارًا. واللون الرملي مصروف في موضع واحد فقط: الحدّ
+     المعماري، حيث ينقطع خطّ الدفتر.
+     ═══════════════════════════════════════════════════════════════════ */
+  :root {
+    --ground:#f6f9f7; --panel:#ffffff; --panel-2:#eef2ef;
+    --rule:#dae3df; --rule-2:#e7ecea;
+    --ink:#0f201d; --ink-2:#46564f; --ink-3:#7c8b85;
+    --brand:#0d5c58; --brand-2:#0a4341; --brand-wash:#e2efec;
+    --sand:#8f5d16; --sand-wash:#f8f0e2;
+    --crit:#8e1a1a; --crit-wash:#f9e6e6;
+    --pos:#186040;
+
+    --kufi:'Noto Kufi Arabic','Segoe UI',system-ui,sans-serif;
+    --sans:'IBM Plex Sans Arabic','Segoe UI',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#080f0e; --panel:#101a18; --panel-2:#17211f;
+      --rule:#22302d; --rule-2:#192422;
+      --ink:#e6efec; --ink-2:#a2b0ac; --ink-3:#71807b;
+      --brand:#4bb3ab; --brand-2:#7ad2c8; --brand-wash:#0d2b28;
+      --sand:#d5a05c; --sand-wash:#26200f;
+      --crit:#e58181; --crit-wash:#2e1616;
+      --pos:#5cba8c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#080f0e; --panel:#101a18; --panel-2:#17211f;
+    --rule:#22302d; --rule-2:#192422;
+    --ink:#e6efec; --ink-2:#a2b0ac; --ink-3:#71807b;
+    --brand:#4bb3ab; --brand-2:#7ad2c8; --brand-wash:#0d2b28;
+    --sand:#d5a05c; --sand-wash:#26200f;
+    --crit:#e58181; --crit-wash:#2e1616;
+    --pos:#5cba8c;
+  }
+
+  /* ═══ base ═══════════════════════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    direction: rtl;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--kufi); font-weight: 700; margin: 0; line-height: 1.35; text-wrap: balance; }
+  p { margin: 0; }
+  ul { margin: 0; padding-inline-start: 1.15rem; }
+  li { margin-block-end: .3rem; }
+  li::marker { color: var(--ink-3); }
+  strong { font-weight: 600; }
+  a { color: var(--brand); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  .mono {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    direction: ltr; unicode-bidi: isolate; display: inline-block;
+  }
+  .lbl {
+    font-family: var(--mono); font-size: .68rem; font-weight: 500;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  .wrap { max-width: 60rem; margin-inline: auto; padding-inline: clamp(1.1rem, 5vw, 3rem); }
+  .flow { display: flex; flex-direction: column; }
+
+  /* ═══ header ═════════════════════════════════════════════════════════ */
+  .top { border-block-end: 1px solid var(--rule); background: var(--panel); }
+  .top__in { padding-block: clamp(2.5rem, 7vw, 4.5rem) clamp(1.6rem, 4vw, 2.4rem); display: flex; flex-direction: column; gap: 1.1rem; }
+  .top h1 { font-size: clamp(1.9rem, 5.2vw, 3.1rem); letter-spacing: -.015em; max-width: 17ch; }
+  .top__lede { font-size: clamp(1rem, 1.7vw, 1.14rem); color: var(--ink-2); max-width: 58ch; }
+
+  /* شريط الأرقام: صفّ دفتر لا بطاقات إحصائية */
+  .strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    border: 1px solid var(--rule); border-radius: 3px; overflow: hidden;
+    background: var(--panel-2);
+  }
+  .strip > div { padding: .7rem .9rem; background: var(--panel); border-inline-start: 1px solid var(--rule-2); }
+  .strip > div:first-child { border-inline-start: 0; }
+  .strip__v { font-family: var(--mono); font-size: 1.4rem; font-weight: 600; line-height: 1.1; }
+  .strip__k { font-size: .74rem; color: var(--ink-3); }
+
+  /* ═══ section ════════════════════════════════════════════════════════ */
+  .sec { padding-block: clamp(2.2rem, 5vw, 3.4rem); border-block-end: 1px solid var(--rule); }
+  .sec__head { display: flex; flex-direction: column; gap: .5rem; margin-block-end: 1.6rem; }
+  .sec h2 { font-size: clamp(1.25rem, 2.6vw, 1.6rem); letter-spacing: -.01em; }
+  .sec__sub { color: var(--ink-2); font-size: .95rem; max-width: 62ch; }
+
+  .prose { display: flex; flex-direction: column; gap: 1rem; max-width: 64ch; }
+  .prose p { color: var(--ink-2); }
+
+  /* ═══ الخلل الثلاثة ═══════════════════════════════════════════════════ */
+  .defects { display: flex; flex-direction: column; gap: 0; border-block-start: 1px solid var(--rule); }
+  .defect {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: .3rem 1.2rem; align-items: start;
+    padding-block: 1.1rem; border-block-end: 1px solid var(--rule);
+  }
+  .defect__t { font-family: var(--kufi); font-weight: 500; font-size: 1rem; }
+  .defect__d { grid-column: 1; color: var(--ink-2); font-size: .92rem; max-width: 60ch; }
+  .defect__code {
+    grid-column: 2; grid-row: 1 / span 2;
+    font-family: var(--mono); font-size: .74rem; line-height: 1.6;
+    color: var(--crit); background: var(--crit-wash);
+    padding: .35rem .55rem; border-radius: 3px;
+    direction: ltr; unicode-bidi: isolate; white-space: pre; overflow-x: auto; max-width: 100%;
+  }
+  @media (max-width: 760px) {
+    .defect { grid-template-columns: minmax(0, 1fr); }
+    .defect__code { grid-column: 1; grid-row: auto; margin-block-start: .5rem; }
+  }
+
+  /* ═══ الخارطة — قيود دفترية ═══════════════════════════════════════════
+     كل مرحلة قيد مُرحَّل: العمود الأيمن يحمل رقمها وحالتها، والخطّ الرأسي
+     يصلها بما بعدها. يتحوّل الخطّ من صُلب (شُحن) إلى متقطّع (مخطَّط) ثم
+     ينقطع تمامًا عند الحدّ المعماري — انقطاعه هو الرسالة.
+     ═══════════════════════════════════════════════════════════════════ */
+  .ledger { display: flex; flex-direction: column; }
+  .entry {
+    display: grid; grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0 1.6rem; position: relative;
+    padding-block-end: 2.2rem;
+  }
+  .entry:last-child { padding-block-end: 0; }
+  .entry__gut { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; text-align: end; }
+  .entry__n {
+    font-family: var(--mono); font-size: 1.55rem; font-weight: 600;
+    line-height: 1; color: var(--ink-3);
+  }
+  .entry--now .entry__n, .entry--done .entry__n { color: var(--brand); }
+  .entry__stamp {
+    font-family: var(--mono); font-size: .64rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: .1rem .45rem; border-radius: 2px; white-space: nowrap;
+    background: var(--panel-2); color: var(--ink-3);
+  }
+  .entry--done .entry__stamp { background: var(--brand-wash); color: var(--brand); }
+  .entry--now  .entry__stamp { background: var(--brand); color: var(--panel); }
+  .entry--wall .entry__stamp { background: var(--sand-wash); color: var(--sand); }
+
+  /* الخطّ نفسه */
+  .entry::before {
+    content: ''; position: absolute;
+    inset-block: 2.3rem .2rem; inset-inline-start: auto;
+    inset-inline-end: 7.5rem; margin-inline-end: .8rem;
+    inline-size: 0; border-inline-start: 2px solid var(--brand);
+  }
+  .entry--plan::before { border-inline-start-style: dashed; border-color: var(--ink-3); }
+  .entry--wall::before { border-inline-start-color: var(--sand); border-inline-start-style: dotted; }
+  .entry--last::before { display: none; }
+
+  .entry__body { display: flex; flex-direction: column; gap: .55rem; padding-block-start: .1rem; }
+  .entry__t { font-size: 1.12rem; }
+  .entry__list { color: var(--ink-2); font-size: .93rem; }
+  @media (max-width: 640px) {
+    .entry { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+    .entry__gut { flex-direction: row; align-items: baseline; gap: .6rem; }
+    .entry__n { font-size: 1.2rem; }
+    .entry::before { display: none; }
+  }
+
+  /* ═══ الحدّ ═══════════════════════════════════════════════════════════ */
+  .wall {
+    border: 1px solid var(--sand); border-radius: 3px;
+    background: var(--sand-wash); padding: clamp(1rem, 3vw, 1.5rem);
+    display: flex; flex-direction: column; gap: .7rem;
+  }
+  .wall h3 { font-size: 1.05rem; color: var(--sand); }
+  .wall p { color: var(--ink-2); font-size: .93rem; max-width: 62ch; }
+
+  /* ═══ جدول القياس ═════════════════════════════════════════════════════ */
+  .tblwrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 3px; background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { text-align: start; padding: .6rem .85rem; border-block-end: 1px solid var(--rule-2); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: .68rem; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3);
+    background: var(--panel-2); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-block-end: 0; }
+  td.what { font-weight: 500; }
+  td.proves { color: var(--ink-2); }
+
+  .foot { padding-block: 2rem 3.5rem; color: var(--ink-3); font-size: .8rem; display: flex; flex-direction: column; gap: .4rem; }
+</style>
+
+<header class="top">
+  <div class="wrap top__in">
+    <span class="lbl">خارطة هندسية · تُحدَّث مع الكود</span>
+    <h1>ما بُني، وما يليه، وأين ينتهي هذا النموذج</h1>
+    <p class="top__lede">
+      حِصّة منصة تمويل جماعي لمشاريع تشغيلية محددة في سلطنة عُمان، تعمل كلّها داخل
+      مستند واحد يحمل حالته بداخله. هذه الصفحة تقول ما أُنجز في الدفعة الأخيرة، وما
+      المرحلة التالية، وتقول بصراحة أين يقف هذا النموذج المعماري ولماذا لا يتقدّم بعده.
+    </p>
+    <div class="strip">
+      <div><div class="strip__v">17</div><div class="strip__k">صلاحية في الكتالوج</div></div>
+      <div><div class="strip__v">13</div><div class="strip__k">شاشة لفريق التشغيل</div></div>
+      <div><div class="strip__v">5</div><div class="strip__k">تجميع فصل مهام مُعلَن</div></div>
+      <div><div class="strip__v">9</div><div class="strip__k">مُشغِّل اختبار في المتصفح</div></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap flow">
+
+  <!-- ═══ الدفعة الأخيرة ═══ -->
+  <section class="sec">
+    <div class="sec__head">
+      <span class="lbl">الدفعة الأخيرة</span>
+      <h2>أُعيدت لوحة الإدارة من الصفر</h2>
+      <p class="sec__sub">
+        لم تكن إعادة تلوين. اللوحة السابقة كانت تحمل ثلاثة عيوب حقيقية، اثنان منها
+        يُخفيان معلومة محسوبة فعلًا، والثالث سؤال إداري لم يكن يُحسب في أي مكان.
+      </p>
+    </div>
+
+    <div class="defects">
+      <div class="defect">
+        <div class="defect__t">ثقب يبتلع أخطر حساب</div>
+        <p class="defect__d">
+          قاعدة الخمول كانت تمرّ على من له تاريخ دخول فقط. الحساب المميَّز الذي
+          <strong>لم يدخل قط</strong> — مفتاح لم يُجرَّب في بابه، ولا أحد يفتقده —
+          كان يسقط من الشرط نفسه. صار يُرصَد، مع تمييز الحساب المُنشأ حديثًا عن المهجور.
+        </p>
+        <code class="defect__code">if (days !== null &&
+    days &gt;= DORMANT_DAYS)</code>
+      </div>
+
+      <div class="defect">
+        <div class="defect__t">اقتطاع صامت عند البند التاسع</div>
+        <p class="defect__d">
+          كانت القائمة تتوقّف عند تسعة وتقول «و N بندًا آخر» دون سبيل لبلوغها. في الحالة
+          المزروعة اليوم تُحسب <span class="mono">19</span> بندًا — والعاشر فما بعده كان
+          محسوبًا ومعدودًا وغير مرئي. الآن تُرسم كلّها مجموعةً بالنوع، والشاشة تعلن
+          «معروض ١٩ من ١٩» ليكون الادّعاء نفسه قابلًا للاختبار.
+        </p>
+        <code class="defect__code">exc.slice(0, 9)</code>
+      </div>
+
+      <div class="defect">
+        <div class="defect__t">السؤال الإداري الأول لم يكن يُحسب</div>
+        <p class="defect__d">
+          «من يستطيع إكمال مسار كامل وحده؟» خاصية <em>اجتماع</em> صلاحيات لا خاصية منحة،
+          فلا تظهر في مصفوفة الصلاحيات مهما طال النظر إليها. وظيفة مدير النظام القياسية
+          تحمل الاثنتين معًا منذ اليوم الأول: من يملكهما يصنع الطرف الثاني الذي تفترضه
+          كل رقابة ثنائية أخرى.
+        </p>
+        <code class="defect__code">admin.users
++ admin.enrol</code>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-block-start:1.6rem">
+      <p>
+        اللوحة الجديدة خمسة أشرطة، كل شريط سؤال: هل في الوصول خلل؟ من يفعل ماذا وحده؟
+        من يملك ماذا؟ ما الذي تغيّر في الوصول؟ هل السجل متماسك؟ والشريطان الثاني والرابع
+        جديدان كليًّا. وتُنفَّذ الأفعال من صفّ النتيجة نفسه — إيقاف حساب، إلغاء كود —
+        <strong>دون أي دالة تغيير حالة جديدة</strong>: كل فعل يمرّ بالمحرك والصلاحيات
+        وسلسلة التدقيق كما هو، فتكسب اللوحة الفعل دون أن تكسب امتيازًا.
+      </p>
+      <p>
+        وحين يُعرض تجميع خطر، يُعرض معه الضابط الذي يمنعه فعلًا — «لا يعتمد الطلبَ من
+        أنشأه» — أو يُقال صراحةً إنه لا ضابط. الفرق بين تحذير وترويع هو هذا السطر.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ الخارطة ═══ -->
+  <section class="sec">
+    <div class="sec__head">
+      <span class="lbl">الخارطة</span>
+      <h2>خمس مراحل، وخطّ ينقطع عند الرابعة</h2>
+      <p class="sec__sub">
+        الترقيم هنا ترتيب حقيقي لا زينة: لا تبدأ مرحلة قبل أن تُغلق التي قبلها.
+        والخطّ الواصل بينها يتحوّل من صُلب إلى متقطّع إلى منقطع — وانقطاعه هو الرسالة.
+      </p>
+    </div>
+
+    <div class="ledger">
+      <article class="entry entry--done">
+        <div class="entry__gut">
+          <span class="entry__n">01</span>
+          <span class="entry__stamp">شُحنت</span>
+        </div>
+        <div class="entry__body">
+          <h3 class="entry__t">الحوكمة والحقوق</h3>
+          <ul class="entry__list">
+            <li>رقابة ثنائية على المعاملة لا على الدور</li>
+            <li>تخصيص تناسبي بطريقة أكبر باقٍ — يطابق بالبايسة</li>
+            <li>الحقوق الثلاثة: نسخة البيانات، وتصحيحها، وطمسها</li>
+            <li>دورة الحساب: تغيير كلمة المرور، وكود استرداد لمرة واحدة</li>
+            <li>ترتيب لوحة المفاتيح، ومناطق حيّة، واستعادة التركيز بعد كل تنفيذ</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="entry entry--now">
+        <div class="entry__gut">
+          <span class="entry__n">02</span>
+          <span class="entry__stamp">هذه الدفعة</span>
+        </div>
+        <div class="entry__body">
+          <h3 class="entry__t">لوحة الإدارة، وفصل المهام، والعمل دون اتصال</h3>
+          <ul class="entry__list">
+            <li>خمسة أشرطة، وأفعال مباشرة، وبلا اقتطاع صامت</li>
+            <li>تحليل فصل المهام بخمس تجميعات مُعلَنة، ومعها ضابطها المانع أو غيابه</li>
+            <li>رصد انحراف الصلاحيات عن معيار وظيفتها</li>
+            <li>خطّ زمني لما تغيّر في الوصول — مشتقّ من سجل موجود لم يكن يُقرأ مجتمعًا</li>
+            <li>تطبيق ويب تقدّمي في النسخة الثابتة: يُثبَّت ويعمل بلا شبكة</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="entry entry--plan">
+        <div class="entry__gut">
+          <span class="entry__n">03</span>
+          <span class="entry__stamp">التالي</span>
+        </div>
+        <div class="entry__body">
+          <h3 class="entry__t">ما يحتمله المستند الواحد بعد</h3>
+          <ul class="entry__list">
+            <li>بحث وترقيم في كل جدول — الجداول اليوم تُرسم كاملة، وتنكسر عند المئة صفّ</li>
+            <li>رفع مستندات فعلي بدل مربّعات «أقرّ بتوفّرها» في معالج التقديم</li>
+            <li>شاشة مطابقة مصرفية — نوع الحالة «مطابقة» موجود منذ البداية بلا شاشة تعالجه</li>
+            <li>تشغيل الاختبارات في CI لا باليد</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="entry entry--wall">
+        <div class="entry__gut">
+          <span class="entry__n">04</span>
+          <span class="entry__stamp">يحتاج خادمًا</span>
+        </div>
+        <div class="entry__body">
+          <h3 class="entry__t">ما لا يحتمله — والسبب معماري لا تنفيذي</h3>
+          <ul class="entry__list">
+            <li>إشعارات مدفوعة تصل خارج الصفحة</li>
+            <li>كاتبان في وقت واحد دون أن يخسر أحدهما عمله</li>
+            <li>إنجليزية إلى جانب العربية بمحتوى مُدار لا مترجم في الكود</li>
+          </ul>
+          <p style="color:var(--ink-2);font-size:.93rem">
+            هذه ليست بنودًا مؤجَّلة لضيق وقت. الصفحة هي قاعدة البيانات، ولها كاتب واحد.
+          </p>
+        </div>
+      </article>
+
+      <article class="entry entry--plan entry--last">
+        <div class="entry__gut">
+          <span class="entry__n">05</span>
+          <span class="entry__stamp">النظام الحقيقي</span>
+        </div>
+        <div class="entry__body">
+          <h3 class="entry__t">خلف الخادم</h3>
+          <ul class="entry__list">
+            <li>قاعدة بيانات، وسلسلة <span class="mono">SHA-256</span> بمُشغِّلات تمنع التعديل والحذف</li>
+            <li>شريك تمويل جماعي مرخّص، وحساب ضمان منفصل حقيقي</li>
+            <li>مزوّد تحقق هوية، وتوقيع إلكتروني</li>
+          </ul>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ═══ الحدّ ═══ -->
+  <section class="sec">
+    <div class="sec__head">
+      <span class="lbl">الحدّ المعماري</span>
+      <h2>أين يقف نموذج «الصفحة هي قاعدة البيانات»</h2>
+    </div>
+    <div class="wall">
+      <h3>كاتب واحد، وكل تعارض يخسره أحدهم</h3>
+      <p>
+        كل إجراء يعيد كتابة المستند كاملًا وينشره، فيُحمَّل عند كل من يفتحه. هذا ما يجعل
+        النظام مفهومًا بالكامل من ملف واحد — ولا يوجد فيه دمج. إذا حفظ شخصان في اللحظة
+        نفسها، فأحدهما يُبلَّغ أن نسخة أحدث وصلت وأن عليه إعادة إجرائه عليها.
+      </p>
+      <p>
+        وكذلك عامل الخدمة: يحتاج سياقًا أعلى ونصًّا من الأصل نفسه، وداخل إطار الأرتيفاكت
+        لا يوجد أيّهما. فالعمل دون اتصال مبنيّ في النسخة الثابتة وحدها، والتطبيق يقول
+        صراحةً في شريط حالته أيَّ الوضعين يعمل فيه بدل أن يوهم بقدرة لا يملكها.
+      </p>
+      <p>
+        كل ما فوق المرحلة الثالثة يحتاج طرفًا يحفظ ويوفّق ويرسل. ذلك ليس تحسينًا لهذا
+        النموذج، بل استبداله.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ القياس ═══ -->
+  <section class="sec">
+    <div class="sec__head">
+      <span class="lbl">كيف يُقاس التقدّم</span>
+      <h2>ما يُثبته كل مُشغِّل</h2>
+      <p class="sec__sub">
+        تُشغَّل كلّها بأمر واحد: <span class="mono">npm run demo:test</span>. ولا يُقاس
+        التقدّم بعدد الشاشات بل بما يرفضه النظام حين يجب أن يرفض.
+      </p>
+    </div>
+
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr><th>المُشغِّل</th><th>ما يُثبته</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="what"><span class="mono">adash</span></td>
+            <td class="proves">ظهور الحساب الذي لم يُستخدم قط · بلوغ كل بند محسوب · انقلاب المصفوفة فوق ثمانية حسابات · وصول فعل اللوحة إلى سجل التدقيق · رفض اللوحة لمن لا يملك <span class="mono">admin.users</span></td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">pwa</span></td>
+            <td class="proves">تسجيل عامل الخدمة · قطع الشبكة كليًّا ثم تسجيل دخول وبناء لوحة الإدارة كاملة · خلوّ النسخة العامة من أي بريد حقيقي</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">omaradmin</span></td>
+            <td class="proves">أن حساب مدير بكل الصلاحيات السبع عشرة يظلّ ممنوعًا من اعتماد صرف طلبه بنفسه</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">rights</span></td>
+            <td class="proves">الحقوق الثلاثة من طرف صاحبها ومن طرف المدير · نظافة الملف المنزَّل من الملح والتجزئة · سلامة السلسلة بعد الطمس</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">acct</span></td>
+            <td class="proves">دورة كلمة المرور كاملة · إبطاء المحاولات المتكررة · أن الكود المستخدَم لا يعمل مرتين</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">mig</span></td>
+            <td class="proves">أن حالةً قديمة أو منزوعة الحقول تُرقَّع عند التحميل، وأن الترقيع يُعلَن لا يُخفى</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">a11y</span></td>
+            <td class="proves">أول <span class="mono">Tab</span> يبلغ رابط التخطّي · التركيز يعود للعنصر بعد إعادة البناء لا لجسم المستند</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="mono">prop</span> · <span class="mono">rt4</span> · <span class="mono">erasperm</span></td>
+            <td class="proves">أن التخصيص لا يخلق بايسة ولا يفقدها · أن المستند المُعاد بناؤه يعمل ويحمل ما حُفظ · أن زرًّا مزروعًا يرفضه المحرك</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>حِصّة — نسخة تجريبية. لا شريك مرخّص ولا حساب ضمان ولا مزوّد تحقق هوية خلفها، ولا تتحرك فيها أموال حقيقية.</p>
+    <p>الأرقام في هذه الصفحة مأخوذة من الحالة المزروعة وقت كتابتها، لا من نظام يعمل.</p>
+  </footer>
+
+</main>

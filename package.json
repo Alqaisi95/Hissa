@@ -11,7 +11,14 @@
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/web",
     "seed": "npm run seed --workspace apps/api",
     "test": "npm run test --workspace apps/api",
-    "typecheck": "npm run typecheck --workspace apps/api && npm run typecheck --workspace apps/web"
+    "typecheck": "npm run typecheck --workspace apps/api && npm run typecheck --workspace apps/web",
+    "demo:icons": "node demo/tools/make_icons.mjs",
+    "demo:site": "node demo/tools/make_icons.mjs && python3 demo/tools/make_public.py",
+    "demo:serve": "node demo/tools/serve.mjs",
+    "demo:test": "node demo/tests/run.mjs"
   },
-  "engines": { "node": ">=22.5.0" }
+  "engines": { "node": ">=22.5.0" },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
 }
