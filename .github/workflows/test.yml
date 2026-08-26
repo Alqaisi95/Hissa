@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -50,6 +52,35 @@ jobs:
 
       - name: تنزيل Chromium
         run: npx playwright install --with-deps chromium
+
+      # حارس التسريب: المستودع عامّ. أي بريد على مزوّد بريد عامّ داخل الملفات
+      # يعني عنوانًا شخصيًّا حقيقيًّا، وأي بريد مؤلِّف كذلك. سبق أن دخل عنوان
+      # شخصي وكلمة مرور بنصّها الصريح في دفعتين، ولم يكشفهما شيء — هذا ما
+      # يكشفهما.
+      #
+      # كلمة مرور الحسابات التجريبية معلنة في الصفحة نفسها عمدًا، فهي ليست
+      # سرًّا. الممنوع هو أن تُقرن بهوية حقيقية.
+      - name: التحقق من خلوّ المستودع من هوية شخصية
+        run: |
+          providers='gmail|googlemail|hotmail|outlook|live|yahoo|icloud|me\.com|proton(mail)?|aol'
+          bad=0
+
+          hits=$(git grep -InIE "[A-Za-z0-9._%+-]+@($providers)\.[A-Za-z]{2,}" -- . || true)
+          if [ -n "$hits" ]; then
+            echo "::error::بريد على مزوّد عامّ داخل الملفات:"
+            echo "$hits"
+            bad=1
+          fi
+
+          authors=$(git log --format='%ae%n%ce' | sort -u | grep -E "@($providers)\." || true)
+          if [ -n "$authors" ]; then
+            echo "::error::بريد على مزوّد عامّ في هوية الكوميتات:"
+            echo "$authors"
+            bad=1
+          fi
+
+          [ $bad -eq 0 ] && echo "نظيف: لا هوية شخصية في الملفات ولا في التاريخ."
+          exit $bad
 
       # الأيقونات مولَّدة ومدفوعة، لكن إعادة توليدها تثبت أن المولِّد يعمل
       - name: بناء النسخة العامة
