@@ -35,9 +35,13 @@ const FONT_HOSTS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com']
 self.addEventListener('install', event => {
   /* لا skipWaiting هنا: العامل الجديد ينتظر حتى يقرّر المستخدم إعادة التحميل.
      القفز بالنسخة تحت يده وهو في منتصف نموذج ليس تحديثًا، بل فقدان عمل. */
-  event.waitUntil(
-    caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).catch(() => {})
-  );
+  /* واحدًا واحدًا لا addAll: addAll ترفض الدفعة كلّها إذا سقط ملف واحد، فكان
+     فشل أيقونة يترك المستند نفسه خارج المخزن — أي تطبيقًا يَعِد بالعمل دون
+     اتصال ولا يفتح. الآن يسقط الملف وحده، ويبقى ما يفتح التطبيق. */
+  event.waitUntil((async () => {
+    const c = await caches.open(SHELL);
+    await Promise.all(SHELL_FILES.map(f => c.add(f).catch(() => {})));
+  })());
 });
 
 self.addEventListener('activate', event => {

@@ -123,10 +123,14 @@
   .iconbtn:hover { color: var(--ink); border-color: var(--ink-3); }
 
   .topbar__who { max-width: 200px; }
+  @media (max-width: 900px) {
+    /* «المظهر» and «خروج» moved into the sheet behind «المزيد», so the header
+       fits on one line again instead of stacking two. */
+    .topbar > .iconbtn { display: none; }
+    .topbar { padding-block: .45rem; }
+    .brand__sub { display: none; }
+  }
   @media (max-width: 720px) {
-    .topbar { flex-wrap: wrap; row-gap: .5rem; }
-    .brand { flex: 1 1 100%; }
-    .topbar > .spacer { display: none; }
     .seg { overflow-x: auto; max-width: 100%; }
     .topbar__who { flex: 1 1 8rem; max-width: none; }
   }
@@ -149,6 +153,7 @@
     background: none; border: 0; color: var(--ink-2);
     padding: .48rem .6rem; border-radius: var(--r-s);
   }
+  .navlink { text-decoration: none; }
   .navlink:hover { background: var(--panel-2); color: var(--ink); }
   .navlink[aria-current="page"] { background: var(--brand-wash); color: var(--brand); font-weight: 600; }
   .navlink__n { font-family: var(--mo); font-size: .68rem; color: var(--ink-3); flex: none; }
@@ -163,8 +168,8 @@
       border-inline-end: 0; border-block-end: 1px solid var(--rule);
       padding: .5rem .8rem; gap: .3rem; scrollbar-width: thin;
     }
-    .side__group { display: none; }
-    .navlink { width: auto; white-space: nowrap; background: var(--panel-2); }
+    .side .side__group { display: none; }
+    .side .navlink { width: auto; white-space: nowrap; background: var(--panel-2); }
     .navlink__badge { margin-inline-start: .2rem; }
   }
 
@@ -221,6 +226,49 @@
 
   /* ═══ tables ═══════════════════════════════════════════════════════════ */
   .tablewrap { overflow-x: auto; }
+
+  /* Below 900px — the same width at which the sidebar gives way to the
+     bottom bar — a data table stops being a grid and becomes a stack of
+     cards: the header row is hidden and every cell states its own label.
+     `labelCells()` puts those labels on, reading them off the table's own
+     thead, so the two can never disagree. At 768px an eight-column table
+     still overflowed by 218px, which is why this is not 720. */
+  @media (max-width: 900px) {
+    .dt { border-collapse: separate; border-spacing: 0; }
+    .dt thead {
+      position: absolute; inline-size: 1px; block-size: 1px;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+    .dt tbody tr {
+      display: block; background: var(--panel);
+      border: 1px solid var(--rule); border-radius: var(--r);
+      padding: .55rem .7rem; margin-block-end: .55rem;
+    }
+    .dt tbody tr:hover { background: var(--panel); }
+    .dt tbody td {
+      display: grid; grid-template-columns: 7.5rem minmax(0, 1fr);
+      gap: .3rem .8rem; align-items: baseline;
+      padding: .22rem 0; border: 0; text-align: start;
+    }
+    .dt tbody td::before {
+      content: attr(data-label); color: var(--ink-3);
+      font-size: .72rem; line-height: 1.5;
+    }
+    /* numbers stop hugging an edge that no longer exists */
+    .dt tbody td.n { text-align: start; }
+    /* the identifying cell is the card's heading, and needs no label */
+    .dt tbody td[data-role="title"] {
+      grid-template-columns: minmax(0, 1fr); font-weight: 600;
+      padding-block-end: .35rem; border-block-end: 1px solid var(--rule-2);
+      margin-block-end: .35rem;
+    }
+    .dt tbody td[data-role="act"] { grid-template-columns: minmax(0, 1fr); padding-block-start: .45rem; }
+    .dt tbody td[data-role="wide"] { grid-template-columns: minmax(0, 1fr); }
+    .dt tbody td[data-role]::before { content: none; }
+    .dt tbody td:empty { display: none; }
+    .dt tfoot tr { display: block; padding: .45rem .7rem; }
+    .dt tfoot td { display: inline-block; border: 0; padding: .1rem .4rem; }
+  }
   table { width: 100%; border-collapse: collapse; font-size: .84rem; }
   th, td { text-align: start; padding: .5rem .75rem; border-block-end: 1px solid var(--rule-2); vertical-align: top; }
   th { font-size: .72rem; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
@@ -250,6 +298,7 @@
     border: 1px solid var(--rule); border-radius: var(--r-s);
     padding: .45rem .95rem; white-space: nowrap;
   }
+  a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
   .btn:hover:not(:disabled) { border-color: var(--ink-3); }
   .btn:disabled { opacity: .5; cursor: not-allowed; }
   .btn--primary { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
@@ -282,6 +331,12 @@
   }
   .frame__toggle:hover { color: var(--ink); }
   .frame[data-view="table"] .frame__chart, .frame[data-view="chart"] .frame__table { display: none; }
+  /* A mark grid needs width a phone has not got. Below 720px the figure that
+     said so shows its table instead — the same numbers, already written. */
+  @media (max-width: 900px) {
+    .frame--wide .frame__chart, .frame--wide .frame__toggle { display: none; }
+    .frame--wide .frame__table { display: block; }
+  }
 
   .plot { width: 100%; height: auto; display: block; overflow: visible; }
   /* the plot is drawn LTR in both languages, and so are its numerals */
@@ -537,6 +592,13 @@
     align-items: center; padding: .6rem .1rem; border-block-end: 1px solid var(--rule-2);
   }
   .exc__row:last-child { border-block-end: 0; }
+  /* The row an address named. It blinks once and stops: a permanent highlight
+     would still be shouting long after the reader has found it. */
+  .rowhit { animation: rowhit 2.2s ease-out 1; }
+  @keyframes rowhit {
+    0%, 55% { background: var(--brand-wash); box-shadow: inset 3px 0 0 var(--brand); }
+    100%    { background: transparent; box-shadow: inset 3px 0 0 transparent; }
+  }
   .exc__age {
     font-family: var(--mo); font-size: .74rem; font-weight: 600; text-align: center;
     border-radius: var(--r-s); padding: .15rem .45rem; min-inline-size: 3.4rem;
@@ -591,9 +653,100 @@
   .segsm button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; }
 
 
+  /* ═══ the phone ════════════════════════════════════════════════════════
+     Below 900px the sidebar goes and a bottom bar takes over: four
+     destinations in thumb reach and a sheet for the rest. Above it, nothing
+     here applies and the desktop layout is untouched.
+     ═══════════════════════════════════════════════════════════════════════ */
+  .tabbar, .sheet, .sheetback, .riskbar__short { display: none; }
+
+  @media (max-width: 900px) {
+    .side { display: none; }
+    .tabbar {
+      display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+      position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 40;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      backdrop-filter: blur(10px);
+      border-block-start: 1px solid var(--rule);
+      padding-block-end: env(safe-area-inset-bottom, 0px);
+    }
+    .tabbar__i {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .15rem; min-block-size: 52px; padding: .35rem .2rem;
+      font: inherit; font-size: .74rem; text-decoration: none; cursor: pointer;
+      background: none; border: 0; color: var(--ink-3); position: relative;
+    }
+    .tabbar__i[aria-current="page"] { color: var(--brand); font-weight: 600; }
+    .tabbar__i[aria-current="page"]::before {
+      content: ''; position: absolute; inset-block-start: 0; inset-inline: 22%;
+      block-size: 2px; background: var(--brand); border-radius: 0 0 2px 2px;
+    }
+    .tabbar__t { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tabbar__b {
+      font-family: var(--mo); font-size: .62rem; line-height: 1.4;
+      background: var(--brand-wash); color: var(--brand);
+      border-radius: 999px; padding: 0 .35rem;
+    }
+    /* room for the bar, and for a thumb resting below it */
+    .main { padding-block-end: calc(76px + env(safe-area-inset-bottom, 0px)); }
+    .toastwrap { inset-block-end: calc(68px + env(safe-area-inset-bottom, 0px)); }
+
+    .sheetback {
+      display: block; position: fixed; inset: 0; z-index: 50;
+      background: rgba(0, 0, 0, .35);
+    }
+    .sheet {
+      display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 51;
+      max-block-size: 82dvh; overflow-y: auto;
+      background: var(--panel); border-block-start: 1px solid var(--rule);
+      border-start-start-radius: 16px; border-start-end-radius: 16px;
+      padding: .5rem .9rem calc(1rem + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, .18);
+    }
+    .sheet__grip {
+      inline-size: 38px; block-size: 4px; border-radius: 999px;
+      background: var(--rule); margin: .1rem auto .5rem;
+    }
+    .sheet__head { display: flex; align-items: center; gap: .6rem; padding-block-end: .4rem; }
+    .sheet__body { display: flex; flex-direction: column; gap: .1rem; }
+  }
+
+  /* ── the risk warning ──────────────────────────────────────────────────
+     It has to be seen before money moves, and it took two lines at the top
+     of every screen on a phone — including the audit log. One line that
+     opens keeps the warning and gives the screen back. */
+  .riskbar__full { display: inline; }
+  @media (max-width: 720px) {
+    .riskbar { padding: .3rem .8rem; text-align: start; }
+    .riskbar__full { display: none; }
+    .riskbar__short { display: block; }
+    .riskbar__short summary {
+      cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: .4rem; min-block-size: 38px;
+    }
+    .riskbar__short summary::-webkit-details-marker { display: none; }
+    .riskbar__short summary::after { content: 'اقرأ'; text-decoration: underline; margin-inline-start: auto; }
+    .riskbar__short[open] summary::after { content: 'أخفِ'; }
+    .riskbar__short p { padding-block: .35rem .2rem; }
+  }
+
+  /* ── a finger is not a mouse pointer ───────────────────────────────────
+     Seven controls measured under 44px on a phone. This is not a style
+     choice; below that size a tap lands somewhere else. */
+  @media (pointer: coarse) {
+    .btn, .iconbtn, .navlink, .linkbtn, .seg button, .segsm button, .frame__toggle,
+    .demoacct, .picker__opt, .skip, .riskbar__short summary,
+    .tabs button, .tabbar__i { min-block-size: 44px; }
+    .btn, .iconbtn { display: inline-flex; align-items: center; justify-content: center; }
+    .btn--sm { padding-inline: .8rem; }
+    input, select, textarea { min-block-size: 44px; }
+    .check input { inline-size: 20px; block-size: 20px; }
+  }
+
+
 </style>
 <script id="appstate" type="application/json">{"v":1,"seededAt":"2026-08-25T06:00:00Z","settings":{"effectiveFrom":"2026-01-01","minTicket":100000,"unitPrice":100000,"overfundBps":12000,"coolingOffHours":48,"limits":{"retail":{"perIssuer":3000000,"rolling12m":20000000},"angel":{"perIssuer":null,"rolling12m":100000000},"sophisticated":{"perIssuer":null,"rolling12m":null}},"feeBps":{"platform":400,"success":250}},"users":[{"id":"u_inv1","name":"عبدالله الغافري","email":"abdullah@example.om","salt":"aa727fa13bb68bcd7a685586fc992a28","pw":"98ea43ec01186afd861965350b74f687c5d4f8954da6e90884d7ebfcf40872ec","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv2","name":"شيخة الهنائية","email":"shaikha@example.om","salt":"b489647d5833053254ee829ffe845888","pw":"ace7a4fd93e80a6a5fb8b06c26e2c441ae56de9a9a4301d608c0343053c02593","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv3","name":"سعيد الشحي","email":"saeed@example.om","salt":"468e3fb2736f2cb8eed764ee1d0e01b1","pw":"059c420e13d51a5022ecc4d0962f966a13cf3aad1f6cfc530cda5f03258021c4","role":"investor","cls":"angel","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv4","name":"أمل المحروقية","email":"amal@example.om","salt":"95ef5d96be903c69a651252f9335d2e6","pw":"8085ead135cb0392ea4139e7bc55bcbbf228a3c8e8997a22c833292d96068c41","role":"investor","cls":"sophisticated","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv5","name":"مستثمر قيد التحقق","email":"pending@example.om","salt":"f5dc1cb71ff62e1b8859f78af5a5fa32","pw":"afc5ce1582a36ca078cf9fea3d6d002f4e1dddc5bb796ccb632ea808e3e771b4","role":"investor","cls":"retail","kyc":"pending","suit":"pass","consents":true},{"id":"u_inv6","name":"لم يجتز اختبار الملاءمة","email":"restricted@example.om","salt":"928abb469011d878c320a183c576abaa","pw":"c61ea478dd4391e7f2783dbce2f126878afbee35002567d871f313baa7ce2c0b","role":"investor","cls":"retail","kyc":"approved","suit":"restricted","consents":true},{"id":"u_inv7","name":"ماجد البوسعيدي","email":"majid@example.om","salt":"c54e398cd7d66604becdfe9d9d9dec5a","pw":"af02897d55fa063fa2f54ca02e4425aa5987c24a89a3f294ed3af4fe40d43593","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv8","name":"ريم الحارثية","email":"reem@example.om","salt":"245e0145de3c86201b60dc1ad13d1ead","pw":"e967d3f9e5989730c4e9e796c6005cfcf14fed047243d95df29cc594ca27aa7a","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_inv9","name":"طلال الزدجالي","email":"talal@example.om","salt":"7cfdf153b1f2dfbcfd6832e593e736cf","pw":"1a4d848dfde35d232e18c1ca5682e9b45970f3defa9757f052ca3a5583af6f22","role":"investor","cls":"retail","kyc":"approved","suit":"pass","consents":true},{"id":"u_own2","name":"الطريق السريع للنقل — المالك","email":"owner.logistics@example.om","salt":"f0d813149214384a6bc32ff43fd80453","pw":"35948ab04040d8b8c57f96dbd385ff6aae2ebf96808b6850e45b95c897fef277","role":"owner","pool":"p_log","kyc":"approved"},{"id":"u_own1","name":"نسائم القهوة — المالك","email":"owner.cafe@example.om","salt":"7766881f97b2a6114d05614227d140eb","pw":"5d4fe480669bcf858cff41bfd7af04c4a71c5a21e566ad44340886139a378604","role":"owner","pool":"p_cafe","kyc":"approved"},{"id":"u_fin1","name":"مريم البلوشية","email":"maryam@hissa.om","salt":"a6ea45debd4a03bab6c7768745cf0a4a","pw":"5f1198965e873643bea351ff8c4394f986762547a84bc4fe671b2e8d2ac3eef8","role":"staff","job":"finance_ops","perms":["funds.request","funds.approve","funds.read","funds.reconcile","audit.read","dashboard.read","case.work"]},{"id":"u_fin2","name":"خالد الرواحي","email":"khalid@hissa.om","salt":"232a23317afd3fafd82cc20bcdc6a123","pw":"6cb60b3787419694b9e013202d4d346bf67ab72d1b4eb7a4706233b4cf86040b","role":"staff","job":"finance_ops","perms":["funds.request","funds.approve","funds.read","funds.reconcile","audit.read","dashboard.read","case.work"]},{"id":"u_pf1","name":"هدى الكندية","email":"huda@hissa.om","salt":"71b5914feb225dbe42efd6e9a720e179","pw":"6e78b5c509b72133d29b6790d756deb9781b0b188f9aa7f2df55e7126719f76d","role":"staff","job":"portfolio_ops","perms":["pool.manage","report.publish","distribution.create","funds.read","audit.read","dashboard.read","application.review","case.work"]},{"id":"u_adm1","name":"مدير النظام","email":"admin@hissa.om","salt":"cb549c52d354464c6d978441b3d99aaf","pw":"662fe7c302d81b4a12a5c87f8e801e1ea79a22e14233b62a394961199b5f8bab","role":"staff","job":"system_admin","perms":["admin.users","admin.enrol","settings.read","audit.read","dashboard.read"]},{"id":"u_cmp1","name":"سالم المعمري","email":"compliance@hissa.om","salt":"0e95c53233e409b201a7ac5f91038e66","pw":"42a5916a0d6c64b519fcf5059042a53c6f4243af84825eb78507091ef5f29c4f","role":"staff","job":"compliance","perms":["kyc.read","kyc.approve","audit.read","dashboard.read","application.read","case.work"]},{"id":"u_aud1","name":"مدقق مستقل","email":"auditor@hissa.om","salt":"d7033da6a3086d32deab719160f05c3a","pw":"8c0645ee59bd73751b69d0348e29037b31b309fb1e6257dbfa323467e77c65cc","role":"staff","job":"auditor","perms":["audit.read","funds.read","dashboard.read","application.read","case.read","settings.read"]},{"id":"u_new17","name":"عمر","email":"omar@test.com","salt":"ae7884d1ad98c6c2891971affd7fda88","pw":"152fca3c45c83a2cc43cbe997251f8eb472e28346791fd6a5f1353db064fcbe5","role":"owner","consents":true,"createdAt":"2026-08-25T13:15:49.157Z","pool":null,"kyc":"pending","lastSignInAt":"2026-08-26T10:59:03.035Z"},{"id":"u_adm_omar","name":"عمر القيسي","email":"sysadmin@hissa.local","salt":"cd826bf0f9746f41696d0f00c08ea281","pw":"4af2621fa33860e65dadc6dcf93135543f644a42811b6ab4dd6632a566ac35f8","role":"staff","job":"system_admin","perms":["dashboard.read","audit.read","pool.manage","application.review","application.read","funds.request","funds.approve","funds.read","funds.reconcile","distribution.create","report.publish","kyc.read","kyc.approve","case.work","case.read","settings.read","admin.users","admin.enrol"],"enrolledVia":null,"createdAt":"2026-08-26T11:00:24.574Z","pwChangedAt":"2026-08-26T11:02:03.936Z","lastSignInAt":"2026-08-26T11:21:43.219Z"}],"pools":[{"id":"p_cafe","ref":"POOL-2026-0001","status":"funding","title":"فرع جديد لمقهى نسائم — الموج، مسقط","sector":"تجزئة وفروع","issuer":"شركة نسائم القهوة ش.م.م","governorate":"مسقط","target":65000000,"minClose":52000000,"ownerStake":22000000,"tenorMonths":36,"publishedAt":"2026-07-15","closesAt":"2026-09-15","disclosureVersion":3,"uof":[{"item":"تجهيزات وديكور الفرع","supplier":"شركة التصاميم الحديثة","amount":28000000,"quote":"Q-2026-118"},{"item":"معدات تحضير القهوة والمشروبات","supplier":"الخليج لمعدات المقاهي","amount":19500000,"quote":"Q-2026-119"},{"item":"أثاث وتكييف","supplier":"مؤسسة الأثاث المكتبي","amount":9500000,"quote":"Q-2026-120"},{"item":"رأس مال تشغيلي وثلاثة أشهر إيجار","supplier":"مالك العقار","amount":8000000,"quote":"LEASE-2026-07"}],"scenarios":[{"name":"متحفظ","yieldBps":600,"basis":"تأخر التشغيل شهرين وانخفاض المبيعات 20% مع ثبات التكاليف"},{"name":"أساسي","yieldBps":1100,"basis":"تشغيل وفق الجدول وأداء مقارب للفروع القائمة"},{"name":"متفائل","yieldBps":1500,"basis":"تشغيل مبكر وأداء أعلى بـ15% مع ثبات التكاليف"}],"milestones":[{"id":"m1","label":"توقيع عقد الإيجار وتسليم الموقع","amount":8000000,"condition":"عقد إيجار مسجل ومحضر تسليم","state":"pending"},{"id":"m2","label":"تنفيذ التجهيزات والديكور","amount":28000000,"condition":"محضر إنجاز 80% وصور موقع","state":"pending"},{"id":"m3","label":"توريد المعدات والأثاث","amount":29000000,"condition":"فاتورة مورد ومحضر استلام","state":"pending"}],"risks":["تأخر التراخيص البلدية قد يؤجل التشغيل ويؤخر أول توزيع.","منافسة مباشرة من مقهيين في نطاق 500 متر.","ارتفاع الإيجار عند التجديد بعد السنة الثالثة.","اعتماد المشروع على مدير فرع واحد ذي خبرة."],"disclosureLog":[]},{"id":"p_log","ref":"POOL-2026-0002","status":"operating","restrictedTo":["angel","sophisticated"],"title":"توسعة أسطول شاحنات التوزيع — صحار","sector":"لوجستيات ومركبات","issuer":"مؤسسة الطريق السريع للنقل","governorate":"شمال الباطنة","target":85000000,"minClose":68000000,"ownerStake":30000000,"tenorMonths":48,"publishedAt":"2026-04-02","closesAt":"2026-06-01","fundedAt":"2026-05-14","disclosureVersion":2,"uof":[{"item":"ثلاث شاحنات مبردة","supplier":"الوكيل المعتمد للشاحنات","amount":72000000,"quote":"Q-2026-201"},{"item":"تأمين شامل وترخيص سنة","supplier":"شركة التأمين الوطنية","amount":7500000,"quote":"INS-2026-44"},{"item":"أنظمة تتبع وتبريد","supplier":"تقنيات التتبع","amount":5500000,"quote":"Q-2026-202"}],"scenarios":[{"name":"متحفظ","yieldBps":700,"basis":"انخفاض نسبة تشغيل الأسطول إلى 60% وارتفاع الصيانة"},{"name":"أساسي","yieldBps":1200,"basis":"تشغيل 75% وعقود التوريد الثلاثة مستقرة"},{"name":"متفائل","yieldBps":1600,"basis":"تشغيل 85% وإضافة عقد رابع"}],"milestones":[{"id":"m1","label":"دفعة مقدمة للوكيل","amount":30000000,"condition":"عقد شراء موقّع","state":"executed"},{"id":"m2","label":"استلام الشاحنات وترخيصها","amount":42000000,"condition":"بطاقات ملكية وتأمين ساري","state":"executed"},{"id":"m3","label":"تركيب أنظمة التتبع","amount":13000000,"condition":"محضر تركيب واختبار","state":"pending"}],"risks":["انخفاض نسبة تشغيل الأسطول عن المفترض.","ارتفاع أسعار الوقود وقطع الغيار.","اعتماد الإيراد على ثلاثة عقود توريد رئيسية.","حوادث أو أعطال تخرج مركبة من الخدمة."],"disclosureLog":[]},{"id":"p_clinic","ref":"POOL-2026-0004","status":"funding","restrictedTo":["angel","sophisticated","retail"],"title":"فرع ثانٍ لعيادة أسنان — صلالة","sector":"رعاية صحية","issuer":"عيادة الواحة لطب الأسنان ش.م.م","governorate":"ظفار","target":40000000,"minClose":32000000,"ownerStake":14000000,"tenorMonths":36,"publishedAt":"2026-08-10","closesAt":"2026-10-20","disclosureVersion":1,"uof":[{"item":"كرسيا أسنان وأجهزة","supplier":"الشرق الأوسط للأجهزة الطبية","amount":21000000,"quote":"Q-2026-401"},{"item":"جهاز أشعة بانورامية","supplier":"الشرق الأوسط للأجهزة الطبية","amount":9500000,"quote":"Q-2026-402"},{"item":"تجهيز العيادة والتعقيم","supplier":"مؤسسة التجهيزات الطبية","amount":6500000,"quote":"Q-2026-403"},{"item":"رأس مال تشغيلي ثلاثة أشهر","supplier":"—","amount":3000000,"quote":"WC-2026-04"}],"scenarios":[{"name":"متحفظ","yieldBps":550,"basis":"بطء بناء قاعدة المرضى في السنة الأولى"},{"name":"أساسي","yieldBps":1050,"basis":"معدل إشغال الكراسي 60% وتعاقد مع شركتَي تأمين"},{"name":"متفائل","yieldBps":1450,"basis":"إشغال 75% وإضافة خدمات تقويم"}],"milestones":[{"id":"m1","label":"تجهيز الموقع والتعقيم","amount":6500000,"condition":"محضر إنجاز وترخيص صحي","state":"pending"},{"id":"m2","label":"توريد الكراسي والأجهزة","amount":21000000,"condition":"فاتورة مورد ومحضر استلام","state":"pending"},{"id":"m3","label":"تركيب جهاز الأشعة","amount":12500000,"condition":"شهادة سلامة إشعاعية","state":"pending"}],"risks":["الترخيص الصحي لجهاز الأشعة قد يتأخر ويؤجل التشغيل الكامل.","الاعتماد على تعاقدات شركات التأمين لتدفق المرضى.","منافسة عيادتين قائمتين في المحافظة نفسها.","اعتماد المشروع على طبيب مقيم واحد في البداية."],"disclosureLog":[]},{"id":"p_bake","ref":"POOL-2026-0003","status":"refunding","title":"خط إنتاج المخبوزات المجمدة — نزوى","sector":"معدات إنتاج غذائي","issuer":"مخابز الواحة الحديثة ش.م.م","governorate":"الداخلية","target":48000000,"minClose":38400000,"ownerStake":16000000,"tenorMonths":36,"publishedAt":"2026-05-20","closesAt":"2026-08-01","disclosureVersion":1,"uof":[{"item":"خط إنتاج وتجميد","supplier":"مورد معدات الأغذية","amount":38000000,"quote":"Q-2026-301"},{"item":"غرفة تبريد","supplier":"أنظمة التبريد المتقدمة","amount":7000000,"quote":"Q-2026-302"},{"item":"تدريب وتشغيل تجريبي","supplier":"مورد معدات الأغذية","amount":3000000,"quote":"Q-2026-303"}],"scenarios":[{"name":"متحفظ","yieldBps":500,"basis":"تأخر التراخيص وبطء اعتماد المنتج لدى التجزئة"},{"name":"أساسي","yieldBps":1000,"basis":"اعتماد المنتج في ثلاث سلاسل خلال ستة أشهر"},{"name":"متفائل","yieldBps":1400,"basis":"اعتماد أسرع وتشغيل بطاقة كاملة"}],"milestones":[],"risks":["لم يبلغ التمويل حدّه الأدنى قبل انتهاء المدة.","سوق المخبوزات المجمدة يتطلب اعتمادًا من سلاسل التجزئة."],"disclosureLog":[]}],"orders":[{"id":"ORD-2026-0001","poolId":"p_cafe","userId":"u_inv1","amount":1500000,"status":"confirmed","createdAt":"2026-07-20T09:12:00Z"},{"id":"ORD-2026-0002","poolId":"p_cafe","userId":"u_inv2","amount":2900000,"status":"confirmed","createdAt":"2026-07-21T11:40:00Z"},{"id":"ORD-2026-0003","poolId":"p_cafe","userId":"u_inv3","amount":12000000,"status":"confirmed","createdAt":"2026-07-22T08:05:00Z"},{"id":"ORD-2026-0004","poolId":"p_cafe","userId":"u_inv4","amount":20000000,"status":"confirmed","createdAt":"2026-07-25T14:22:00Z"},{"id":"ORD-2026-0005","poolId":"p_cafe","userId":"u_inv1","amount":600000,"status":"pending","createdAt":"2026-08-24T18:03:00Z"},{"id":"ORD-2026-0006","poolId":"p_cafe","userId":"u_inv3","amount":800000,"status":"confirmed","createdAt":"2026-08-10T10:00:00Z"},{"id":"ORD-2026-0012","poolId":"p_cafe","userId":"u_inv4","amount":25000000,"status":"confirmed","createdAt":"2026-08-02T10:15:00Z"},{"id":"ORD-2026-0013","poolId":"p_cafe","userId":"u_inv3","amount":18000000,"status":"confirmed","createdAt":"2026-08-06T12:40:00Z"},{"id":"ORD-2026-0014","poolId":"p_cafe","userId":"u_inv7","amount":2500000,"status":"confirmed","createdAt":"2026-08-12T09:05:00Z"},{"id":"ORD-2026-0015","poolId":"p_cafe","userId":"u_inv8","amount":2800000,"status":"confirmed","createdAt":"2026-08-15T15:20:00Z"},{"id":"ORD-2026-0016","poolId":"p_cafe","userId":"u_inv9","amount":110000,"status":"confirmed","createdAt":"2026-08-19T08:30:00Z"},{"id":"ORD-2026-0007","poolId":"p_log","userId":"u_inv4","amount":40000000,"status":"allocated","createdAt":"2026-05-02T09:00:00Z"},{"id":"ORD-2026-0008","poolId":"p_log","userId":"u_inv3","amount":25000000,"status":"allocated","createdAt":"2026-05-04T13:30:00Z"},{"id":"ORD-2026-0009","poolId":"p_log","userId":"u_inv2","amount":8500000,"status":"allocated","createdAt":"2026-05-06T16:45:00Z"},{"id":"ORD-2026-0017","poolId":"p_clinic","userId":"u_inv7","amount":1200000,"status":"confirmed","createdAt":"2026-08-14T10:00:00Z"},{"id":"ORD-2026-0018","poolId":"p_clinic","userId":"u_inv3","amount":6000000,"status":"confirmed","createdAt":"2026-08-17T11:30:00Z"},{"id":"ORD-2026-0019","poolId":"p_clinic","userId":"u_inv8","amount":900000,"status":"confirmed","createdAt":"2026-08-21T14:10:00Z"},{"id":"ORD-2026-0010","poolId":"p_bake","userId":"u_inv3","amount":9000000,"status":"refunded","createdAt":"2026-06-01T07:20:00Z"},{"id":"ORD-2026-0011","poolId":"p_bake","userId":"u_inv1","amount":3000000,"status":"refunded","createdAt":"2026-06-03T12:10:00Z"}],"disbursements":[{"id":"DSB-2026-0001","poolId":"p_log","milestoneId":"m1","amount":30000000,"status":"executed","requestedBy":"u_fin1","requestedAt":"2026-05-16T08:00:00Z","approvedBy":"u_fin2","approvedAt":"2026-05-16T11:20:00Z","evidence":"عقد شراء موقّع — CTR-2026-77"},{"id":"DSB-2026-0002","poolId":"p_log","milestoneId":"m2","amount":42000000,"status":"executed","requestedBy":"u_fin2","requestedAt":"2026-06-11T09:30:00Z","approvedBy":"u_fin1","approvedAt":"2026-06-11T15:05:00Z","evidence":"بطاقات ملكية 3 مركبات + وثيقة تأمين INS-2026-44"},{"id":"DSB-2026-0003","poolId":"p_log","milestoneId":"m3","amount":13000000,"status":"requested","requestedBy":"u_fin1","requestedAt":"2026-08-23T07:45:00Z","approvedBy":null,"approvedAt":null,"evidence":"محضر تركيب أنظمة التتبع — TRK-2026-19"}],"distributions":[{"id":"DST-2026-0001","poolId":"p_log","period":"الربع الثاني 2026","gross":2100000,"paidAt":"2026-07-05T00:00:00Z"}],"reports":[{"id":"RPT-2026-0001","poolId":"p_log","period":"الربع الثاني 2026","dueAt":"2026-07-15","status":"published","submittedAt":"2026-07-10T09:00:00Z","publishedAt":"2026-07-12T10:00:00Z","kpis":[{"metric":"نسبة تشغيل الأسطول %","actual":72,"forecast":75},{"metric":"إيراد الشهر (ر.ع)","actual":9400,"forecast":9800},{"metric":"تكلفة الصيانة (ر.ع)","actual":1250,"forecast":900}],"narrative":"تم تشغيل المركبات الثلاث اعتبارًا من منتصف يونيو. نسبة التشغيل أقل من المتوقع بثلاث نقاط بسبب تأخر عقد التوريد الثالث، وتكلفة الصيانة أعلى بسبب استبدال وحدة تبريد.","variance":"العقد الثالث بدأ في يوليو ويُتوقع أن ترتفع نسبة التشغيل في الربع القادم."},{"id":"RPT-2026-0002","poolId":"p_log","period":"الربع الثالث 2026","dueAt":"2026-10-15","status":"scheduled","submittedAt":null,"publishedAt":null,"kpis":[],"narrative":"","variance":""}],"cases":[{"id":"CASE-2026-0004","kind":"شكوى","subject":"تأخر إشعار التوزيع","poolId":"p_log","status":"open","openedAt":"2026-08-18T08:00:00Z","slaDays":5,"notes":[],"assignedTo":null,"raisedBy":null},{"id":"CASE-2026-0005","kind":"استفسار","subject":"طلب نسخة من الإفصاح السابق","poolId":"p_cafe","status":"open","openedAt":"2026-08-22T13:00:00Z","slaDays":5,"notes":[],"assignedTo":null,"raisedBy":null},{"id":"CASE-2026-0006","kind":"مطابقة","subject":"فرق 3.000 ر.ع بين كشف الضمان والسجل","poolId":"p_cafe","status":"open","openedAt":"2026-08-24T09:00:00Z","slaDays":2,"notes":[],"assignedTo":null,"raisedBy":null}],"audit":[{"at":"2026-08-25T13:15:49.159Z","actor":null,"action":"إنشاء حساب","entity":"u_new17","detail":"حساب جديد (صاحب مشروع) — omar@test.com","prev":"0000000000000000","hash":"85ae556a99b3e9cc"},{"at":"2026-08-25T23:07:50.841Z","actor":"u_pf1","action":"مراجعة طلب تمويل","entity":"APP-2026-0007","detail":"بدء الفحص النافي للجهالة","prev":"85ae556a99b3e9cc","hash":"6e02e8837c9b7c05"},{"at":"2026-08-26T10:59:03.035Z","actor":"u_new17","action":"تسجيل دخول","entity":"u_new17","detail":"تسجيل دخول — عمر","prev":"6e02e8837c9b7c05","hash":"085c05ab5cf25221"},{"at":"2026-08-26T11:00:24.574Z","actor":"u_adm1","action":"إنشاء حساب مدير نظام","entity":"u_adm_omar","detail":"حساب مدير نظام بكل الصلاحيات (17) — عمر القيسي","prev":"085c05ab5cf25221","hash":"f12347edeb96ee26"},{"at":"2026-08-26T11:21:43.219Z","actor":"u_adm_omar","action":"تسجيل دخول","entity":"u_adm_omar","detail":"تسجيل دخول — عمر القيسي","prev":"f12347edeb96ee26","hash":"e8f9b4f3f776be7b"},{"at":"2026-08-26T13:04:28.553Z","actor":"u_adm1","action":"منح صلاحية","entity":"funds.reconcile","detail":"صلاحية المطابقة البنكية لعمر القيسي ومريم البلوشية وخالد الرواحي — العدد صار 18","prev":"e8f9b4f3f776be7b","hash":"57e2a4261877dbe4"}],"applications":[{"id":"APP-2026-0007","ownerId":"u_own1","status":"in_review","submittedAt":"2026-08-18T08:30:00Z","decidedAt":null,"poolId":null,"notes":[],"company":{"name":"شركة نسائم القهوة ش.م.م","cr":"1234567","activity":"مقاهٍ ومشروبات","governorate":"مسقط","founded":"2019","staff":"24"},"project":{"title":"فرع ثالث لمقهى نسائم — القرم","sector":"تجزئة وفروع","location":"القرم، مسقط","summary":"فرع ثالث في موقع مكتبي عالي الحركة، بالاعتماد على نفس التشغيل والموردين القائمين للفرعين الحاليين، مع فريق مدرَّب داخليًا.","tenorMonths":36},"fin":{"revenue":214000000,"profit":31500000,"ownerStake":18000000},"ask":{"target":52000000,"minClose":41600000},"uof":[{"item":"تجهيز الموقع والديكور","supplier":"شركة التصاميم الحديثة","amount":24000000,"quote":"Q-2026-511"},{"item":"معدات التحضير","supplier":"الخليج لمعدات المقاهي","amount":17000000,"quote":"Q-2026-512"},{"item":"أثاث وتكييف","supplier":"مؤسسة الأثاث المكتبي","amount":7000000,"quote":"Q-2026-513"},{"item":"رأس مال تشغيلي","supplier":"—","amount":4000000,"quote":"WC-2026-11"}],"milestones":[{"label":"توقيع الإيجار وتسليم الموقع","condition":"عقد إيجار مسجَّل ومحضر تسليم","amount":4000000},{"label":"تنفيذ التجهيز والديكور","condition":"محضر إنجاز 80% وصور موقع","amount":24000000},{"label":"توريد المعدات والأثاث","condition":"فاتورة مورد ومحضر استلام","amount":24000000}],"scenarios":[{"name":"متحفظ","yieldBps":650,"basis":"تأخر التشغيل شهرين وحركة أقل من المتوقع في الصيف"},{"name":"أساسي","yieldBps":1150,"basis":"أداء مقارب لفرع الموج بعد ستة أشهر من التشغيل"},{"name":"متفائل","yieldBps":1520,"basis":"تشغيل مبكر وطلب مكتبي أعلى من المفترض"}],"risks":["الموقع يعتمد على حركة المكاتب، وتتراجع في الإجازات الرسمية والصيف.","ارتفاع الإيجار عند التجديد في موقع تجاري مطلوب.","منافسة سلسلتين قائمتين ضمن نطاق 300 متر.","الاعتماد على نفس فريق التشغيل قد يضغط على الفرعين القائمين."],"docs":{"cr":true,"financials":true,"quotes":true,"lease":false,"ids":true}}],"invites":[],"settingProposals":[],"settingsHistory":[],"resets":[],"schema":5,"reconciliations":[]}</script>
-<a class="skip" href="#pagetitle">تخطَّ إلى محتوى الصفحة</a>
+<button class="skip" data-act="skipMain">تخطَّ إلى محتوى الصفحة</button>
 <div id="root"></div>
 <div class="toastwrap"><div class="toasts" id="alerts" role="alert" aria-live="assertive"></div><div class="toasts" id="toasts" role="status" aria-live="polite"></div></div>
 <script id="appscript">
@@ -690,7 +843,9 @@ function buildDoc(st) {
     + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">\n'
     + '<style id="appstyle">' + STYLE_SRC + '</style>\n</head>\n<body>\n'
     + '<script id="appstate" type="application/json">' + json + CLOSE + '\n'
-    + '<a class="skip" href="#pagetitle">تخطَّ إلى محتوى الصفحة</a>\n'
+    /* A button, not an href="#pagetitle": the hash is the address bar now,
+       and a fragment link there would read as a route and navigate away. */
+    + '<button class="skip" data-act="skipMain">تخطَّ إلى محتوى الصفحة</button>\n'
     + '<div id="root"></div>\n'
     + '<div class="toastwrap">'
     +   '<div class="toasts" id="alerts" role="alert" aria-live="assertive"></div>'
@@ -2224,6 +2379,11 @@ const SUIT_PASS = 5;
 /* ══════════════════════════════════════════════════════════════════════════
    SESSION — who you are looking as. Per-viewer only: it lives in this
    browser, never in the shared document.
+
+   Identity persists here. *Where you are* does not — that lives in the URL,
+   below. The place-fields kept in this object are a cache of the route,
+   refilled before every render, so the screens keep one read surface while
+   the address stays the single source of truth.
    ══════════════════════════════════════════════════════════════════════════ */
 const DEFAULT_SESSION = {
   authUserId: null,          // null → the public site; set → the application
@@ -2236,50 +2396,216 @@ try {
   const saved = localStorage.getItem('hissa.session');
   if (saved) SESSION = Object.assign({}, DEFAULT_SESSION, JSON.parse(saved));
 } catch (e) { /* private window, blocked storage — defaults are fine */ }
-function setSession(patch) {
-  Object.assign(SESSION, patch);
-  try { localStorage.setItem('hissa.session', JSON.stringify(SESSION)); } catch (e) {}
-  render();
+/* A `view` stored before routing existed would fight the address. */
+SESSION.view = null; SESSION.pub = 'landing';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ROUTING
+
+   Thirty-one screens shared one URL. Nothing could be linked to, the back
+   button left the application, a refresh lost your place, and "look at this"
+   had to be spoken rather than sent. It also made the installable app
+   impossible: a `start_url` or a home-screen shortcut needs an address, and
+   a dashboard had none.
+
+   The hash, not the History API. This document has to work from a file on
+   disk, inside the artifact frame (which carries its own <base>), and under
+   a project path on Pages. The History API fails the first two. The hash
+   works in all three and asks nothing of the server.
+
+   Grammar:  #/<space>/<screen>[/<id>][/<sub>][?<filters>]
+
+     #/                          the public site
+     #/login  #/register  #/enrol  #/reset
+     #/inv/pool/p_cafe/uof       an opportunity, on a named tab
+     #/ops/adash?sev=3           a dashboard, filtered
+     #/ops/cases/CASE-2026-0004  a screen, and the row it is about
+   ══════════════════════════════════════════════════════════════════════════ */
+const PUB_SCREENS = ['landing', 'login', 'register', 'enrol', 'reset'];
+/* Which SESSION field is this screen's subject, and which its sub-view. */
+const VIEW_ID_KEY = {
+  'inv.pool': 'poolId', 'inv.invest': 'poolId',
+  'ops.pools': 'poolId', 'ops.dist': 'poolId',
+  'ops.apps': 'appId', 'ops.settings': 'settingKey',
+  'own.project': 'ownPoolId', 'own.funds': 'ownPoolId', 'own.reports': 'ownPoolId',
+};
+const VIEW_SUB_KEY = { 'inv.pool': 'tab' };
+/* Filters belong in the address — whoever opens your link sees your filter —
+   but they are per-screen, so they do not follow you off it. */
+const QUERY_KEYS = { win: 'w', excSev: 'sev' };
+
+let ROUTE = { view: 'pub.landing', id: null, sub: null, query: {} };
+
+function parseHash(h) {
+  const raw = String(h == null ? location.hash : h).replace(/^#/, '');
+  /* Anything not starting with a slash is an in-page fragment, not a route. */
+  if (raw && raw.charAt(0) !== '/') return null;
+  const cut = raw.indexOf('?');
+  const path = cut === -1 ? raw : raw.slice(0, cut);
+  const query = {};
+  if (cut !== -1) raw.slice(cut + 1).split('&').forEach(p => {
+    if (!p) return;
+    const i = p.indexOf('=');
+    const k = decodeURIComponent(i === -1 ? p : p.slice(0, i));
+    query[k] = i === -1 ? '' : decodeURIComponent(p.slice(i + 1).replace(/\+/g, ' '));
+  });
+  const parts = path.split('/').filter(x => x !== '');
+  if (!parts.length) return { view: 'pub.landing', id: null, sub: null, query };
+  if (parts.length === 1)
+    return PUB_SCREENS.includes(parts[0])
+      ? { view: 'pub.' + parts[0], id: null, sub: null, query } : null;
+  return {
+    view: parts[0] + '.' + parts[1],
+    id: parts[2] ? decodeURIComponent(parts[2]) : null,
+    sub: parts[3] ? decodeURIComponent(parts[3]) : null,
+    query,
+  };
 }
 
+function hrefFor(r) {
+  const v = typeof r === 'string' ? { view: r } : (r || {});
+  const view = v.view || 'pub.landing';
+  let path;
+  if (view.slice(0, 4) === 'pub.') {
+    const k = view.slice(4);
+    path = k === 'landing' ? '/' : '/' + k;
+  } else {
+    path = '/' + view.replace('.', '/');
+    if (v.id) path += '/' + encodeURIComponent(v.id);
+    if (v.sub) path += '/' + encodeURIComponent(v.sub);
+  }
+  const q = Object.keys(v.query || {})
+    .filter(k => v.query[k] !== '' && v.query[k] != null)
+    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(v.query[k]));
+  return '#' + path + (q.length ? '?' + q.join('&') : '');
+}
+
+const hashNow = () => '#' + String(location.hash).replace(/^#/, '');
+/* replaceState fires no hashchange, so a correction never re-enters the
+   router. A sandboxed frame may refuse it; there the hash is set instead and
+   the extra render is harmless. */
+function setHash(href, replace) {
+  if (hashNow() === href) { render(); return; }
+  if (replace) {
+    try { history.replaceState(null, '', href); render(); return; } catch (e) { /* fall through */ }
+  }
+  location.hash = href.slice(1);
+}
+function navigate(r, opts) { setHash(hrefFor(r), opts && opts.replace); }
+
+const defaultViewFor = u => (u ? ((navFor(u)[0] || {}).k || 'acct.me') : 'pub.landing');
+
+/* The screens still call setSession({view, poolId, tab, …}) as they always
+   did. Anything that names a place becomes an address; the rest stays here. */
+function setSession(patch) {
+  const routed = ['view', 'pub', 'poolId', 'tab', 'appId', 'ownPoolId', 'settingKey', 'win', 'excSev']
+    .some(k => Object.prototype.hasOwnProperty.call(patch, k));
+  Object.keys(patch).forEach(k => { if (k !== 'view' && k !== 'pub') SESSION[k] = patch[k]; });
+  try { localStorage.setItem('hissa.session', JSON.stringify({ authUserId: SESSION.authUserId })); } catch (e) {}
+  if (!routed) { render(); return; }
+
+  const view = patch.view !== undefined ? (patch.view || defaultViewFor(me()))
+             : patch.pub !== undefined ? 'pub.' + patch.pub
+             : ROUTE.view;
+  const same = view === ROUTE.view;
+  const idKey = VIEW_ID_KEY[view], subKey = VIEW_SUB_KEY[view];
+  const query = same ? Object.assign({}, ROUTE.query) : {};
+  Object.keys(QUERY_KEYS).forEach(k => {
+    if (patch[k] === undefined) return;
+    if (!patch[k]) delete query[QUERY_KEYS[k]];
+    else query[QUERY_KEYS[k]] = String(patch[k]);
+  });
+  const field = (key, cur) => (key
+    ? (patch[key] !== undefined ? patch[key] : (same ? cur : SESSION[key]))
+    : null);
+  navigate({ view, id: field(idKey, ROUTE.id), sub: field(subKey, ROUTE.sub), query });
+}
+
+/* Refill the fields the screens read. The route decides; a route that names
+   nothing leaves the screen to fall back on its own first record. */
+function syncSession(r) {
+  const isPub = r.view.slice(0, 4) === 'pub.';
+  SESSION.view = isPub ? null : r.view;
+  SESSION.pub = isPub ? r.view.slice(4) : 'landing';
+  const idKey = VIEW_ID_KEY[r.view];
+  if (idKey) SESSION[idKey] = r.id;
+  const subKey = VIEW_SUB_KEY[r.view];
+  if (subKey) SESSION[subKey] = r.sub || DEFAULT_SESSION[subKey];
+  SESSION.win = Number(r.query.w) || DEFAULT_SESSION.win;
+  SESSION.excSev = Number(r.query.sev) || 0;
+}
+
+/* One place decides what the address means for whoever is looking at it, and
+   rewrites the address when it means something else. */
+function resolveRoute() {
+  const u = me();
+  let r = parseHash() || { view: defaultViewFor(u), id: null, sub: null, query: {} };
+  const isPub = r.view.slice(0, 4) === 'pub.';
+
+  if (!u && !isPub) {
+    /* A shortcut or a shared link into the application with nobody signed in.
+       Remember the destination and finish the trip after the sign-in. */
+    r = { view: 'pub.login', id: null, sub: null, query: { next: hrefFor(r).slice(1) } };
+  } else if (u && isPub) {
+    r = { view: defaultViewFor(u), id: null, sub: null, query: {} };
+  } else if (u && !(VIEWS[r.view] && navFor(u).some(n => n.k === r.view))) {
+    /* No such screen, or one this account's permissions do not open. */
+    r = { view: defaultViewFor(u), id: null, sub: null, query: {} };
+  }
+  const href = hrefFor(r);
+  if (hashNow() !== href) { try { history.replaceState(null, '', href); } catch (e) {} }
+  ROUTE = r;
+  syncSession(r);
+  return r;
+}
+
+/* `short` is for the phone's bottom bar, where a label has about six
+   characters before it truncates. `group` heads the sheet behind «المزيد». */
 const NAV_INVESTOR = [
-  { k: 'inv.pools',     label: 'الفرص' },
-  { k: 'inv.pool',      label: 'تفاصيل الفرصة' },
-  { k: 'inv.invest',    label: 'إنشاء التزام' },
-  { k: 'inv.portfolio', label: 'محفظتي' },
-  { k: 'inv.support',   label: 'الدعم والطلبات' },
-  { k: 'inv.inbox',     label: 'الإشعارات' },
+  { k: 'inv.pools',     label: 'الفرص',           short: 'الفرص',   group: 'الاستثمار' },
+  { k: 'inv.pool',      label: 'تفاصيل الفرصة',   short: 'التفاصيل', group: 'الاستثمار' },
+  { k: 'inv.invest',    label: 'إنشاء التزام',    short: 'التزام',  group: 'الاستثمار' },
+  { k: 'inv.portfolio', label: 'محفظتي',          short: 'محفظتي',  group: 'الاستثمار' },
+  { k: 'inv.support',   label: 'الدعم والطلبات',  short: 'الدعم',   group: 'حسابي' },
+  { k: 'inv.inbox',     label: 'الإشعارات',       short: 'إشعارات', group: 'حسابي' },
 ];
 const NAV_OWNER = [
-  { k: 'own.apps',    label: 'طلباتي' },
-  { k: 'own.new',     label: 'تقديم مشروع' },
-  { k: 'own.project', label: 'مشروعي' },
-  { k: 'own.funds',   label: 'استخدام الأموال' },
-  { k: 'own.reports', label: 'التقارير' },
+  { k: 'own.apps',    label: 'طلباتي',           short: 'طلباتي',  group: 'مشروعي' },
+  { k: 'own.new',     label: 'تقديم مشروع',      short: 'تقديم',   group: 'مشروعي' },
+  { k: 'own.project', label: 'مشروعي',           short: 'مشروعي',  group: 'مشروعي' },
+  { k: 'own.funds',   label: 'استخدام الأموال',  short: 'الأموال', group: 'التشغيل' },
+  { k: 'own.reports', label: 'التقارير',         short: 'تقارير',  group: 'التشغيل' },
 ];
 const STAFF_NAV = [
-  { k: 'ops.adash',    label: 'لوحة إدارة النظام', perm: 'admin.users' },
-  { k: 'ops.dash',     label: 'لوحة التشغيل',     perm: 'dashboard.read' },
-  { k: 'ops.pipeline', label: 'التحليلات',        perm: 'dashboard.read' },
-  { k: 'ops.apps',     label: 'طلبات التمويل',    anyOf: ['application.review', 'application.read'] },
-  { k: 'ops.pools',    label: 'إدارة الفرص',      perm: 'pool.manage' },
-  { k: 'ops.money',    label: 'الصرف والاعتماد',  perm: 'funds.read' },
-  { k: 'ops.recon',    label: 'المطابقة البنكية', perm: 'funds.read' },
-  { k: 'ops.dist',     label: 'التوزيعات',        perm: 'distribution.create' },
-  { k: 'ops.kyc',      label: 'التحقق من الهوية', perm: 'kyc.read' },
-  { k: 'ops.reports',  label: 'مراجعة التقارير',  perm: 'report.publish' },
-  { k: 'ops.cases',    label: 'الحالات والشكاوى', anyOf: ['case.work', 'case.read'] },
-  { k: 'ops.settings', label: 'الإعدادات',        perm: 'settings.read' },
-  { k: 'ops.admin',    label: 'الحسابات والصلاحيات', perm: 'admin.users' },
-  { k: 'ops.audit',    label: 'سجل التدقيق',      perm: 'audit.read' },
+  { k: 'ops.adash',    label: 'لوحة إدارة النظام', short: 'الإدارة',  group: 'اللوحات',   perm: 'admin.users' },
+  { k: 'ops.dash',     label: 'لوحة التشغيل',     short: 'التشغيل',  group: 'اللوحات',   perm: 'dashboard.read' },
+  { k: 'ops.pipeline', label: 'التحليلات',        short: 'تحليلات',  group: 'اللوحات',   perm: 'dashboard.read' },
+  { k: 'ops.apps',     label: 'طلبات التمويل',    short: 'الطلبات',  group: 'الفرص',     anyOf: ['application.review', 'application.read'] },
+  { k: 'ops.pools',    label: 'إدارة الفرص',      short: 'الفرص',    group: 'الفرص',     perm: 'pool.manage' },
+  { k: 'ops.money',    label: 'الصرف والاعتماد',  short: 'الصرف',    group: 'المال',     perm: 'funds.read' },
+  { k: 'ops.recon',    label: 'المطابقة البنكية', short: 'المطابقة', group: 'المال',     perm: 'funds.read' },
+  { k: 'ops.dist',     label: 'التوزيعات',        short: 'توزيعات',  group: 'المال',     perm: 'distribution.create' },
+  { k: 'ops.kyc',      label: 'التحقق من الهوية', short: 'التحقق',   group: 'الالتزام',  perm: 'kyc.read' },
+  { k: 'ops.reports',  label: 'مراجعة التقارير',  short: 'تقارير',   group: 'الالتزام',  perm: 'report.publish' },
+  { k: 'ops.cases',    label: 'الحالات والشكاوى', short: 'الحالات',  group: 'الالتزام',  anyOf: ['case.work', 'case.read'] },
+  { k: 'ops.settings', label: 'الإعدادات',        short: 'إعدادات',  group: 'النظام',    perm: 'settings.read' },
+  { k: 'ops.admin',    label: 'الحسابات والصلاحيات', short: 'الحسابات', group: 'النظام', perm: 'admin.users' },
+  { k: 'ops.audit',    label: 'سجل التدقيق',      short: 'التدقيق',  group: 'النظام',    perm: 'audit.read' },
 ];
+/* What a phone shows without asking. Filtered by what the account actually
+   opens, so a reader with no money permission never sees a money tab. */
+const MOBILE_PRIMARY = {
+  staff:    ['ops.adash', 'ops.dash', 'ops.money', 'ops.recon', 'ops.cases', 'ops.apps', 'ops.kyc'],
+  investor: ['inv.pools', 'inv.portfolio', 'inv.invest', 'inv.support'],
+  owner:    ['own.apps', 'own.project', 'own.funds', 'own.reports'],
+};
 /* Two people with the same role can see different menus: the permission on
    the account decides, not the label. */
 /* A screen can be opened by any one of several grants: working a case and
    auditing it are different permissions on the same screen. */
 const canAny = (u, list) => list.some(x => can(u, x));
 const canOpen = (u, n) => (n && n.anyOf ? canAny(u, n.anyOf) : !!n && can(u, n.perm));
-const NAV_ACCOUNT = { k: 'acct.me', label: 'حسابي' };
+const NAV_ACCOUNT = { k: 'acct.me', label: 'حسابي', short: 'حسابي', group: 'حسابي' };
 function navFor(u) {
   const base = u.role === 'investor' ? NAV_INVESTOR
              : u.role === 'owner'    ? NAV_OWNER
@@ -2356,8 +2682,12 @@ let frameSeq = 0;
 function frameHtml(o) {
   frameSeq += 1;
   const id = 'fr' + frameSeq;
-  return '<div class="frame" data-view="chart" id="' + id + '">'
-    + '<div class="frame__head"><div><h3>' + esc(o.title) + '</h3>'
+  /* `wide` marks a figure that cannot survive a phone — a mark grid whose
+     meaning is the crossing of row and column. There the frame shows the
+     table it already ships instead, which is the whole reason every figure
+     here carries one. */
+  return '<div class="frame' + (o.wide ? ' frame--wide' : '') + '" data-view="chart" id="' + id + '">'
+    + '<div class="frame__head"><div><h2>' + esc(o.title) + '</h2>'
     + (o.sub ? '<p class="frame__sub">' + esc(o.sub) + '</p>' : '') + '</div>'
     + '<button type="button" class="frame__toggle" data-act="toggleFrame" data-frame="' + id + '">عرض كجدول</button>'
     + '</div><div class="frame__chart">' + o.chart + '</div>'
@@ -2466,6 +2796,16 @@ function ratioMeter(value, target, valueFmt, tone) {
     + '<span class="xs muted">من ' + valueFmt(target) + ' · ' + Math.round(pct) + '%</span></div></div>';
 }
 
+/* The warning in two lengths. The full sentence everywhere there is room;
+   on a phone one clause that opens to the rest, so the caution stays in
+   sight without taking a seventh of every screen. */
+const RISK_FULL = 'قد تخسر كامل المبلغ المستثمر. لا ضمان للعائد أو لرأس المال، ولا توجد سوق ثانوية.';
+const riskbar = () => '<div class="riskbar">'
+  + '<span class="riskbar__full">' + RISK_FULL + '</span>'
+  + '<details class="riskbar__short"><summary>قد تخسر كامل المبلغ المستثمر.</summary>'
+  + '<p>لا ضمان للعائد أو لرأس المال، ولا توجد سوق ثانوية لبيع حصتك قبل نهاية المدة.</p></details>'
+  + '</div>';
+
 /* Two regions, not one: a refusal has to interrupt, a confirmation must not.
    Both exist in the document before any text lands in them — a live region
    created and filled in the same frame is not announced. */
@@ -2500,7 +2840,7 @@ VIEWS['inv.pools'] = () => {
       + '<div class="row row--tight">' + chip(POOL_STATUS, p.status)
       + '<span class="chip">' + esc(p.sector) + '</span>'
       + '<span class="mono xs muted spacer">' + p.ref + '</span></div>'
-      + '<h3>' + esc(p.title) + '</h3>'
+      + '<h2>' + esc(p.title) + '</h2>'
       + '<div class="sm muted">' + esc(p.issuer) + ' · ' + esc(p.governorate) + '</div>'
       + '<span class="meter"><span class="meter__fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
       + '<div class="row sm"><span class="num">' + fmt(got, 0) + ' / ' + fmt(p.target, 0) + ' ر.ع</span>'
@@ -2604,7 +2944,8 @@ VIEWS['inv.pool'] = () => {
     crumb: 'مستثمر · ' + p.ref, title: p.title,
     lede: esc(p.issuer) + ' — ' + esc(p.sector) + ' · ' + esc(p.governorate),
     body: '<div class="row">' + chip(POOL_STATUS, p.status)
-      + '<div class="field spacer" style="max-width:280px"><select data-act="pickPool">'
+      + '<div class="field spacer" style="max-width:280px">'
+      + '<select data-act="pickPool" aria-label="اختر فرصة أخرى">'
       + shown.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(x.title) + '</option>').join('')
       + '</select></div></div>'
       + '<div class="tabs" role="tablist">' + TABS.map(t =>
@@ -3430,7 +3771,7 @@ function accessExceptions() {
     else if (holders.length === 1)
       out.push({ sev: 2, kind: 'صلاحية', what: pc.ar,
         why: 'يملكها حساب واحد فقط (' + holders[0].name + ') — يتوقف العمل بغيابه',
-        ref: pc.k, view: 'ops.admin' });
+        ref: pc.k, view: 'ops.admin', rec: holders[0].id });
   });
 
   const admins = active.filter(x => (x.perms || []).includes('admin.users'));
@@ -3443,15 +3784,25 @@ function accessExceptions() {
      engine already refuses per transaction is documented in band 02, not
      raised here as work — an exception list that includes what is already
      handled teaches an administrator to skim it. */
+  /* One row per combination, not per person. Two accounts holding the same
+     pair used to produce two rows carrying the same sentence word for word,
+     and a list that repeats itself teaches the reader to skim it. */
+  const byRule = [];
   active.forEach(x => sodFindings(x).filter(r => !r.mitigation).forEach(r => {
-    out.push({ sev: r.sev, kind: 'فصل مهام', what: x.name + ' — ' + r.label,
-      why: r.why + ' · لا ضابط يمنعها بعد المنح',
-      ref: r.perms.join(' + '), view: 'ops.admin' });
+    const at = byRule.find(g => g.rule.k === r.k);
+    if (at) at.who.push(x); else byRule.push({ rule: r, who: [x] });
   }));
+  byRule.forEach(({ rule, who }) => {
+    out.push({ sev: rule.sev, kind: 'فصل مهام',
+      what: rule.label + ' — ' + who.map(x => x.name).join('، '),
+      why: rule.why + ' · لا ضابط يمنعها بعد المنح',
+      ref: rule.perms.join(' + '), view: 'ops.admin',
+      rec: who.length === 1 ? who[0].id : null });
+  });
 
   staff.filter(x => !(x.perms || []).length && !x.suspended).forEach(x =>
     out.push({ sev: 2, kind: 'حساب', what: x.name, why: 'حساب نشط بلا أي صلاحية — لا يفتح شاشة واحدة',
-      ref: x.email || x.id, view: 'ops.admin' }));
+      ref: x.email || x.id, view: 'ops.admin', rec: x.id }));
 
   staff.filter(x => x.suspended).forEach(x =>
     out.push({ sev: 1, kind: 'حساب', what: x.name,
@@ -3471,7 +3822,7 @@ function accessExceptions() {
                d: { code: i.code } } });
     } else if (st === 'expired') {
       out.push({ sev: 1, kind: 'دعوة', what: 'كود ' + i.code,
-        why: 'انتهى دون استخدام — لوظيفة ' + (JOB_AR[i.job] || i.job), ref: i.code, view: 'ops.admin' });
+        why: 'انتهى دون استخدام — لوظيفة ' + (JOB_AR[i.job] || i.job), ref: i.code, view: 'ops.admin', rec: i.code });
     }
   });
 
@@ -3523,7 +3874,7 @@ function accessExceptions() {
     if (d.missing.length) parts.push('تنقص ' + d.missing.length);
     out.push({ sev: hot.length ? 2 : 1, kind: 'انحراف', what: x.name,
       why: 'صلاحياته لا تطابق معيار وظيفة «' + (JOB_AR[d.job] || d.job) + '» — ' + parts.join(' و'),
-      ref: (d.extra[0] || d.missing[0] || ''), view: 'ops.admin' });
+      ref: (d.extra[0] || d.missing[0] || ''), view: 'ops.admin', rec: x.id });
   });
 
   /* A recovery code still open is a second way into an account. */
@@ -3549,7 +3900,7 @@ function accessExceptions() {
     const f = SETTING_FIELDS.find(y => y.k === x.key) || { label: x.key };
     out.push({ sev: 2, kind: 'إعداد', what: 'اقتراح تغيير «' + f.label + '»',
       why: 'معلّق منذ ' + days + ' يومًا وينتظر مديرًا غير من اقترحه',
-      ref: x.id, view: 'ops.settings' });
+      ref: x.id, view: 'ops.settings', rec: x.id });
   });
 
   return out.sort((a, b) => b.sev - a.sev
@@ -3642,7 +3993,7 @@ function exceptions() {
       what: c.subject, where: pool(c.poolId) ? pool(c.poolId).ref : '—',
       why: 'تجاوزت مهلة الـSLA بـ' + over + ' يومًا'
         + (c.assignedTo ? ' · مع ' + ((user(c.assignedTo) || {}).name || '') : ' · بلا مسؤول'),
-      view: 'ops.cases' });
+      view: 'ops.cases', rec: c.id });
   });
 
   STATE.reports.forEach(r => {
@@ -3654,37 +4005,37 @@ function exceptions() {
       where: (pool(r.poolId) || {}).ref || '—',
       why: 'متأخر ' + over + ' يومًا عن موعد الاستحقاق'
         + (r.submittedAt ? ' وبانتظار النشر' : ' ولم يقدّمه صاحب المشروع'),
-      view: 'ops.reports' });
+      view: 'ops.reports', rec: r.id });
     else if (['submitted', 'late'].includes(r.status) && r.submittedAt)
       out.push({ over: 0, kind: 'تقرير', ref: r.id, what: 'تقرير ' + r.period + ' بانتظار النشر',
         where: (pool(r.poolId) || {}).ref || '—', why: 'قُدِّم ولم يُنشر للمستثمرين بعد',
-        view: 'ops.reports' });
+        view: 'ops.reports', rec: r.id });
   });
 
   STATE.disbursements.filter(d => d.status === 'requested').forEach(d => {
     out.push({ over: age(d.requestedAt), kind: 'صرف', ref: d.id,
       what: 'طلب صرف ' + fmt(d.amount, 0) + ' ر.ع',
       where: (pool(d.poolId) || {}).ref || '—',
-      why: 'ينتظر اعتماد طرف ثانٍ منذ ' + age(d.requestedAt) + ' يومًا', view: 'ops.money' });
+      why: 'ينتظر اعتماد طرف ثانٍ منذ ' + age(d.requestedAt) + ' يومًا', view: 'ops.money', rec: d.id });
   });
 
   STATE.applications.filter(a => ['submitted', 'in_review'].includes(a.status)).forEach(a => {
     out.push({ over: age(a.resubmittedAt || a.submittedAt), kind: 'طلب تمويل', ref: a.id,
       what: a.project.title, where: a.company.name,
       why: (a.status === 'submitted' ? 'لم يبدأ فحصه' : 'قيد الفحص') + ' منذ '
-        + age(a.resubmittedAt || a.submittedAt) + ' يومًا', view: 'ops.apps' });
+        + age(a.resubmittedAt || a.submittedAt) + ' يومًا', view: 'ops.apps', rec: a.id });
   });
 
   STATE.users.filter(x => ['investor', 'owner'].includes(x.role) && x.kyc === 'pending').forEach(x => {
     out.push({ over: x.createdAt ? age(x.createdAt) : 0, kind: 'تحقق',
       what: x.name, where: x.email || '—', ref: x.email || x.id,
-      why: 'حساب لا يستطيع الالتزام قبل اعتماد تحققه', view: 'ops.kyc' });
+      why: 'حساب لا يستطيع الالتزام قبل اعتماد تحققه', view: 'ops.kyc', rec: x.id });
   });
 
   STATE.pools.filter(p => p.status === 'funding' && p.closesAt).forEach(p => {
     const over = Math.floor((now - new Date(p.closesAt + 'T23:59:59Z').getTime()) / DAY);
     if (over > 0) out.push({ over, kind: 'فرصة', ref: p.ref, what: p.title,
-      where: p.issuer, why: 'انتهت مدة تمويلها منذ ' + over + ' يومًا ولم تُغلق', view: 'ops.pools' });
+      where: p.issuer, why: 'انتهت مدة تمويلها منذ ' + over + ' يومًا ولم تُغلق', view: 'ops.pools', rec: p.id });
   });
 
   /* Money that left a pool beyond what was ever allocated to it. Nothing else
@@ -3854,7 +4205,8 @@ VIEWS['ops.dash'] = () => {
             + '<span><span class="exc__what">' + esc(x.what) + '</span>'
             + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
             + (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view))
-                ? '<button class="btn btn--sm" data-act="go" data-view="' + x.view + '">افتح</button>'
+                ? '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
+                  + (x.rec ? 'افتح السطر' : 'افتح') + '</a>'
                 : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
             + '</div>';
         }).join('') + '</div>'
@@ -3985,8 +4337,12 @@ function excTail(x, u) {
     return '<button class="btn btn--sm' + (x.act.danger ? ' btn--danger' : '')
       + '" data-act="' + x.act.a + '"' + attrs + '>' + esc(x.act.label) + '</button>';
   }
+  /* The row names a record, so the link names it too: it opens the screen
+     *and* the row, instead of leaving the reader to find again what this
+     dashboard had already found for them. */
   if (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view)))
-    return '<button class="btn btn--sm" data-act="go" data-view="' + x.view + '">افتح</button>';
+    return '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
+      + (x.rec ? 'افتح السطر' : 'افتح') + '</a>';
   return '<span class="xs muted mono">' + esc(x.ref || '') + '</span>';
 }
 
@@ -4142,6 +4498,7 @@ VIEWS['ops.adash'] = () => {
           + ' شاشة</span>').join('<span>·</span>') + '</div>';
 
   const b3 = '<div class="card"><div class="card__body">' + frameHtml({
+      wide: true,
       title: 'من يملك ماذا',
       sub: flip
         ? active.length + ' حسابًا نشطًا — فوق ' + FLIP_AT + ' حسابات تُقلب المصفوفة إلى '
@@ -4406,7 +4763,7 @@ VIEWS['ops.pools'] = () => ({
           : got < p.minClose ? ['crit', 'الإغلاق الآن يعني استرداد الجميع']
           : got > ceilingOf(p) ? ['warn', 'مكتتب فوق السقف — سيُخصَّص تناسبيًا']
           : ['pos', 'يتجاوز الحد الأدنى — إغلاق ناجح'];
-        return '<tr><td><span class="mono xs">' + p.ref + '</span></td><td class="sm">' + esc(p.title) + '</td>'
+        return '<tr id="rec-' + esc(p.id) + '"><td><span class="mono xs">' + p.ref + '</span></td><td class="sm">' + esc(p.title) + '</td>'
           + '<td class="n">' + fmt(got, 0) + '</td><td class="n">' + fmt(p.minClose, 0) + '</td>'
           + '<td class="n">' + fmt(ceilingOf(p), 0) + '</td><td>' + chip(POOL_STATUS, p.status) + '</td>'
           + '<td>' + (p.status === 'funding'
@@ -4523,7 +4880,7 @@ VIEWS['ops.money'] = () => {
       + (requested.length ? requested.map(d => {
           const p = pool(d.poolId), m = p.milestones.find(x => x.id === d.milestoneId) || {};
           const self = d.requestedBy === u.id;
-          return '<tr><td><span class="mono xs">' + d.id + '</span></td><td class="sm">' + esc(p.ref) + '</td>'
+          return '<tr id="rec-' + esc(d.id) + '"><td><span class="mono xs">' + d.id + '</span></td><td class="sm">' + esc(p.ref) + '</td>'
             + '<td class="sm">' + esc(m.label || '—') + '</td><td class="n">' + fmt(d.amount, 0) + '</td>'
             + '<td class="sm">' + esc((user(d.requestedBy) || {}).name) + '</td>'
             + '<td class="sm">' + esc(d.evidence) + '</td>'
@@ -4810,7 +5167,7 @@ VIEWS['ops.kyc'] = () => {
 
   const row = (t, showActions) => {
     const claim = t.claimedCls && t.claimedCls !== 'retail';
-    return '<tr><td class="sm">' + esc(t.name) + '</td>'
+    return '<tr id="rec-' + esc(t.id) + '"><td class="sm">' + esc(t.name) + '</td>'
       + '<td><span class="mono xs">' + esc(t.email || '—') + '</span></td>'
       + '<td class="sm">' + esc(ROLE_AR[t.role]) + '</td>'
       + '<td class="sm">' + (t.role === 'investor'
@@ -4867,7 +5224,7 @@ VIEWS['ops.apps'] = () => {
       + '<th class="n">المطلوب</th><th>الحالة</th><th>الاكتمال</th><th></th></tr></thead><tbody>'
       + rows.map(x => {
           const v = checkApplication(x);
-          return '<tr><td><span class="mono xs">' + x.id + '</span></td>'
+          return '<tr id="rec-' + esc(x.id) + '"><td><span class="mono xs">' + x.id + '</span></td>'
             + '<td class="sm">' + esc(x.project.title) + '</td>'
             + '<td class="sm">' + esc(x.company.name) + '</td>'
             + '<td class="n">' + fmt(x.ask.target, 0) + '</td>'
@@ -5007,7 +5364,7 @@ VIEWS['ops.reports'] = () => {
       + (waiting.length ? waiting.map(r => {
           const p = pool(r.poolId) || {};
           const late = r.status === 'late';
-          return '<div class="panel card" style="box-shadow:none"><div class="card__body">'
+          return '<div class="panel card" id="rec-' + esc(r.id) + '" style="box-shadow:none"><div class="card__body">'
             + '<div class="row"><h3>' + esc(r.period) + ' — ' + esc(p.title || '') + '</h3>'
             + chip(REPORT_STATUS, r.status)
             + '<span class="spacer xs muted">قُدِّم ' + dt(r.submittedAt, true) + '</span></div>'
@@ -5078,7 +5435,7 @@ VIEWS['ops.cases'] = () => {
   const avg = resolved.length
     ? Math.round(resolved.reduce((s, c) => s + c.daysToResolve, 0) / resolved.length) : null;
 
-  const card = c => '<div class="panel card" style="box-shadow:none"><div class="card__body">'
+  const card = c => '<div class="panel card" id="rec-' + esc(c.id) + '" style="box-shadow:none"><div class="card__body">'
     + '<div class="row"><span class="mono xs">' + c.id + '</span>'
     + '<span class="chip">' + esc(c.kind) + '</span>'
     + chip(CASE_STATUS, c.status)
@@ -5215,7 +5572,7 @@ VIEWS['ops.settings'] = () => {
       + (pending.length ? pending.map(x => {
           const f = SETTING_FIELDS.find(y => y.k === x.key) || { kind: 'int', label: x.key };
           const self = x.proposedBy === u.id;
-          return '<tr><td class="sm">' + esc(f.label) + '</td>'
+          return '<tr id="rec-' + esc(x.id) + '"><td class="sm">' + esc(f.label) + '</td>'
             + '<td class="n">' + fmtSetting(f.kind, x.before) + '</td>'
             + '<td class="n">' + fmtSetting(f.kind, x.value) + '</td>'
             + '<td class="sm">' + dt(x.effectiveFrom) + '</td>'
@@ -5251,9 +5608,14 @@ VIEWS['ops.settings'] = () => {
 };
 
 /* ── ops · the audit log ──────────────────────────────────────────────── */
+/* The log only grows. Drawing every row on every render was fine at six and
+   is not fine at six thousand — and the reader wants the last page anyway. */
+let AUDIT_CAP = 100;
 VIEWS['ops.audit'] = () => {
   const u = me();
-  const rows = STATE.audit.slice().reverse();
+  const all = STATE.audit.slice().reverse();
+  const rows = all.slice(0, AUDIT_CAP);
+  const hidden = all.length - rows.length;
   let broken = 0;
   for (let i = 1; i < STATE.audit.length; i += 1) {
     if (STATE.audit[i].prev !== STATE.audit[i - 1].hash) broken += 1;
@@ -5274,6 +5636,12 @@ VIEWS['ops.audit'] = () => {
           + '<td><span class="mono xs">' + r.hash.slice(0, 12) + '…</span></td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لم يُسجَّل إجراء بعد — نفّذ إجراءً من أي شاشة وسيظهر هنا.</td></tr>')
       + '</tbody></table></div></div></div>'
+      + (hidden
+          ? '<div class="row"><button class="btn btn--sm" data-act="moreAudit">اعرض '
+            + Math.min(hidden, 200) + ' سطرًا أقدم</button>'
+            + '<span class="xs muted">معروض ' + rows.length + ' من ' + all.length
+            + ' — الأحدث أولًا. التصدير أدناه يحمل السجل كاملًا مهما عُرض هنا.</span></div>'
+          : '')
       + exportPanel(u)
       + '<p class="xs muted">التجزئة هنا FNV-1a بطول 64 بت لتعمل داخل المتصفح دون اتصال؛ النظام الخادم يسلسل SHA-256 ويمنع التعديل والحذف بمُشغِّلات على مستوى قاعدة البيانات.</p>',
   };
@@ -5435,6 +5803,8 @@ function navBadge(key) {
 }
 
 let LAST_SCREEN = null;
+let LAST_HREF = null;
+let NAVSHEET = false;      // the phone's «المزيد» sheet, open or not
 
 /* Every commit rebuilds the shell, which destroys whatever had focus. Doing
    nothing about it is not neutral: focus falls back to the document body, so
@@ -5444,24 +5814,97 @@ let LAST_SCREEN = null;
    back on it. */
 function focusKey(el) {
   if (!el || el === document.body || !el.dataset) return null;
-  const d = el.dataset;
   if (el.id) return '#' + el.id;
+  if (el.tagName === 'A' && el.getAttribute('href')) return 'a:' + el.getAttribute('href');
+  const d = el.dataset;
   if (!d.act) return null;
   return [d.act, d.view, d.id, d.user, d.code, d.pool].map(x => x || '').join('|');
 }
 function findByKey(key) {
   if (!key) return null;
   if (key.charAt(0) === '#') return document.getElementById(key.slice(1));
+  if (key.slice(0, 2) === 'a:') {
+    try { return document.querySelector('a[href="' + CSS.escape(key.slice(2)) + '"]'); }
+    catch (e) { return null; }
+  }
   const all = document.querySelectorAll('[data-act]');
   for (let i = 0; i < all.length; i += 1) if (focusKey(all[i]) === key) return all[i];
   return null;
 }
 
+/* ── every table becomes a stack of cards on a phone ──────────────────────
+   Forty-one tables in this document, up to nine columns wide, and a phone is
+   390px across. Horizontal scrolling inside a card inside a page is how a
+   number goes unread.
+
+   Below 720px the header row is hidden and each cell carries its own label —
+   and the labels are read off the table itself, here, after the screen is
+   drawn. So none of the forty-one call sites had to be rewritten, a label
+   cannot drift from the header it came from, and the forty-second table
+   inherits the behaviour without being told.
+
+   A matrix is exempt: in `.pmx` the meaning *is* the crossing of row and
+   column, and one card per permission would destroy it. It keeps its scroll.
+   ────────────────────────────────────────────────────────────────────────── */
+function labelCells(root) {
+  root.querySelectorAll('table').forEach(t => {
+    if (t.classList.contains('pmx')) return;
+    const heads = [...t.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    if (!heads.length) return;                 // a layout table, not a data one
+    t.classList.add('dt');
+    t.querySelectorAll('tbody tr').forEach(tr => {
+      [...tr.children].forEach((td, i) => {
+        if (td.hasAttribute('colspan')) { td.dataset.role = 'wide'; return; }
+        if (i === 0) { td.dataset.role = 'title'; return; }
+        const h = heads[i] || '';
+        if (h) td.setAttribute('data-label', h);
+        else td.dataset.role = 'act';          // an unlabelled column is an action
+      });
+    });
+    t.querySelectorAll('tfoot td').forEach(td => { td.dataset.role = 'wide'; });
+  });
+}
+
+/* A row the address names is scrolled to and blinks once, so the eye lands
+   where the dashboard said the work was instead of at the top of a list the
+   reader now has to search. */
+function focusRecord(id) {
+  const el = document.getElementById('rec-' + id);
+  if (!el) return false;
+  try { el.scrollIntoView({ block: 'center' }); } catch (e) { el.scrollIntoView(); }
+  el.classList.add('rowhit');
+  setTimeout(() => el.classList.remove('rowhit'), 2200);
+  return true;
+}
+
 function render() {
+  resolveRoute();
   const u = me();
   const held = focusKey(document.activeElement);
-  document.getElementById('root').innerHTML = u ? appShell(u) : publicShell();
-  window.scrollTo(0, 0);
+  const wasY = window.scrollY;
+  const screen = u ? 'app:' + SESSION.view : 'pub:' + (SESSION.pub || 'landing');
+  const href = hashNow();
+  const first = LAST_SCREEN === null;
+  const changed = screen !== LAST_SCREEN;
+  const moved = href !== LAST_HREF;
+  LAST_SCREEN = screen; LAST_HREF = href;
+
+  const root = document.getElementById('root');
+  root.innerHTML = u ? appShell(u) : publicShell();
+  labelCells(root);
+
+  /* Three situations, and one unconditional scrollTo(0, 0) used to answer all
+     three the same way — which is why every action threw the reader back to
+     the top of a long screen, and then restored focus to a control they could
+     no longer see. */
+  if (ROUTE.id && moved && focusRecord(ROUTE.id)) {
+    /* the address named a row: it is on screen now */
+  } else if (changed) {
+    window.scrollTo(0, 0);                       // a different screen starts at its top
+  } else {
+    window.scrollTo(0, wasY);                    // same screen rebuilt: keep the place
+  }
+
   /* Replacing the shell destroys whatever had focus, which drops a keyboard
      user back at the document root — behind the whole nav they just used.
      Move focus to the heading, but only when the screen actually changed:
@@ -5469,10 +5912,6 @@ function render() {
      The very first render is the exception: nothing had focus to lose, and
      grabbing it there would put the reader past the skip link before they
      ever reached it. */
-  const screen = u ? 'app:' + SESSION.view : 'pub:' + (SESSION.pub || 'landing');
-  const first = LAST_SCREEN === null;
-  const changed = screen !== LAST_SCREEN;
-  LAST_SCREEN = screen;
   const h = document.getElementById('pagetitle');
   if (changed) {
     if (h && !first) h.focus({ preventScroll: true });
@@ -5495,7 +5934,7 @@ function publicShell() {
              : SESSION.pub === 'enrol' ? enrolView()
              : SESSION.pub === 'reset' ? resetView()
              : landingView();
-  return '<div class="riskbar">قد تخسر كامل المبلغ المستثمر. لا ضمان للعائد أو لرأس المال، ولا توجد سوق ثانوية.</div>'
+  return riskbar()
     + '<nav class="pubnav">'
     +   '<button class="brand" data-act="pub" data-pub="landing" style="background:none;border:0;cursor:pointer;padding:0;color:inherit">'
     +     '<div class="brand__mark" aria-hidden="true">ح</div><div style="text-align:start">'
@@ -5596,7 +6035,10 @@ function landingView() {
 }
 
 function demoAccounts() {
-  const picks = ['u_inv1', 'u_inv3', 'u_inv5', 'u_own2', 'u_fin1', 'u_fin2', 'u_pf1', 'u_cmp1', 'u_aud1'];
+  /* The administrator belongs here. Without this row the administration
+     dashboard — five bands of it — was reachable only by typing an address
+     nobody had been told. */
+  const picks = ['u_inv1', 'u_inv3', 'u_inv5', 'u_own2', 'u_adm1', 'u_fin1', 'u_fin2', 'u_pf1', 'u_cmp1', 'u_aud1'];
   return picks.map(id => {
     const u = user(id);
     if (!u) return '';
@@ -5825,7 +6267,7 @@ VIEWS['ops.admin'] = () => {
   const inviteRows = invites.length
     ? invites.map(i => {
         const st = inviteState(i);
-        return '<tr><td><span class="mono">' + i.code + '</span></td>'
+        return '<tr id="rec-' + esc(i.code) + '"><td><span class="mono">' + i.code + '</span></td>'
           + '<td class="sm">' + esc(JOB_AR[i.job] || i.job) + '</td>'
           + '<td class="sm">' + esc(i.note || '—') + '</td>'
           + '<td>' + chip(INVITE_STATE, st) + '</td>'
@@ -5838,10 +6280,11 @@ VIEWS['ops.admin'] = () => {
 
   const staffRows = staff.map(t => {
     const self = t.id === u.id;
-    return '<tr><td><div class="sm">' + esc(t.name) + (self ? ' <span class="chip">أنت</span>' : '') + '</div>'
+    return '<tr id="rec-' + esc(t.id) + '"><td><div class="sm">' + esc(t.name) + (self ? ' <span class="chip">أنت</span>' : '') + '</div>'
       + '<div class="xs muted mono">' + esc(t.email || '') + '</div></td>'
       + '<td>' + (canEnrol && !self
-          ? '<select data-act="setJob" data-user="' + t.id + '" style="min-width:9rem">'
+          ? '<select data-act="setJob" data-user="' + t.id + '" style="min-width:9rem"'
+            + ' aria-label="وظيفة ' + esc(t.name) + '">'
             + STAFF_JOBS.map(j => '<option value="' + j.k + '"' + (j.k === t.job ? ' selected' : '') + '>'
               + esc(JOB_AR[j.k] || j.k) + '</option>').join('') + '</select>'
           : '<span class="sm">' + esc(JOB_AR[t.job] || t.job) + '</span>') + '</td>'
@@ -5860,7 +6303,7 @@ VIEWS['ops.admin'] = () => {
           : '<span class="xs muted">—</span>') + '</td></tr>';
   }).join('');
 
-  const memberRows = members.map(t => '<tr><td><div class="sm">' + esc(t.name) + '</div>'
+  const memberRows = members.map(t => '<tr id="rec-' + esc(t.id) + '"><td><div class="sm">' + esc(t.name) + '</div>'
     + '<div class="xs muted mono">' + esc(t.email || '') + '</div></td>'
     + '<td class="sm">' + esc(ROLE_AR[t.role]) + (t.role === 'investor' ? ' · ' + CLASS_AR[t.cls] : '') + '</td>'
     + '<td>' + (t.kyc === 'approved' ? '<span class="chip chip--pos"><span class="chip__dot"></span>معتمد</span>'
@@ -5926,7 +6369,7 @@ VIEWS['ops.admin'] = () => {
             ? resets.map(r => {
                 const t = user(r.userId) || { name: r.userId };
                 const stt = resetState(r);
-                return '<tr><td><span class="mono">' + esc(r.code) + '</span></td>'
+                return '<tr id="rec-' + esc(r.code) + '"><td><span class="mono">' + esc(r.code) + '</span></td>'
                   + '<td class="sm">' + esc(t.name) + '</td>'
                   + '<td>' + chip(RESET_STATE, stt)
                   + (r.revokedReason ? '<div class="xs muted">' + esc(r.revokedReason) + '</div>' : '') + '</td>'
@@ -6117,6 +6560,8 @@ function resetView() {
 function appShell(u) {
   const nav = navFor(u);
   if (!nav.length) return lockedOut(u);
+  /* resolveRoute() has already corrected an address this account cannot open;
+     this only covers an account whose permissions opened nothing at all. */
   if (!nav.some(n => n.k === SESSION.view)) SESSION.view = nav[0].k;
   const view = VIEWS[SESSION.view]();
 
@@ -6128,7 +6573,7 @@ function appShell(u) {
             : u.role === 'owner' ? 'صاحب مشروع'
             : JOB_AR[u.job] || 'فريق التشغيل';
 
-  return '<div class="riskbar">قد تخسر كامل المبلغ المستثمر. لا ضمان للعائد أو لرأس المال، ولا توجد سوق ثانوية.</div>'
+  return riskbar()
   + '<header class="topbar">'
   +   '<div class="brand"><div class="brand__mark" aria-hidden="true">ح</div><div>'
   +     '<div class="brand__name">حِصّة</div>'
@@ -6145,9 +6590,16 @@ function appShell(u) {
   +     '<div class="side__group">' + esc(ROLE_AR[u.role]) + '</div>'
   +     nav.map(n => {
           const b = navBadge(n.k);
-          return '<button class="navlink" data-act="go" data-view="' + n.k + '"' + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
+          /* A real link, not a button pretending to be one: the middle click,
+             Ctrl+click, "copy link address" and the back button all come free,
+             and a screen reader announces it as what it is. */
+          /* `data-view` names the destination for anything that needs to find
+             this link; `data-act` is deliberately absent, so the click handler
+             leaves it alone and the browser follows the href itself. */
+          return '<a class="navlink" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
+            + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
             + '<span class="navlink__n" aria-hidden="true">' + n.n + '</span><span>' + n.label + '</span>'
-            + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</button>';
+            + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</a>';
         }).join('')
   +     '<div class="side__group">الحالة</div>'
   +     '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '') + '" style="padding:.4rem .6rem">'
@@ -6173,7 +6625,76 @@ function appShell(u) {
   +       (view.lede ? '<p class="pagehead__lede">' + view.lede + '</p>' : '') + '</div>'
   +     view.body
   +   '</div></main>'
-  + '</div>';
+  + '</div>'
+  + tabbar(u, nav)
+  + navSheet(u, nav, modeLabel);
+}
+
+/* ── the phone's navigation ────────────────────────────────────────────────
+   Fifteen entries in a horizontal strip measured 2254px inside a 390px
+   screen: two and a half of them were reachable without dragging, and the
+   status panel sat behind all fifteen where nobody ever saw it.
+
+   Four destinations within thumb reach, chosen by what this account can
+   actually open, and everything else — including that status panel — one tap
+   away in a sheet. */
+function tabbar(u, nav) {
+  const order = MOBILE_PRIMARY[u.role] || [];
+  const open = nav.filter(n => n.k !== NAV_ACCOUNT.k);
+  const primary = order.map(k => open.find(n => n.k === k)).filter(Boolean).slice(0, 4);
+  if (primary.length < 4) open.forEach(n => {
+    if (primary.length < 4 && !primary.includes(n)) primary.push(n);
+  });
+  const item = n => {
+    const b = navBadge(n.k);
+    return '<a class="tabbar__i" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
+      + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
+      + '<span class="tabbar__t">' + esc(n.short || n.label) + '</span>'
+      + (b ? '<span class="tabbar__b">' + b + '</span>' : '') + '</a>';
+  };
+  return '<nav class="tabbar" aria-label="التنقّل السريع">'
+    + primary.map(item).join('')
+    + '<button class="tabbar__i" data-act="moreNav" aria-expanded="' + (NAVSHEET ? 'true' : 'false')
+    + '" aria-controls="navsheet"><span class="tabbar__t">المزيد</span></button>'
+    + '</nav>';
+}
+
+/* Everything the account opens, grouped and named in full — plus the two
+   status lines, which on a phone had nowhere else to live. */
+function navSheet(u, nav, modeLabel) {
+  if (!NAVSHEET) return '';
+  const groups = [];
+  nav.forEach(n => {
+    const g = n.group || 'أخرى';
+    const at = groups.find(x => x.g === g);
+    if (at) at.items.push(n); else groups.push({ g, items: [n] });
+  });
+  return '<div class="sheetback" data-act="moreNav"></div>'
+    + '<div class="sheet" id="navsheet" role="dialog" aria-label="كل الشاشات">'
+    + '<div class="sheet__grip" aria-hidden="true"></div>'
+    + '<div class="sheet__head"><strong>' + esc(u.name) + '</strong>'
+    + '<span class="xs muted spacer">' + esc(ROLE_AR[u.role]) + '</span>'
+    + '<button class="btn btn--sm" data-act="moreNav">إغلاق</button></div>'
+    + '<div class="sheet__body">'
+    + groups.map(g => '<div class="side__group">' + esc(g.g) + '</div>'
+        + g.items.map(n => {
+            const b = navBadge(n.k);
+            return '<a class="navlink" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
+              + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
+              + '<span class="navlink__n" aria-hidden="true">' + n.n + '</span><span>' + n.label + '</span>'
+              + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</a>';
+          }).join('')).join('')
+    + '<div class="side__group">الحالة</div>'
+    + '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '')
+    + '" style="padding:.4rem .6rem"><span class="savebar__dot" aria-hidden="true"></span><span>'
+    + modeLabel + '</span></div>'
+    + '<div class="savebar savebar--' + (OFFLINE === 'ready' ? 'live' : OFFLINE === 'arming' ? '' : 'ro')
+    + '" style="padding:.4rem .6rem"><span class="savebar__dot" aria-hidden="true"></span><span>'
+    + esc(OFFLINE_LABEL[OFFLINE] || OFFLINE_LABEL.none) + '</span></div>'
+    + '<div class="row" style="padding:.6rem .2rem 0">'
+    + '<button class="iconbtn" data-act="theme">المظهر</button>'
+    + '<button class="iconbtn" data-act="logout">خروج</button></div>'
+    + '</div></div>';
 }
 
 /* A staff account with no permission at all still gets a real page, not a
@@ -6235,7 +6756,14 @@ const ACTS = {
       return;
     }
     signinCleared(email);
-    setSession({ authUserId: u.id, view: null });
+    /* A shortcut from the home screen, or a link a colleague sent, put the
+       destination in the address before the sign-in. Finish that trip rather
+       than dropping them on the default screen and making them navigate. */
+    const next = ROUTE.query.next ? parseHash(ROUTE.query.next) : null;
+    SESSION.authUserId = u.id;
+    try { localStorage.setItem('hissa.session', JSON.stringify({ authUserId: u.id })); } catch (e) {}
+    if (next && VIEWS[next.view] && navFor(u).some(n => n.k === next.view)) navigate(next);
+    else setSession({ view: null });
     toast('أهلًا ' + u.name + '.', 'good');
     /* Only where it persists. Without a writer there is nothing to record to,
        and committing would only fire the "this saves for nobody" warning at
@@ -6729,6 +7257,19 @@ const ACTS = {
   },
 
   go:      d => setSession({ view: d.view }),
+  moreNav: () => {
+    NAVSHEET = !NAVSHEET;
+    render();
+    /* Opening it moves the reader inside; closing returns them to the bar. */
+    const to = NAVSHEET ? document.querySelector('.sheet a.navlink')
+                        : document.querySelector('.tabbar [data-act="moreNav"]');
+    if (to) to.focus({ preventScroll: true });
+  },
+  moreAudit: () => { AUDIT_CAP += 200; render(); },
+  skipMain: () => {
+    const h = document.getElementById('pagetitle');
+    if (h) { h.focus(); h.scrollIntoView({ block: 'start' }); }
+  },
   pickPool:    (d, el) => setSession({ poolId: el.value }),
   pickOwnPool: (d, el) => setSession({ ownPoolId: el.value }),
   setJob: async (d, el) => {
@@ -7000,6 +7541,14 @@ try {
   const th = localStorage.getItem('hissa.theme');
   if (th) document.documentElement.setAttribute('data-theme', th);
 } catch (e) {}
+
+/* The address bar is the navigation: the back button, a pasted link, a
+   home-screen shortcut and every nav anchor all arrive here. */
+addEventListener('hashchange', () => { NAVSHEET = false; render(); });
+/* A sheet that cannot be dismissed from the keyboard is a trap. */
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && NAVSHEET) { NAVSHEET = false; render(); }
+});
 
 render();
 armOffline();

@@ -20,7 +20,7 @@ const WORK = path.join(ROOT, '.demo-work');
 const PORT = 8731;
 
 /* المُشغِّلات التي تحتاج مجلد العمل والخادم، بترتيب التكلفة */
-const BROWSER = ['adash', 'recon', 'omaradmin', 'mig', 'erasperm', 'a11y', 'rt4', 'rights', 'acct', 'prop'];
+const BROWSER = ['route', 'adash', 'recon', 'omaradmin', 'mig', 'erasperm', 'a11y', 'rt4', 'rights', 'acct', 'prop'];
 /* ومُشغِّلات تعمل من جذر المستودع مباشرة */
 const ROOTED = ['pwa'];
 

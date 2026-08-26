@@ -4,14 +4,46 @@
   "description": "تمويل جماعي لمشاريع تشغيلية محددة في سلطنة عُمان — إفصاح موحَّد، وصرف على مراحل بموافقة طرفين، وسجل تدقيق متسلسل.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": ".",
-  "scope": ".",
   "id": "./",
+  "start_url": "./#/",
+  "scope": ".",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "launch_handler": { "client_mode": "navigate-existing" },
   "orientation": "any",
   "background_color": "#f4f6f4",
   "theme_color": "#0d5c58",
   "categories": ["finance", "business"],
+  "shortcuts": [
+    {
+      "name": "لوحة إدارة النظام",
+      "short_name": "الإدارة",
+      "description": "من يصل إلى ماذا، ومن يصل وحده، وهل السجل متماسك",
+      "url": "./#/ops/adash",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "لوحة التشغيل",
+      "short_name": "التشغيل",
+      "description": "ما يحتاج تدخّلًا، وأين المال، وهل يتحرك التمويل",
+      "url": "./#/ops/dash",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "المطابقة البنكية",
+      "short_name": "المطابقة",
+      "description": "كشف الشريك المرخّص مقابل سجل المنصة",
+      "url": "./#/ops/recon",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "محفظتي",
+      "short_name": "محفظتي",
+      "description": "التزاماتك وحالتها وما وصلك من توزيعات",
+      "url": "./#/inv/portfolio",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

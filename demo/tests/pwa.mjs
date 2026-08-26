@@ -57,9 +57,23 @@ try {
   ok('اسم وأيقونات ولون', !!man.name && man.icons.length >= 2 && !!man.theme_color);
   ok('يحمل أيقونة maskable', man.icons.some(i => /maskable/.test(i.purpose || '')));
   ok('كل المسارات نسبية — شرط الخدمة تحت /repo/ على Pages',
-    man.start_url === '.' && man.scope === '.'
-      && man.icons.every(i => i.src.startsWith('./')),
+    man.start_url.startsWith('.') && man.scope === '.'
+      && man.icons.every(i => i.src.startsWith('./'))
+      && (man.shortcuts || []).every(c => c.url.startsWith('./')),
     man.start_url + ' · ' + man.scope);
+  ok('الهوية ثابتة عند «./» فلا يصير التطبيق تطبيقًا آخر', man.id === './', man.id);
+
+  /* ── الاختصارات: هذا هو معنى «PWA للّوحات» ── */
+  const cuts = man.shortcuts || [];
+  ok('المانيفست يحمل اختصارات للّوحات', cuts.length >= 3, cuts.length + ' اختصارًا');
+  ok('كل اختصار يفتح عنوانًا داخل التطبيق لا الصفحة العامة',
+    cuts.length > 0 && cuts.every(c => /#\//.test(c.url)),
+    cuts.map(c => c.url).join(' · '));
+  ok('ولوحة الإدارة ولوحة التشغيل والمطابقة من بينها',
+    ['#/ops/adash', '#/ops/dash', '#/ops/recon'].every(u => cuts.some(c => c.url.endsWith(u))),
+    cuts.map(c => c.url).join(' · '));
+  ok('لكل اختصار اسم وأيقونة', cuts.every(c => c.name && (c.icons || []).length));
+  ok('بداية التشغيل عنوان توجيه لا مسار خام', /#\//.test(man.start_url), man.start_url);
   for (const i of man.icons) {
     const r = await p.request.get(BASE + i.src.replace('./', ''));
     ok('الأيقونة موجودة: ' + i.src, r.status() === 200 && /image\/png/.test(r.headers()['content-type'] || ''));
@@ -102,6 +116,12 @@ try {
     await p.waitForSelector('.band__t', { timeout: 5000 });
     const bands = await p.$$eval('.band__t', n => n.length);
     ok('لوحة الإدارة تُبنى كاملة دون اتصال', bands === 5, bands + ' أشرطة');
+    /* والاختصار نفسه: عنوان اللوحة يُفتح والشبكة مقطوعة، وهو ما يفعله
+       الضغط المطوّل على أيقونة التطبيق في شاشة الهاتف. */
+    await p.goto(BASE + '#/ops/audit', { waitUntil: 'load' });
+    await p.waitForTimeout(700);
+    const t2 = await p.$eval('#pagetitle', e => e.textContent.trim()).catch(() => '');
+    ok('اختصار إلى لوحة أخرى يفتحها دون اتصال', t2 === 'سجل التدقيق', t2 || '(لم تُفتح)');
     const off = await p.$$eval('.savebar span:last-child', n => n.map(x => x.textContent.trim()));
     ok('شريط الحالة يقول إنه يعمل دون اتصال',
       off.some(t => /يعمل دون اتصال/.test(t)), off.join(' · '));

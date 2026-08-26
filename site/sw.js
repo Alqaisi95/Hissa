@@ -1,7 +1,7 @@
 /* حِصّة — عامل الخدمة (service worker)
  *
  * يُبنى منه site/sw.js عند تشغيل demo/tools/make_public.py، ويُستبدل
- * d6c7cd81f622 ببصمة محتوى الصفحة. فاسم المخزن يتغيّر كلما تغيّر التطبيق،
+ * a6452ee484d3 ببصمة محتوى الصفحة. فاسم المخزن يتغيّر كلما تغيّر التطبيق،
  * وهذا وحده ما يجعل التحديث يصل فعلًا بدل أن يبقى المستخدم على نسخة قديمة
  * لأن اسم المخزن لم يتحرك.
  *
@@ -17,7 +17,7 @@
  *                 فتخزينها هو الفرق بين «يعمل دون اتصال» و«يعمل ويبدو صحيحًا
  *                 دون اتصال».
  */
-const BUILD = 'd6c7cd81f622';
+const BUILD = 'a6452ee484d3';
 const SHELL = 'hissa-shell-' + BUILD;
 const FONTS = 'hissa-fonts-v1';
 
@@ -35,9 +35,13 @@ const FONT_HOSTS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com']
 self.addEventListener('install', event => {
   /* لا skipWaiting هنا: العامل الجديد ينتظر حتى يقرّر المستخدم إعادة التحميل.
      القفز بالنسخة تحت يده وهو في منتصف نموذج ليس تحديثًا، بل فقدان عمل. */
-  event.waitUntil(
-    caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).catch(() => {})
-  );
+  /* واحدًا واحدًا لا addAll: addAll ترفض الدفعة كلّها إذا سقط ملف واحد، فكان
+     فشل أيقونة يترك المستند نفسه خارج المخزن — أي تطبيقًا يَعِد بالعمل دون
+     اتصال ولا يفتح. الآن يسقط الملف وحده، ويبقى ما يفتح التطبيق. */
+  event.waitUntil((async () => {
+    const c = await caches.open(SHELL);
+    await Promise.all(SHELL_FILES.map(f => c.add(f).catch(() => {})));
+  })());
 });
 
 self.addEventListener('activate', event => {
