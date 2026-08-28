@@ -32,9 +32,20 @@
     --crit:#8e1a1a; --crit-wash:#f8e4e4;
     --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100; --cat-5:#e87ba4;
     --ord-1:#7cbfc2; --ord-2:#52a4a8; --ord-3:#2b878b; --ord-4:#136a6e; --ord-5:#0a4649;
-    --st-good:#0ca30c; --st-warn:#fab219; --st-serious:#ec835a; --st-crit:#d03b3b;
+    /* Severity is an ordered ramp — green → amber → orange → red — not a set
+       of identities, so neighbouring steps are close by design. What the old
+       steps failed was contrast, not separation: warn sat at 1.83:1 and
+       serious at 2.64:1 against white, under the 3:1 a chart mark needs, and
+       they were the two middle states an operator has to tell apart. These
+       are measured ≥4.65:1 on paper and ≥5.91:1 on the dark ground, which the
+       old set never had at all — it was declared once and inherited. */
+    --st-good:#177d3a; --st-warn:#9a6b06; --st-serious:#c2521f; --st-crit:#a81f16;
     --grid:#e2e6e2;
     --r:10px; --r-s:6px;
+    /* One rhythm for every queue row. A single line is the default; two lines
+       are an explicit choice, taken only where the second line changes what
+       the reader does. */
+    --row-1:40px; --row-2:52px;
     --ar:'IBM Plex Sans Arabic','Segoe UI',system-ui,sans-serif;
     --mo:'IBM Plex Mono',ui-monospace,Menlo,monospace;
     --shadow:0 1px 2px rgba(16,28,26,.05), 0 8px 24px rgba(16,28,26,.05);
@@ -50,6 +61,7 @@
       --crit:#e58181; --crit-wash:#331717;
       --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
       --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+      --st-good:#5cba8c; --st-warn:#d5a03c; --st-serious:#ea8a55; --st-crit:#e5736b;
       --grid:#1e2b2a;
       --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
     }
@@ -64,6 +76,7 @@
     --crit:#e58181; --crit-wash:#331717;
     --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
     --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+    --st-good:#5cba8c; --st-warn:#d5a03c; --st-serious:#ea8a55; --st-crit:#e5736b;
     --grid:#1e2b2a;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
   }
@@ -188,6 +201,17 @@
 
   .main { padding: clamp(1rem, 3vw, 2rem) clamp(.8rem, 3vw, 2rem) 4rem; min-width: 0; }
   .main__inner { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  /* 1080px is right for a paragraph and wrong for a table: a queue with six
+     columns squeezes while a quarter of a 1440 screen stays blank. A wide
+     screen opens the container and keeps the limit on the prose inside it. */
+  .main__inner--wide { max-width: min(100%, 1560px); gap: .8rem; }
+  /* On a work surface the space above the first actionable row is pure
+     overhead — it is crossed on every visit and read on none of them. */
+  .main:has(.main__inner--wide) { padding-block-start: .8rem; }
+  .main__inner--wide .pagehead { gap: .1rem; }
+  .main__inner--wide .pagehead h1 { font-size: 1.25rem; }
+  .main__inner--wide .band__q { padding-block-end: .35rem; }
+  .main__inner--wide .pagehead__lede { max-width: 68ch; }
   .pagehead { display: flex; flex-direction: column; gap: .3rem; }
   .pagehead__crumb { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
   .pagehead__lede { color: var(--ink-2); font-size: .9rem; max-width: 74ch; }
@@ -318,6 +342,8 @@
   .btn--primary:hover:not(:disabled) { background: var(--brand-2); border-color: var(--brand-2); }
   .btn--danger { background: var(--crit-wash); color: var(--crit); border-color: color-mix(in srgb, var(--crit) 30%, transparent); }
   .btn--sm { font-size: .76rem; padding: .25rem .6rem; }
+  /* a bare direction, so it stays square instead of wearing a word's width */
+  .btn--go { padding-inline: .5rem; font-size: .9rem; line-height: 1; }
 
   /* ═══ tabs inside a view ═══════════════════════════════════════════════ */
   .tabs { display: flex; gap: .2rem; overflow-x: auto; border-block-end: 1px solid var(--rule); }
@@ -331,7 +357,13 @@
 
   /* ═══ meters, tiles, charts ════════════════════════════════════════════ */
   .meter { display: block; background: var(--panel-2); border-radius: 999px; block-size: 8px; overflow: hidden; }
-  .meter__fill { display: block; block-size: 100%; border-radius: 999px; background: var(--brand); }
+  /* A fully rounded fill turns a 2% bar into a circle and reads longer than
+     it is. The end is rounded 4px on the free side only, and never shrinks
+     below 3px so a small value stays visible without being overstated. */
+  .meter__fill {
+    display: block; block-size: 100%; min-inline-size: 3px; background: var(--brand);
+    border-start-end-radius: 4px; border-end-end-radius: 4px;
+  }
 
 
   .frame { display: flex; flex-direction: column; gap: .5rem; }
@@ -602,7 +634,8 @@
   .exc { display: flex; flex-direction: column; }
   .exc__row {
     display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .6rem .8rem;
-    align-items: center; padding: .6rem .1rem; border-block-end: 1px solid var(--rule-2);
+    align-items: center; min-block-size: var(--row-2); padding: .3rem .1rem;
+    border-block-end: 1px solid var(--rule-2);
   }
   .exc__row:last-child { border-block-end: 0; }
   /* The row an address named. It blinks once and stops: a permanent highlight
@@ -620,8 +653,8 @@
   .exc__age--crit { background: var(--crit-wash); color: var(--crit); }
   .exc__age--warn { background: var(--warn-wash); color: var(--warn); }
   /* both are spans inside one cell: without this they share a line */
-  .exc__what { display: block; font-size: .86rem; }
-  .exc__why { display: block; font-size: .74rem; color: var(--ink-3); }
+  .exc__what { display: block; font-size: .86rem; line-height: 1.4; }
+  .exc__why { display: block; font-size: .74rem; line-height: 1.45; color: var(--ink-3); }
   @media (max-width: 560px) {
     .exc__row { grid-template-columns: auto minmax(0,1fr); }
     .exc__row > :last-child { grid-column: 1 / -1; }
@@ -632,7 +665,7 @@
   .excg + .excg { border-block-start: 1px solid var(--rule); }
   .excg__h {
     display: flex; align-items: center; gap: .45rem;
-    padding-block: .7rem .2rem; font-size: .74rem; font-weight: 600;
+    padding-block: .45rem .15rem; font-size: .74rem; font-weight: 600;
     color: var(--ink-3); letter-spacing: .02em;
   }
   .excg__n {
@@ -657,6 +690,22 @@
      thirty accounts, and a thirty-column mark grid does not */
   .pmx--flip th:first-child, .pmx--flip td:first-child { min-inline-size: 10rem; }
   .pmx--flip td { vertical-align: middle; }
+
+  /* a reference is looked up, not read: it opens when asked and costs nothing
+     until then */
+  .fold { border: 1px solid var(--rule); border-radius: var(--r); background: var(--panel); }
+  .fold > summary {
+    cursor: pointer; padding: .55rem .9rem; font-size: .82rem; font-weight: 500;
+    color: var(--ink-2); border-radius: var(--r); list-style-position: inside;
+  }
+  .fold > summary:hover { color: var(--ink); background: var(--panel-2); }
+  .fold[open] > summary { border-block-end: 1px solid var(--rule-2); border-end-start-radius: 0; border-end-end-radius: 0; }
+  .fold__b { padding: .8rem .9rem; }
+  /* one line per change, not a card each */
+  .tl--tight .tl__item { padding-block-end: .45rem; }
+  .tl--tight .tl__item p { display: inline; font-size: .78rem; color: var(--ink-3); }
+  .tl--tight .tl__t { display: inline; font-size: .82rem; }
+  .tl--tight .tl__d { display: inline; margin-inline-start: .4rem; }
 
   .segsm { display: flex; background: var(--panel-2); border-radius: 999px; padding: 2px; gap: 2px; }
   .segsm button {
@@ -749,13 +798,93 @@
   @media (pointer: coarse) {
     .btn, .iconbtn, .navlink, .linkbtn, .seg button, .segsm button, .frame__toggle,
     .demoacct, .picker__opt, .skip, .riskbar__short summary,
-    .tabs button, .tabbar__i { min-block-size: 44px; }
+    .tabs button, .tabbar__i, .tablink, .qmore, .fold > summary { min-block-size: 44px; }
+    .fold > summary { display: flex; align-items: center; }
+    /* A link inside a table cell is a control like any other. This was the
+       one finding the interface audit still carried. */
+    td a, .deflist__v a { display: inline-flex; align-items: center; min-block-size: 44px; }
+    .tablink, .qmore { display: flex; align-items: center; }
     .btn, .iconbtn { display: inline-flex; align-items: center; justify-content: center; }
     .btn--sm { padding-inline: .8rem; }
     input, select, textarea { min-block-size: 44px; }
     .check input { inline-size: 20px; block-size: 20px; }
   }
 
+
+  /* ═══ work surface: queues ═════════════════════════════════════════════
+     A queue is read down its left edge and acted on at its right, so every
+     row is one flex line that wraps whole rather than a grid that shears. */
+  .statusbar {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .8rem; color: var(--ink-2);
+    background: var(--panel-2); border-radius: var(--r-s); padding: .45rem .8rem;
+  }
+  /* the healthy case: a line, not a band */
+  .statusline {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .74rem; color: var(--ink-3); align-self: flex-start;
+  }
+  .qcard .card__head { padding: .5rem 1rem; }
+  .statusbar__dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+  .statusbar__dot--ok { background: var(--pos); }
+
+  .qcard--crit { border-color: color-mix(in srgb, var(--crit) 30%, var(--rule)); }
+  .qrows { display: flex; flex-direction: column; }
+  .qrow {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .7rem;
+    min-block-size: var(--row-1); padding: .3rem 1rem;
+    border-block-end: 1px solid var(--rule-2);
+  }
+  .qrow--2 { min-block-size: var(--row-2); }
+  .qrow:last-child { border-block-end: 0; }
+  .qrow:hover { background: var(--rule-2); }
+  .qrow__main { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; flex: 1 1 17rem; min-width: 0; }
+  .qrow__what { font-size: .86rem; font-weight: 500; }
+  .qrow__who { font-size: .76rem; color: var(--ink-3); }
+  .qrow__age { font-size: .76rem; color: var(--ink-3); font-family: var(--mo); }
+  .qrow__age--crit { color: var(--crit); font-weight: 600; }
+  .qrow__amt {
+    margin-inline-start: auto; font-family: var(--mo); font-size: .82rem;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .qrow__acts { flex: none; }
+  /* the refusal opens inside its own row, so the reason is written next to
+     the thing being refused and never against the wrong one */
+  .qrow__reject {
+    flex: 1 1 100%; display: flex; flex-direction: column; gap: .45rem;
+    background: var(--crit-wash); border-radius: var(--r-s); padding: .65rem .75rem;
+  }
+  .qmore {
+    display: block; padding: .6rem 1rem; font-size: .8rem; text-decoration: none;
+    border-block-start: 1px solid var(--rule-2); color: var(--brand);
+  }
+  .qmore:hover { background: var(--panel-2); }
+
+  /* three numbers, and the third is the one that matters */
+  .agerow { display: flex; gap: .35rem; }
+  .agecell { background: var(--panel-2); border-radius: var(--r-s); padding: .2rem .6rem; text-align: center; }
+  .agecell__v { font-family: var(--mo); font-weight: 600; font-size: .9rem; line-height: 1.2; }
+  .agecell__k { font-size: .64rem; color: var(--ink-3); white-space: nowrap; }
+  .agecell--hot { background: var(--crit-wash); }
+  .agecell--hot .agecell__v, .agecell--hot .agecell__k { color: var(--crit); }
+
+  /* tabs that are links, so each queue has an address of its own */
+  .tablink {
+    display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+    font-size: .84rem; text-decoration: none; color: var(--ink-3);
+    padding: .5rem .8rem; border-block-end: 2px solid transparent; margin-block-end: -1px;
+  }
+  .tablink:hover { color: var(--ink); }
+  .tablink[aria-selected="true"] { color: var(--brand); border-block-end-color: var(--brand); font-weight: 600; }
+  .tablink__n {
+    font-family: var(--mo); font-size: .68rem; background: var(--panel-2);
+    color: var(--ink-2); border-radius: 999px; padding: 0 .35rem;
+  }
+  .tablink[aria-selected="true"] .tablink__n { background: var(--brand-wash); color: var(--brand); }
+  @media (max-width: 560px) {
+    .qrow__amt { margin-inline-start: 0; }
+    .agerow { flex: 1 1 100%; }
+  }
 
 </style>
 <script id="appstate" type="application/json">{"v": 1, "seededAt": "2026-08-25T06:00:00Z", "settings": {"effectiveFrom": "2026-01-01", "minTicket": 100000, "unitPrice": 100000, "overfundBps": 12000, "coolingOffHours": 48, "limits": {"retail": {"perIssuer": 3000000, "rolling12m": 20000000}, "angel": {"perIssuer": null, "rolling12m": 100000000}, "sophisticated": {"perIssuer": null, "rolling12m": null}}, "feeBps": {"platform": 400, "success": 250}}, "users": [{"id": "u_inv1", "name": "عبدالله الغافري", "email": "abdullah@example.om", "salt": "aa727fa13bb68bcd7a685586fc992a28", "pw": "98ea43ec01186afd861965350b74f687c5d4f8954da6e90884d7ebfcf40872ec", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv2", "name": "شيخة الهنائية", "email": "shaikha@example.om", "salt": "b489647d5833053254ee829ffe845888", "pw": "ace7a4fd93e80a6a5fb8b06c26e2c441ae56de9a9a4301d608c0343053c02593", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv3", "name": "سعيد الشحي", "email": "saeed@example.om", "salt": "468e3fb2736f2cb8eed764ee1d0e01b1", "pw": "059c420e13d51a5022ecc4d0962f966a13cf3aad1f6cfc530cda5f03258021c4", "role": "investor", "cls": "angel", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv4", "name": "أمل المحروقية", "email": "amal@example.om", "salt": "95ef5d96be903c69a651252f9335d2e6", "pw": "8085ead135cb0392ea4139e7bc55bcbbf228a3c8e8997a22c833292d96068c41", "role": "investor", "cls": "sophisticated", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv5", "name": "مستثمر قيد التحقق", "email": "pending@example.om", "salt": "f5dc1cb71ff62e1b8859f78af5a5fa32", "pw": "afc5ce1582a36ca078cf9fea3d6d002f4e1dddc5bb796ccb632ea808e3e771b4", "role": "investor", "cls": "retail", "kyc": "pending", "suit": "pass", "consents": true}, {"id": "u_inv6", "name": "لم يجتز اختبار الملاءمة", "email": "restricted@example.om", "salt": "928abb469011d878c320a183c576abaa", "pw": "c61ea478dd4391e7f2783dbce2f126878afbee35002567d871f313baa7ce2c0b", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "restricted", "consents": true}, {"id": "u_inv7", "name": "ماجد البوسعيدي", "email": "majid@example.om", "salt": "c54e398cd7d66604becdfe9d9d9dec5a", "pw": "af02897d55fa063fa2f54ca02e4425aa5987c24a89a3f294ed3af4fe40d43593", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv8", "name": "ريم الحارثية", "email": "reem@example.om", "salt": "245e0145de3c86201b60dc1ad13d1ead", "pw": "e967d3f9e5989730c4e9e796c6005cfcf14fed047243d95df29cc594ca27aa7a", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_inv9", "name": "طلال الزدجالي", "email": "talal@example.om", "salt": "7cfdf153b1f2dfbcfd6832e593e736cf", "pw": "1a4d848dfde35d232e18c1ca5682e9b45970f3defa9757f052ca3a5583af6f22", "role": "investor", "cls": "retail", "kyc": "approved", "suit": "pass", "consents": true}, {"id": "u_own2", "name": "الطريق السريع للنقل — المالك", "email": "owner.logistics@example.om", "salt": "f0d813149214384a6bc32ff43fd80453", "pw": "35948ab04040d8b8c57f96dbd385ff6aae2ebf96808b6850e45b95c897fef277", "role": "owner", "pool": "p_log", "kyc": "approved"}, {"id": "u_own1", "name": "نسائم القهوة — المالك", "email": "owner.cafe@example.om", "salt": "7766881f97b2a6114d05614227d140eb", "pw": "5d4fe480669bcf858cff41bfd7af04c4a71c5a21e566ad44340886139a378604", "role": "owner", "pool": "p_cafe", "kyc": "approved"}, {"id": "u_fin1", "name": "مريم البلوشية", "email": "maryam@hissa.om", "salt": "a6ea45debd4a03bab6c7768745cf0a4a", "pw": "5f1198965e873643bea351ff8c4394f986762547a84bc4fe671b2e8d2ac3eef8", "role": "staff", "job": "finance_ops", "perms": ["funds.request", "funds.approve", "funds.read", "funds.reconcile", "audit.read", "dashboard.read", "case.work"]}, {"id": "u_fin2", "name": "خالد الرواحي", "email": "khalid@hissa.om", "salt": "232a23317afd3fafd82cc20bcdc6a123", "pw": "6cb60b3787419694b9e013202d4d346bf67ab72d1b4eb7a4706233b4cf86040b", "role": "staff", "job": "finance_ops", "perms": ["funds.request", "funds.approve", "funds.read", "funds.reconcile", "audit.read", "dashboard.read", "case.work"]}, {"id": "u_pf1", "name": "هدى الكندية", "email": "huda@hissa.om", "salt": "71b5914feb225dbe42efd6e9a720e179", "pw": "6e78b5c509b72133d29b6790d756deb9781b0b188f9aa7f2df55e7126719f76d", "role": "staff", "job": "portfolio_ops", "perms": ["pool.manage", "report.publish", "distribution.create", "funds.read", "audit.read", "dashboard.read", "application.review", "case.work"]}, {"id": "u_adm1", "name": "مدير النظام", "email": "admin@hissa.om", "salt": "cb549c52d354464c6d978441b3d99aaf", "pw": "662fe7c302d81b4a12a5c87f8e801e1ea79a22e14233b62a394961199b5f8bab", "role": "staff", "job": "system_admin", "perms": ["admin.users", "admin.enrol", "settings.read", "audit.read", "dashboard.read"]}, {"id": "u_cmp1", "name": "سالم المعمري", "email": "compliance@hissa.om", "salt": "0e95c53233e409b201a7ac5f91038e66", "pw": "42a5916a0d6c64b519fcf5059042a53c6f4243af84825eb78507091ef5f29c4f", "role": "staff", "job": "compliance", "perms": ["kyc.read", "kyc.approve", "audit.read", "dashboard.read", "application.read", "case.work"]}, {"id": "u_aud1", "name": "مدقق مستقل", "email": "auditor@hissa.om", "salt": "d7033da6a3086d32deab719160f05c3a", "pw": "8c0645ee59bd73751b69d0348e29037b31b309fb1e6257dbfa323467e77c65cc", "role": "staff", "job": "auditor", "perms": ["audit.read", "funds.read", "dashboard.read", "application.read", "case.read", "settings.read"]}], "pools": [{"id": "p_cafe", "ref": "POOL-2026-0001", "status": "funding", "title": "فرع جديد لمقهى نسائم — الموج، مسقط", "sector": "تجزئة وفروع", "issuer": "شركة نسائم القهوة ش.م.م", "governorate": "مسقط", "target": 65000000, "minClose": 52000000, "ownerStake": 22000000, "tenorMonths": 36, "publishedAt": "2026-07-15", "closesAt": "2026-09-15", "disclosureVersion": 3, "uof": [{"item": "تجهيزات وديكور الفرع", "supplier": "شركة التصاميم الحديثة", "amount": 28000000, "quote": "Q-2026-118"}, {"item": "معدات تحضير القهوة والمشروبات", "supplier": "الخليج لمعدات المقاهي", "amount": 19500000, "quote": "Q-2026-119"}, {"item": "أثاث وتكييف", "supplier": "مؤسسة الأثاث المكتبي", "amount": 9500000, "quote": "Q-2026-120"}, {"item": "رأس مال تشغيلي وثلاثة أشهر إيجار", "supplier": "مالك العقار", "amount": 8000000, "quote": "LEASE-2026-07"}], "scenarios": [{"name": "متحفظ", "yieldBps": 600, "basis": "تأخر التشغيل شهرين وانخفاض المبيعات 20% مع ثبات التكاليف"}, {"name": "أساسي", "yieldBps": 1100, "basis": "تشغيل وفق الجدول وأداء مقارب للفروع القائمة"}, {"name": "متفائل", "yieldBps": 1500, "basis": "تشغيل مبكر وأداء أعلى بـ15% مع ثبات التكاليف"}], "milestones": [{"id": "m1", "label": "توقيع عقد الإيجار وتسليم الموقع", "amount": 8000000, "condition": "عقد إيجار مسجل ومحضر تسليم", "state": "pending"}, {"id": "m2", "label": "تنفيذ التجهيزات والديكور", "amount": 28000000, "condition": "محضر إنجاز 80% وصور موقع", "state": "pending"}, {"id": "m3", "label": "توريد المعدات والأثاث", "amount": 29000000, "condition": "فاتورة مورد ومحضر استلام", "state": "pending"}], "risks": ["تأخر التراخيص البلدية قد يؤجل التشغيل ويؤخر أول توزيع.", "منافسة مباشرة من مقهيين في نطاق 500 متر.", "ارتفاع الإيجار عند التجديد بعد السنة الثالثة.", "اعتماد المشروع على مدير فرع واحد ذي خبرة."], "disclosureLog": []}, {"id": "p_log", "ref": "POOL-2026-0002", "status": "operating", "restrictedTo": ["angel", "sophisticated"], "title": "توسعة أسطول شاحنات التوزيع — صحار", "sector": "لوجستيات ومركبات", "issuer": "مؤسسة الطريق السريع للنقل", "governorate": "شمال الباطنة", "target": 85000000, "minClose": 68000000, "ownerStake": 30000000, "tenorMonths": 48, "publishedAt": "2026-04-02", "closesAt": "2026-06-01", "fundedAt": "2026-05-14", "disclosureVersion": 2, "uof": [{"item": "ثلاث شاحنات مبردة", "supplier": "الوكيل المعتمد للشاحنات", "amount": 72000000, "quote": "Q-2026-201"}, {"item": "تأمين شامل وترخيص سنة", "supplier": "شركة التأمين الوطنية", "amount": 7500000, "quote": "INS-2026-44"}, {"item": "أنظمة تتبع وتبريد", "supplier": "تقنيات التتبع", "amount": 5500000, "quote": "Q-2026-202"}], "scenarios": [{"name": "متحفظ", "yieldBps": 700, "basis": "انخفاض نسبة تشغيل الأسطول إلى 60% وارتفاع الصيانة"}, {"name": "أساسي", "yieldBps": 1200, "basis": "تشغيل 75% وعقود التوريد الثلاثة مستقرة"}, {"name": "متفائل", "yieldBps": 1600, "basis": "تشغيل 85% وإضافة عقد رابع"}], "milestones": [{"id": "m1", "label": "دفعة مقدمة للوكيل", "amount": 30000000, "condition": "عقد شراء موقّع", "state": "executed"}, {"id": "m2", "label": "استلام الشاحنات وترخيصها", "amount": 42000000, "condition": "بطاقات ملكية وتأمين ساري", "state": "executed"}, {"id": "m3", "label": "تركيب أنظمة التتبع", "amount": 13000000, "condition": "محضر تركيب واختبار", "state": "pending"}], "risks": ["انخفاض نسبة تشغيل الأسطول عن المفترض.", "ارتفاع أسعار الوقود وقطع الغيار.", "اعتماد الإيراد على ثلاثة عقود توريد رئيسية.", "حوادث أو أعطال تخرج مركبة من الخدمة."], "disclosureLog": []}, {"id": "p_clinic", "ref": "POOL-2026-0004", "status": "funding", "restrictedTo": ["angel", "sophisticated", "retail"], "title": "فرع ثانٍ لعيادة أسنان — صلالة", "sector": "رعاية صحية", "issuer": "عيادة الواحة لطب الأسنان ش.م.م", "governorate": "ظفار", "target": 40000000, "minClose": 32000000, "ownerStake": 14000000, "tenorMonths": 36, "publishedAt": "2026-08-10", "closesAt": "2026-10-20", "disclosureVersion": 1, "uof": [{"item": "كرسيا أسنان وأجهزة", "supplier": "الشرق الأوسط للأجهزة الطبية", "amount": 21000000, "quote": "Q-2026-401"}, {"item": "جهاز أشعة بانورامية", "supplier": "الشرق الأوسط للأجهزة الطبية", "amount": 9500000, "quote": "Q-2026-402"}, {"item": "تجهيز العيادة والتعقيم", "supplier": "مؤسسة التجهيزات الطبية", "amount": 6500000, "quote": "Q-2026-403"}, {"item": "رأس مال تشغيلي ثلاثة أشهر", "supplier": "—", "amount": 3000000, "quote": "WC-2026-04"}], "scenarios": [{"name": "متحفظ", "yieldBps": 550, "basis": "بطء بناء قاعدة المرضى في السنة الأولى"}, {"name": "أساسي", "yieldBps": 1050, "basis": "معدل إشغال الكراسي 60% وتعاقد مع شركتَي تأمين"}, {"name": "متفائل", "yieldBps": 1450, "basis": "إشغال 75% وإضافة خدمات تقويم"}], "milestones": [{"id": "m1", "label": "تجهيز الموقع والتعقيم", "amount": 6500000, "condition": "محضر إنجاز وترخيص صحي", "state": "pending"}, {"id": "m2", "label": "توريد الكراسي والأجهزة", "amount": 21000000, "condition": "فاتورة مورد ومحضر استلام", "state": "pending"}, {"id": "m3", "label": "تركيب جهاز الأشعة", "amount": 12500000, "condition": "شهادة سلامة إشعاعية", "state": "pending"}], "risks": ["الترخيص الصحي لجهاز الأشعة قد يتأخر ويؤجل التشغيل الكامل.", "الاعتماد على تعاقدات شركات التأمين لتدفق المرضى.", "منافسة عيادتين قائمتين في المحافظة نفسها.", "اعتماد المشروع على طبيب مقيم واحد في البداية."], "disclosureLog": []}, {"id": "p_bake", "ref": "POOL-2026-0003", "status": "refunding", "title": "خط إنتاج المخبوزات المجمدة — نزوى", "sector": "معدات إنتاج غذائي", "issuer": "مخابز الواحة الحديثة ش.م.م", "governorate": "الداخلية", "target": 48000000, "minClose": 38400000, "ownerStake": 16000000, "tenorMonths": 36, "publishedAt": "2026-05-20", "closesAt": "2026-08-01", "disclosureVersion": 1, "uof": [{"item": "خط إنتاج وتجميد", "supplier": "مورد معدات الأغذية", "amount": 38000000, "quote": "Q-2026-301"}, {"item": "غرفة تبريد", "supplier": "أنظمة التبريد المتقدمة", "amount": 7000000, "quote": "Q-2026-302"}, {"item": "تدريب وتشغيل تجريبي", "supplier": "مورد معدات الأغذية", "amount": 3000000, "quote": "Q-2026-303"}], "scenarios": [{"name": "متحفظ", "yieldBps": 500, "basis": "تأخر التراخيص وبطء اعتماد المنتج لدى التجزئة"}, {"name": "أساسي", "yieldBps": 1000, "basis": "اعتماد المنتج في ثلاث سلاسل خلال ستة أشهر"}, {"name": "متفائل", "yieldBps": 1400, "basis": "اعتماد أسرع وتشغيل بطاقة كاملة"}], "milestones": [], "risks": ["لم يبلغ التمويل حدّه الأدنى قبل انتهاء المدة.", "سوق المخبوزات المجمدة يتطلب اعتمادًا من سلاسل التجزئة."], "disclosureLog": []}], "orders": [{"id": "ORD-2026-0001", "poolId": "p_cafe", "userId": "u_inv1", "amount": 1500000, "status": "confirmed", "createdAt": "2026-07-20T09:12:00Z"}, {"id": "ORD-2026-0002", "poolId": "p_cafe", "userId": "u_inv2", "amount": 2900000, "status": "confirmed", "createdAt": "2026-07-21T11:40:00Z"}, {"id": "ORD-2026-0003", "poolId": "p_cafe", "userId": "u_inv3", "amount": 12000000, "status": "confirmed", "createdAt": "2026-07-22T08:05:00Z"}, {"id": "ORD-2026-0004", "poolId": "p_cafe", "userId": "u_inv4", "amount": 20000000, "status": "confirmed", "createdAt": "2026-07-25T14:22:00Z"}, {"id": "ORD-2026-0005", "poolId": "p_cafe", "userId": "u_inv1", "amount": 600000, "status": "pending", "createdAt": "2026-08-24T18:03:00Z"}, {"id": "ORD-2026-0006", "poolId": "p_cafe", "userId": "u_inv3", "amount": 800000, "status": "confirmed", "createdAt": "2026-08-10T10:00:00Z"}, {"id": "ORD-2026-0012", "poolId": "p_cafe", "userId": "u_inv4", "amount": 25000000, "status": "confirmed", "createdAt": "2026-08-02T10:15:00Z"}, {"id": "ORD-2026-0013", "poolId": "p_cafe", "userId": "u_inv3", "amount": 18000000, "status": "confirmed", "createdAt": "2026-08-06T12:40:00Z"}, {"id": "ORD-2026-0014", "poolId": "p_cafe", "userId": "u_inv7", "amount": 2500000, "status": "confirmed", "createdAt": "2026-08-12T09:05:00Z"}, {"id": "ORD-2026-0015", "poolId": "p_cafe", "userId": "u_inv8", "amount": 2800000, "status": "confirmed", "createdAt": "2026-08-15T15:20:00Z"}, {"id": "ORD-2026-0016", "poolId": "p_cafe", "userId": "u_inv9", "amount": 110000, "status": "confirmed", "createdAt": "2026-08-19T08:30:00Z"}, {"id": "ORD-2026-0007", "poolId": "p_log", "userId": "u_inv4", "amount": 40000000, "status": "allocated", "createdAt": "2026-05-02T09:00:00Z"}, {"id": "ORD-2026-0008", "poolId": "p_log", "userId": "u_inv3", "amount": 25000000, "status": "allocated", "createdAt": "2026-05-04T13:30:00Z"}, {"id": "ORD-2026-0009", "poolId": "p_log", "userId": "u_inv2", "amount": 8500000, "status": "allocated", "createdAt": "2026-05-06T16:45:00Z"}, {"id": "ORD-2026-0017", "poolId": "p_clinic", "userId": "u_inv7", "amount": 1200000, "status": "confirmed", "createdAt": "2026-08-14T10:00:00Z"}, {"id": "ORD-2026-0018", "poolId": "p_clinic", "userId": "u_inv3", "amount": 6000000, "status": "confirmed", "createdAt": "2026-08-17T11:30:00Z"}, {"id": "ORD-2026-0019", "poolId": "p_clinic", "userId": "u_inv8", "amount": 900000, "status": "confirmed", "createdAt": "2026-08-21T14:10:00Z"}, {"id": "ORD-2026-0010", "poolId": "p_bake", "userId": "u_inv3", "amount": 9000000, "status": "refunded", "createdAt": "2026-06-01T07:20:00Z"}, {"id": "ORD-2026-0011", "poolId": "p_bake", "userId": "u_inv1", "amount": 3000000, "status": "refunded", "createdAt": "2026-06-03T12:10:00Z"}], "disbursements": [{"id": "DSB-2026-0001", "poolId": "p_log", "milestoneId": "m1", "amount": 30000000, "status": "executed", "requestedBy": "u_fin1", "requestedAt": "2026-05-16T08:00:00Z", "approvedBy": "u_fin2", "approvedAt": "2026-05-16T11:20:00Z", "evidence": "عقد شراء موقّع — CTR-2026-77"}, {"id": "DSB-2026-0002", "poolId": "p_log", "milestoneId": "m2", "amount": 42000000, "status": "executed", "requestedBy": "u_fin2", "requestedAt": "2026-06-11T09:30:00Z", "approvedBy": "u_fin1", "approvedAt": "2026-06-11T15:05:00Z", "evidence": "بطاقات ملكية 3 مركبات + وثيقة تأمين INS-2026-44"}, {"id": "DSB-2026-0003", "poolId": "p_log", "milestoneId": "m3", "amount": 13000000, "status": "requested", "requestedBy": "u_fin1", "requestedAt": "2026-08-23T07:45:00Z", "approvedBy": null, "approvedAt": null, "evidence": "محضر تركيب أنظمة التتبع — TRK-2026-19"}], "distributions": [{"id": "DST-2026-0001", "poolId": "p_log", "period": "الربع الثاني 2026", "gross": 2100000, "paidAt": "2026-07-05T00:00:00Z"}], "reports": [{"id": "RPT-2026-0001", "poolId": "p_log", "period": "الربع الثاني 2026", "dueAt": "2026-07-15", "status": "published", "submittedAt": "2026-07-10T09:00:00Z", "publishedAt": "2026-07-12T10:00:00Z", "kpis": [{"metric": "نسبة تشغيل الأسطول %", "actual": 72, "forecast": 75}, {"metric": "إيراد الشهر (ر.ع)", "actual": 9400, "forecast": 9800}, {"metric": "تكلفة الصيانة (ر.ع)", "actual": 1250, "forecast": 900}], "narrative": "تم تشغيل المركبات الثلاث اعتبارًا من منتصف يونيو. نسبة التشغيل أقل من المتوقع بثلاث نقاط بسبب تأخر عقد التوريد الثالث، وتكلفة الصيانة أعلى بسبب استبدال وحدة تبريد.", "variance": "العقد الثالث بدأ في يوليو ويُتوقع أن ترتفع نسبة التشغيل في الربع القادم."}, {"id": "RPT-2026-0002", "poolId": "p_log", "period": "الربع الثالث 2026", "dueAt": "2026-10-15", "status": "scheduled", "submittedAt": null, "publishedAt": null, "kpis": [], "narrative": "", "variance": ""}], "cases": [{"id": "CASE-2026-0004", "kind": "شكوى", "subject": "تأخر إشعار التوزيع", "poolId": "p_log", "status": "open", "openedAt": "2026-08-18T08:00:00Z", "slaDays": 5, "notes": [], "assignedTo": null, "raisedBy": null}, {"id": "CASE-2026-0005", "kind": "استفسار", "subject": "طلب نسخة من الإفصاح السابق", "poolId": "p_cafe", "status": "open", "openedAt": "2026-08-22T13:00:00Z", "slaDays": 5, "notes": [], "assignedTo": null, "raisedBy": null}, {"id": "CASE-2026-0006", "kind": "مطابقة", "subject": "فرق 3.000 ر.ع بين كشف الضمان والسجل", "poolId": "p_cafe", "status": "open", "openedAt": "2026-08-24T09:00:00Z", "slaDays": 2, "notes": [], "assignedTo": null, "raisedBy": null}], "audit": [{"at": "2026-08-25T23:07:50.841Z", "actor": "u_pf1", "action": "مراجعة طلب تمويل", "entity": "APP-2026-0007", "detail": "بدء الفحص النافي للجهالة", "prev": "85ae556a99b3e9cc", "hash": "6e02e8837c9b7c05"}, {"at": "2026-08-26T13:04:28.553Z", "actor": "u_adm1", "action": "منح صلاحية", "entity": "funds.reconcile", "detail": "صلاحية المطابقة البنكية لعمر القيسي ومريم البلوشية وخالد الرواحي — العدد صار 18", "prev": "e8f9b4f3f776be7b", "hash": "57e2a4261877dbe4"}], "applications": [{"id": "APP-2026-0007", "ownerId": "u_own1", "status": "in_review", "submittedAt": "2026-08-18T08:30:00Z", "decidedAt": null, "poolId": null, "notes": [], "company": {"name": "شركة نسائم القهوة ش.م.م", "cr": "1234567", "activity": "مقاهٍ ومشروبات", "governorate": "مسقط", "founded": "2019", "staff": "24"}, "project": {"title": "فرع ثالث لمقهى نسائم — القرم", "sector": "تجزئة وفروع", "location": "القرم، مسقط", "summary": "فرع ثالث في موقع مكتبي عالي الحركة، بالاعتماد على نفس التشغيل والموردين القائمين للفرعين الحاليين، مع فريق مدرَّب داخليًا.", "tenorMonths": 36}, "fin": {"revenue": 214000000, "profit": 31500000, "ownerStake": 18000000}, "ask": {"target": 52000000, "minClose": 41600000}, "uof": [{"item": "تجهيز الموقع والديكور", "supplier": "شركة التصاميم الحديثة", "amount": 24000000, "quote": "Q-2026-511"}, {"item": "معدات التحضير", "supplier": "الخليج لمعدات المقاهي", "amount": 17000000, "quote": "Q-2026-512"}, {"item": "أثاث وتكييف", "supplier": "مؤسسة الأثاث المكتبي", "amount": 7000000, "quote": "Q-2026-513"}, {"item": "رأس مال تشغيلي", "supplier": "—", "amount": 4000000, "quote": "WC-2026-11"}], "milestones": [{"label": "توقيع الإيجار وتسليم الموقع", "condition": "عقد إيجار مسجَّل ومحضر تسليم", "amount": 4000000}, {"label": "تنفيذ التجهيز والديكور", "condition": "محضر إنجاز 80% وصور موقع", "amount": 24000000}, {"label": "توريد المعدات والأثاث", "condition": "فاتورة مورد ومحضر استلام", "amount": 24000000}], "scenarios": [{"name": "متحفظ", "yieldBps": 650, "basis": "تأخر التشغيل شهرين وحركة أقل من المتوقع في الصيف"}, {"name": "أساسي", "yieldBps": 1150, "basis": "أداء مقارب لفرع الموج بعد ستة أشهر من التشغيل"}, {"name": "متفائل", "yieldBps": 1520, "basis": "تشغيل مبكر وطلب مكتبي أعلى من المفترض"}], "risks": ["الموقع يعتمد على حركة المكاتب، وتتراجع في الإجازات الرسمية والصيف.", "ارتفاع الإيجار عند التجديد في موقع تجاري مطلوب.", "منافسة سلسلتين قائمتين ضمن نطاق 300 متر.", "الاعتماد على نفس فريق التشغيل قد يضغط على الفرعين القائمين."], "docs": {"cr": true, "financials": true, "quotes": true, "lease": false, "ids": true}}], "invites": [], "settingProposals": [], "settingsHistory": [], "resets": [], "schema": 5, "reconciliations": []}</script>
@@ -837,6 +966,12 @@ function migrateState(raw) {
     if (!Array.isArray(r.kpis)) { r.kpis = []; note('report.kpis'); }
   });
 
+  /* A monotonic mutation counter, and the only key METRICS caches on. Neither
+     existing marker can serve: `v` is a static format stamp and `schema` moves
+     only when the shape changes — both read identical either side of an
+     action, which is exactly the difference a cache has to see. */
+  if (typeof st.version !== 'number') { st.version = 0; note('version'); }
+
   st.schema = SCHEMA;
   return st;
 }
@@ -879,6 +1014,10 @@ async function commit(label, mutate) {
     return false;
   }
   appendAudit(draft, Object.assign({ action: label }, entry || {}));
+  /* After the audit row, so the version identifies a state the row is already
+     part of. A refusal never reaches here, so a rejected action leaves the
+     counter — and every cache keyed on it — untouched. */
+  draft.version = (draft.version || 0) + 1;
   STATE = draft;
   render();
 
@@ -973,11 +1112,23 @@ const ordersOf = poolId => STATE.orders.filter(o => o.poolId === poolId);
 const raised   = poolId => ordersOf(poolId).filter(o => COUNTED.has(o.status)).reduce((s, o) => s + o.amount, 0);
 const allocatedOf = poolId => STATE.orders.filter(o => o.poolId === poolId && o.status === 'allocated');
 const uofTotal = p => p.uof.reduce((s, u) => s + u.amount, 0);
-const ceilingOf = p => Math.round((p.target * STATE.settings.overfundBps) / 10000);
+/* `overfundBps` is the ceiling as a share of target, not the excess above it:
+   12000 means the pool accepts up to 120% of target, never target plus 120%.
+   The settings argument lets a screen price an old pool by the rules that were
+   in force when it was published; omitted, it reads the current ones. */
+const ceilingOf = (p, s) => Math.round((p.target * (s || STATE.settings).overfundBps) / 10000);
 
-function rolling12m(userId) {
-  return STATE.orders.filter(o => o.userId === userId && COUNTED.has(o.status))
-                     .reduce((s, o) => s + o.amount, 0);
+/* A rolling window, not a lifetime total. The setting is named `rolling12m`
+   and the disclosure promises the investor a limit "خلال 12 شهرًا"; summing
+   every commitment an account ever made contradicts both, and tightens
+   silently as the account ages until an active investor is frozen out. Time
+   is a parameter so this is testable. */
+function rolling12m(userId, now) {
+  const from = (now == null ? Date.now() : now) - 365 * DAY;
+  return STATE.orders
+    .filter(o => o.userId === userId && COUNTED.has(o.status)
+              && new Date(o.createdAt).getTime() >= from)
+    .reduce((s, o) => s + o.amount, 0);
 }
 function perIssuer(userId, poolId) {
   return STATE.orders.filter(o => o.userId === userId && o.poolId === poolId && COUNTED.has(o.status))
@@ -1086,14 +1237,56 @@ function actRequestDisbursement(st, poolId, milestoneId, amount, evidence, byUse
   return { entity: id, detail: 'طلب صرف ' + rial(amount) + ' لمرحلة «' + m.label + '»' };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   DUAL CONTROL — the second-party rules, written once
+
+   Three places in this system refuse to let one person be both halves of a
+   transaction. Each rule needs two readers: the action, which refuses, and the
+   approval queue, which must not offer what the action will refuse. Written
+   twice they drift, and the drift is silent — the queue keeps showing a row
+   that fails the moment it is clicked, and nothing reports the mismatch.
+
+   So each rule is a pair. `ready` is the state that makes a row actionable at
+   all; `secondParty` is the rule itself. The action asserts both; the queue
+   filters on both plus the permission.
+
+   A fourth refusal exists — actIssueReset will not cut a recovery code for
+   your own account — but it produces no queue: an administrator issues a code
+   outright, and nothing waits on a second party. It stays a guard on the
+   control in ops.admin, which is where it already is.
+   ══════════════════════════════════════════════════════════════════════════ */
+const DUAL = {
+  disbursement: {
+    perm: 'funds.approve',
+    ready: d => d.status === 'requested',
+    secondParty: (d, byId) => d.requestedBy !== byId,
+    refusal: 'لا يعتمد الطلبَ من أنشأه — يلزم طرف ثانٍ.',
+  },
+  settingProposal: {
+    perm: 'admin.users',
+    ready: x => x.status === 'pending',
+    secondParty: (x, byId) => x.proposedBy !== byId,
+    refusal: 'لا يعتمد الاقتراحَ من اقترحه — يلزم مدير آخر.',
+  },
+  reconciliation: {
+    perm: 'funds.reconcile',
+    ready: r => r.status === 'prepared',
+    secondParty: (r, byId) => r.preparedBy !== byId,
+    refusal: 'أعددتَ هذه المطابقة بنفسك — لا توقّعها. يلزم طرف ثانٍ.',
+  },
+};
+/* One row, one person: is this actionable by them right now? */
+const dualOpen = (kind, row, byId) =>
+  DUAL[kind].ready(row) && DUAL[kind].secondParty(row, byId);
+
 /* Dual control is enforced per transaction, not per role: the same person may
    hold both permissions and still cannot approve what they requested. */
 function actApproveDisbursement(st, dsbId, byUserId) {
   assertPerm('funds.approve');
   const d = st.disbursements.find(x => x.id === dsbId);
   if (!d) throw new Error('طلب غير موجود.');
-  if (d.status !== 'requested') throw new Error('هذا الطلب اعتُمد أو نُفِّذ.');
-  if (d.requestedBy === byUserId) throw new Error('لا يعتمد الطلبَ من أنشأه — يلزم طرف ثانٍ.');
+  if (!DUAL.disbursement.ready(d)) throw new Error('هذا الطلب اعتُمد أو نُفِّذ.');
+  if (!DUAL.disbursement.secondParty(d, byUserId)) throw new Error(DUAL.disbursement.refusal);
   d.status = 'executed';
   d.approvedBy = byUserId;
   d.approvedAt = nowIso();
@@ -1102,6 +1295,38 @@ function actApproveDisbursement(st, dsbId, byUserId) {
   if (m) m.state = 'executed';
   if (p.status === 'funded') p.status = 'operating';
   return { entity: dsbId, detail: 'اعتماد وصرف ' + rial(d.amount) + ' — طالب: ' + (user(d.requestedBy) || {}).name };
+}
+
+/* Refusing to release money is a decision, and until now the system had no
+   way to record one. A request could be approved or left sitting; a reviewer
+   who thought it wrong had nothing to press, and the audit log could never
+   answer "why did this money not go out". That is the half of dual control
+   that was missing — a second party who can only ever say yes is not a
+   control, they are a delay.
+
+   The milestone goes back to `pending`, because actRequestDisbursement
+   refuses any milestone that is not — without this, a refused request would
+   lock its milestone out of ever being requested again. */
+function actRejectDisbursement(st, dsbId, reason, byUserId) {
+  assertPerm('funds.approve');
+  const d = st.disbursements.find(x => x.id === dsbId);
+  if (!d) throw new Error('طلب غير موجود.');
+  if (!DUAL.disbursement.ready(d)) throw new Error('هذا الطلب اعتُمد أو نُفِّذ.');
+  /* The same second-party rule as approval: refusing your own request would
+     let a requester quietly retract it with nobody else in the record. */
+  if (!DUAL.disbursement.secondParty(d, byUserId))
+    throw new Error('لا ترفض طلبًا أنشأته بنفسك — يلزم طرف ثانٍ.');
+  if (!reason || reason.trim().length < 10)
+    throw new Error('اكتب سبب الرفض — عشرة أحرف على الأقل، ويُقرأ في التدقيق.');
+  d.status = 'rejected';
+  d.rejectedBy = byUserId;
+  d.rejectedAt = nowIso();
+  d.rejectReason = reason.trim();
+  const p = st.pools.find(x => x.id === d.poolId);
+  const m = p ? (p.milestones || []).find(x => x.id === d.milestoneId) : null;
+  if (m && m.state === 'requested') m.state = 'pending';
+  return { entity: dsbId, detail: 'رفض صرف ' + rial(d.amount) + ' — طالبه '
+    + ((user(d.requestedBy) || {}).name || d.requestedBy) + ' · السبب: ' + reason.trim() };
 }
 
 function actCreateDistribution(st, poolId, gross, period) {
@@ -1663,16 +1888,23 @@ function actProposeSetting(st, key, value, reason, effectiveFrom, byUserId) {
   return { entity: id, detail: 'اقتراح تغيير «' + field.label + '» من '
     + fmtSetting(field.kind, before) + ' إلى ' + fmtSetting(field.kind, value) };
 }
-function actDecideSetting(st, id, approve, byUserId) {
+function actDecideSetting(st, id, approve, byUserId, reason) {
   assertPerm('admin.users');
   const pr = st.settingProposals.find(x => x.id === id);
   if (!pr) throw new Error('اقتراح غير موجود.');
-  if (pr.status !== 'pending') throw new Error('هذا الاقتراح محسوم.');
-  if (pr.proposedBy === byUserId) throw new Error('لا يعتمد الاقتراحَ من اقترحه — يلزم مدير آخر.');
+  if (!DUAL.settingProposal.ready(pr)) throw new Error('هذا الاقتراح محسوم.');
+  if (!DUAL.settingProposal.secondParty(pr, byUserId)) throw new Error(DUAL.settingProposal.refusal);
   const field = SETTING_FIELDS.find(f => f.k === pr.key);
+  /* An approval carries its justification already — the proposer wrote it and
+     it lands in settingsHistory. A refusal carried nothing, so the record said
+     a change was rejected and never why, which is the half a later reader
+     needs most. */
+  if (!approve && (!reason || reason.trim().length < 10))
+    throw new Error('اكتب سبب الرفض — عشرة أحرف على الأقل، ويُقرأ في التدقيق.');
   pr.status = approve ? 'approved' : 'rejected';
   pr.decidedBy = byUserId;
   pr.decidedAt = nowIso();
+  if (!approve) pr.decidedReason = reason.trim();
   if (approve) {
     st.settingsHistory.push({ key: pr.key, before: pr.before, after: pr.value,
       effectiveFrom: pr.effectiveFrom, reason: pr.reason,
@@ -1681,7 +1913,8 @@ function actDecideSetting(st, id, approve, byUserId) {
     st.settings.effectiveFrom = pr.effectiveFrom;
   }
   return { entity: id, detail: (approve ? 'اعتماد' : 'رفض') + ' تغيير «' + (field ? field.label : pr.key)
-    + '» — اقترحه ' + ((user(pr.proposedBy) || {}).name || pr.proposedBy) };
+    + '» — اقترحه ' + ((user(pr.proposedBy) || {}).name || pr.proposedBy)
+    + (approve ? '' : ' · السبب: ' + reason.trim()) };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2353,6 +2586,30 @@ function actPrepareReconciliation(st, recId, byUserId) {
   return { entity: recId, detail: 'إعداد مطابقة ' + recId + ' للتوقيع' };
 }
 
+/* The second party to a reconciliation could sign it or do nothing. Doing
+   nothing leaves it "prepared" forever and says nothing about why — so a
+   disagreement over whether the money is where we claim had no record at all.
+   It goes back to draft with the reason attached, which is the same shape the
+   report gate already uses when monitoring returns a report to its owner. */
+function actRejectReconciliation(st, recId, reason, byUserId) {
+  assertPerm('funds.reconcile');
+  const r = st.reconciliations.find(x => x.id === recId);
+  if (!r) throw new Error('مطابقة غير موجودة.');
+  if (r.status === 'signed') throw new Error('وُقّعت بالفعل — لا تُعاد.');
+  if (!DUAL.reconciliation.ready(r)) throw new Error('لا تُعاد مطابقة لم تُعدّ بعد.');
+  if (!DUAL.reconciliation.secondParty(r, byUserId))
+    throw new Error('أعددتَ هذه المطابقة بنفسك — لا تعيدها. يلزم طرف ثانٍ.');
+  if (!reason || reason.trim().length < 10)
+    throw new Error('اكتب سبب الإعادة — عشرة أحرف على الأقل.');
+  const was = r.preparedBy;
+  r.status = 'draft';
+  r.returnedBy = byUserId;
+  r.returnedAt = nowIso();
+  r.returnReason = reason.trim();
+  return { entity: recId, detail: 'إعادة مطابقة ' + recId + ' إلى المسودة — أعدّها '
+    + ((user(was) || {}).name || was) + ' · السبب: ' + reason.trim() };
+}
+
 /* The signature says "the money is where we said it is". So it needs a second
    person, and it needs the arithmetic to actually tie — the same rule the
    allocation preview holds itself to before a pool may close. */
@@ -2361,9 +2618,8 @@ function actSignReconciliation(st, recId, byUserId) {
   const r = st.reconciliations.find(x => x.id === recId);
   if (!r) throw new Error('مطابقة غير موجودة.');
   if (r.status === 'signed') throw new Error('وُقّعت بالفعل.');
-  if (r.status !== 'prepared') throw new Error('لا تُوقَّع مطابقة لم تُعدّ بعد.');
-  if (r.preparedBy === byUserId)
-    throw new Error('أعددتَ هذه المطابقة بنفسك — لا توقّعها. يلزم طرف ثانٍ.');
+  if (!DUAL.reconciliation.ready(r)) throw new Error('لا تُوقَّع مطابقة لم تُعدّ بعد.');
+  if (!DUAL.reconciliation.secondParty(r, byUserId)) throw new Error(DUAL.reconciliation.refusal);
   const open = r.breaks.filter(b => !breakDone(b) && !b.caseId);
   if (open.length) throw new Error(open.length + ' فرقًا بلا تفسير.');
   const broken = statementWhole(r);
@@ -2403,6 +2659,7 @@ const DEFAULT_SESSION = {
   pub: 'landing',            // landing | login | register
   view: null, poolId: 'p_cafe', tab: 'disclosure', appId: null, ownPoolId: null, win: 90, settingKey: null,
   excSev: 0,                 // 0 = every severity; the filter hides, never the screen
+  dashTab: null,             // the open queue on ops.dash; null = the first it may open
 };
 let SESSION = Object.assign({}, DEFAULT_SESSION);
 try {
@@ -2445,7 +2702,9 @@ const VIEW_ID_KEY = {
 const VIEW_SUB_KEY = { 'inv.pool': 'tab' };
 /* Filters belong in the address — whoever opens your link sees your filter —
    but they are per-screen, so they do not follow you off it. */
-const QUERY_KEYS = { win: 'w', excSev: 'sev' };
+/* `tab` is already taken by inv.pool as a path segment, so the dashboard's
+   open queue gets its own session key and shares the short query name. */
+const QUERY_KEYS = { win: 'w', excSev: 'sev', dashTab: 'tab' };
 
 let ROUTE = { view: 'pub.landing', id: null, sub: null, query: {} };
 
@@ -2511,7 +2770,7 @@ const defaultViewFor = u => (u ? ((navFor(u)[0] || {}).k || 'acct.me') : 'pub.la
 /* The screens still call setSession({view, poolId, tab, …}) as they always
    did. Anything that names a place becomes an address; the rest stays here. */
 function setSession(patch) {
-  const routed = ['view', 'pub', 'poolId', 'tab', 'appId', 'ownPoolId', 'settingKey', 'win', 'excSev']
+  const routed = ['view', 'pub', 'poolId', 'tab', 'appId', 'ownPoolId', 'settingKey', 'win', 'excSev', 'dashTab']
     .some(k => Object.prototype.hasOwnProperty.call(patch, k));
   Object.keys(patch).forEach(k => { if (k !== 'view' && k !== 'pub') SESSION[k] = patch[k]; });
   try { localStorage.setItem('hissa.session', JSON.stringify({ authUserId: SESSION.authUserId })); } catch (e) {}
@@ -2544,8 +2803,14 @@ function syncSession(r) {
   if (idKey) SESSION[idKey] = r.id;
   const subKey = VIEW_SUB_KEY[r.view];
   if (subKey) SESSION[subKey] = r.sub || DEFAULT_SESSION[subKey];
-  SESSION.win = Number(r.query.w) || DEFAULT_SESSION.win;
-  SESSION.excSev = Number(r.query.sev) || 0;
+  /* Read back through the same map the address is written with, so a key
+     added to QUERY_KEYS cannot be written to the URL and then silently
+     ignored on the way in. Numbers keep their coercion; the rest arrive as
+     the strings they are, and an unknown value falls back rather than
+     emptying the screen. */
+  SESSION.win = Number(r.query[QUERY_KEYS.win]) || DEFAULT_SESSION.win;
+  SESSION.excSev = Number(r.query[QUERY_KEYS.excSev]) || 0;
+  SESSION.dashTab = r.query[QUERY_KEYS.dashTab] || null;
 }
 
 /* One place decides what the address means for whoever is looking at it, and
@@ -2712,14 +2977,29 @@ function frameHtml(o) {
       : '<tr><td colspan="' + o.cols.length + '" class="empty">لا بيانات بعد.</td></tr>')
     + '</tbody></table></div></div>';
 }
-function barsHtml(items, valueFmt, colors) {
+/* One series across categories, so one hue for every bar. Giving each row its
+   own colour spends the only free channel on information the row label and the
+   bar length already carry twice over — and on nominal categories (sectors,
+   suppliers) the hue then implies an order that does not exist.
+
+   `ramp` is for the case where the categories really are ordered — a funnel,
+   amount bands — and there the darkening step means something. Every bar
+   carries its value and share in a native tooltip, because a bar chart with no
+   hover is a picture rather than a reading. */
+function barsHtml(items, valueFmt, ramp) {
   if (!items.length) return '<p class="empty">لا بيانات.</p>';
   const max = Math.max.apply(null, items.map(i => i.value)) || 1;
-  return '<div class="bars">' + items.map((it, i) =>
-    '<div class="bars__row"><span class="bars__label">' + esc(it.label) + '</span>'
-    + '<span class="meter"><span class="meter__fill" style="width:' + ((it.value / max) * 100).toFixed(1)
-    + '%;background:' + (it.color || colors[i % colors.length]) + '"></span></span>'
-    + '<span class="bars__val">' + valueFmt(it.value) + '</span></div>').join('') + '</div>';
+  const total = items.reduce((a, b) => a + b.value, 0);
+  return '<div class="bars">' + items.map((it, i) => {
+    const share = total ? Math.round((it.value / total) * 100) : 0;
+    const tip = it.label + ' — ' + valueFmt(it.value) + (total ? ' · ' + share + '%' : '');
+    return '<div class="bars__row" title="' + esc(tip) + '">'
+      + '<span class="bars__label">' + esc(it.label) + '</span>'
+      + '<span class="meter"><span class="meter__fill" style="width:'
+      + ((it.value / max) * 100).toFixed(1) + '%;background:'
+      + (it.color || (ramp ? ramp[i % ramp.length] : 'var(--cat-1)')) + '"></span></span>'
+      + '<span class="bars__val">' + valueFmt(it.value) + '</span></div>';
+  }).join('') + '</div>';
 }
 
 function funnelHtml(stages) {
@@ -2800,12 +3080,19 @@ function columnsSvg(points, valueFmt) {
 }
 
 /* A ratio against a limit reads as a meter, never as a two-slice pie. */
+/* The one place severity used to travel as colour and nothing else: the fill
+   was tinted by tone with no word saying which tone it was. A reader who
+   cannot separate the amber from the orange — or who prints the page — got
+   nothing. The state now says its own name. */
+const TONE_AR = { good: 'ضمن الحدّ', warning: 'يقترب', serious: 'مرتفع', critical: 'حرِج' };
 function ratioMeter(value, target, valueFmt, tone) {
   const pct = target ? (value / target) * 100 : 0;
+  const key = Object.keys(TONE).find(k => TONE[k] === tone);
   return '<div class="ratio">'
     + '<div class="ratio__track"><span class="ratio__fill" style="width:' + Math.min(100, pct).toFixed(1)
     + '%;background:' + (tone || 'var(--brand)') + '"></span></div>'
     + '<div class="ratio__row"><span class="num">' + valueFmt(value) + '</span>'
+    + (key ? '<span class="xs" style="color:' + tone + ';font-weight:600">' + TONE_AR[key] + '</span>' : '')
     + '<span class="xs muted">من ' + valueFmt(target) + ' · ' + Math.round(pct) + '%</span></div></div>';
 }
 
@@ -3005,7 +3292,13 @@ VIEWS['inv.invest'] = () => {
       + '</select></div>'
       + '<div class="field"><label for="iamt">المبلغ (ر.ع)</label>'
       + '<input id="iamt" class="num" dir="ltr" inputmode="decimal" value="500.000">'
-      + '<span class="field__hint">الريال العُماني بثلاث منازل. الحد الأدنى ' + rial(STATE.settings.minTicket) + '.</span></div>'
+      + '<span class="field__hint">الريال العُماني بثلاث منازل · الحد الأدنى '
+      + rial(STATE.settings.minTicket)
+      /* The ceiling belongs at the input, not in the refusal after it. The
+         eligibility card beside this one explains why the number is what it
+         is; here it only has to stop a figure that will bounce. */
+      + (blocked ? '' : ' · وأقصى ما تستطيعه الآن <strong>' + rial(v.available)
+          + '</strong> — القيد: ' + esc(v.binding)) + '</span></div>'
       + '<div class="stack-s">' + ACKS.map((a, i) =>
           '<label class="check"><input type="checkbox" class="ack" id="ack' + i + '"><span>' + esc(a) + '</span></label>').join('')
       + '</div>'
@@ -3032,71 +3325,164 @@ VIEWS['inv.invest'] = () => {
 };
 
 /* ── 04 investor · holdings ───────────────────────────────────────────── */
+/* ── investor · the portfolio ──────────────────────────────────────────────
+   Ordered by what the holder can act on, not by what is pleasant to look at:
+   a deadline first, then the position, then the record, then the headroom
+   they will need before committing again.
+
+   Every figure comes from a selector. The screen formats and never computes —
+   which is what makes "القيمة المسجَّلة" honest here: it says cost because
+   VALUATION_BASIS says cost, and it says so on the card rather than dressing
+   a cost basis up as a valuation.
+   ────────────────────────────────────────────────────────────────────────── */
 VIEWS['inv.portfolio'] = () => {
   const u = me();
-  const mine = STATE.orders.filter(o => o.userId === u.id);
-  const live = mine.filter(o => COUNTED.has(o.status));
-  const committed = live.reduce((s, o) => s + o.amount, 0);
-  const dists = STATE.distributions.flatMap(d =>
-    (d.shares || []).filter(s => s.userId === u.id).map(s => ({ d, s })));
-  const received = dists.reduce((s, x) => s + x.s.amount, 0);
+  const base = BASE(STATE);
+  const p = metricsParams();
+
+  const cost      = selInvestedCapital(base, SESSION, p);
+  const holdings  = selHoldingsByPool(base, SESSION, p);
+  const dists     = selDistributionsReceived(base, SESSION, p);
+  const ret       = selNetReturn(base, SESSION, p);
+  const allowance = selRemainingAllowance(base, SESSION, p);
+  const cooling   = selCoolingOffState(base, SESSION, p);
+  const mine      = (base.ordersByUser.get(u.id) || []).slice().reverse();
+
+  /* ── the clock, first ── */
+  const material = cooling.filter(x => x.reason === 'material_change');
+  const band0 = !cooling.length ? '' :
+    '<div class="note note--' + (material.length ? 'crit' : 'warn') + '">'
+    + (material.length
+        ? '<strong>تغيّر جوهري في إفصاح تلتزم فيه.</strong> صدرت نسخة جديدة، '
+          + 'ولك حق العدول عن ' + material.length + ' التزامًا دون إبداء سبب — '
+          + 'اقرأ ما تغيّر قبل أن تقرّر.'
+        : '<strong>مهلة العدول ما زالت مفتوحة.</strong> تستطيع إلغاء '
+          + cooling.length + ' التزامًا دون سبب.')
+    + '<div class="row row--tight" style="margin-block-start:.5rem">'
+    + cooling.map(x => '<a class="chip chip--warn" href="'
+        + hrefFor({ view: 'inv.pool', id: x.poolId, sub: 'disclosure' })
+        + '" style="text-decoration:none">' + esc(x.orderId) + ' · حتى '
+        + dt(new Date(x.endsAt).toISOString(), true) + '</a>').join('')
+    + '</div></div>';
+
+  /* ── the position, said plainly ── */
+  const pct = b => (b / 100).toFixed(2) + '%';
+  const band1 = '<div class="grid grid--4">'
+    + kpiCard('رأس المال الملتزم به', rial(cost), String(holdings.length) + ' فرصة')
+    + kpiCard('توزيعات وصلتك نقدًا', rial(dists.total, 3), dists.count + ' دفعة')
+    + kpiCard('العائد النقدي حتى الآن', pct(ret.bps), 'من رأس المال')
+    + kpiCard('القيمة المسجَّلة', rial(ret.value),
+        VALUATION_BASIS === 'COST' ? 'بالتكلفة — بلا إعادة تقييم' : 'أساس ' + VALUATION_BASIS)
+    + '</div>'
+    + '<div class="note note--info sm"><strong>لماذا القيمة تساوي التكلفة.</strong> '
+    + 'لا سوق ثانوية لحصتك ولا مقيِّم مستقل، فأي رقم غير التكلفة سيكون ادّعاءً لا حقيقة. '
+    + 'العائد المعروض أعلاه هو ما وصلك نقدًا فعلًا مقسومًا على ما دفعته — '
+    + 'لا تقديرًا لما قد تساويه حصتك.</div>';
+
+  /* ── what you hold, per opportunity ── */
+  const band2 = '<div class="card"><div class="card__head"><h2>حيازاتك</h2>'
+    + '<span class="spacer chip">' + holdings.length + '</span></div>'
+    + '<div class="card__body card__body--flush">'
+    + (holdings.length
+        ? '<div class="tablewrap"><table><thead><tr><th>الفرصة</th><th>الحالة</th>'
+          + '<th class="n">الملتزم به</th><th class="n">المخصَّص</th>'
+          + '<th class="n">الوحدات</th><th class="n">حصتك من الفرصة</th></tr></thead><tbody>'
+          + holdings.map(h => '<tr id="rec-' + esc(h.poolId) + '">'
+              + '<td class="sm"><a href="' + hrefFor({ view: 'inv.pool', id: h.poolId })
+              + '">' + esc(h.title) + '</a><div class="xs muted mono">' + esc(h.ref) + '</div></td>'
+              + '<td>' + chip(POOL_STATUS, h.status) + '</td>'
+              + '<td class="n">' + fmt(h.cost, 0) + '</td>'
+              + '<td class="n">' + fmt(h.allocated, 0) + '</td>'
+              + '<td class="n">' + (h.units || '—') + '</td>'
+              + '<td class="n">' + (h.sharesBps ? pct(h.sharesBps) : '—') + '</td></tr>').join('')
+          + '</tbody></table></div>'
+        : '<p class="empty">' + esc(EMPTY_TEXT.holdings) + '</p>')
+    + '</div></div>';
+
+  /* ── the record, with the exit where it is still open ── */
+  const band3 = '<div class="card"><div class="card__head"><h2>كل التزاماتك</h2>'
+    + '<span class="spacer chip">' + mine.length + '</span></div>'
+    + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+    + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th>'
+    + '<th class="n">المخصَّص</th><th>الحالة</th><th>التاريخ</th><th>العدول</th></tr></thead><tbody>'
+    + (mine.length ? mine.map(o => {
+        const pl = base.poolsById.get(o.poolId) || {};
+        const open = cooling.find(c => c.orderId === o.id);
+        return '<tr id="rec-' + esc(o.id) + '"><td><span class="mono xs">' + o.id + '</span></td>'
+          + '<td class="sm">' + esc(pl.title || o.poolId) + '</td>'
+          + '<td class="n">' + fmt(o.amount, 0) + '</td>'
+          + '<td class="n">' + (o.allocated != null ? fmt(o.allocated, 0) : '—') + '</td>'
+          + '<td>' + chip(ORDER_STATUS, o.status)
+          + (o.refundReason ? '<div class="xs muted">' + esc(REFUND_REASON[o.refundReason] || o.refundReason) + '</div>' : '')
+          + '</td>'
+          + '<td class="sm">' + dt(o.createdAt) + '</td>'
+          + '<td>' + (open
+              ? '<button class="btn btn--sm btn--danger" data-act="withdrawOrder" data-order="' + o.id + '">عدول</button>'
+                + '<div class="xs muted">حتى ' + dt(new Date(open.endsAt).toISOString(), true) + '</div>'
+              : '<span class="xs muted">—</span>') + '</td></tr>';
+      }).join('') : '<tr><td colspan="7" class="empty">' + esc(EMPTY_TEXT.holdings) + '</td></tr>')
+    + '</tbody></table></div></div></div>';
+
+  /* ── what came back, and how concentrated the risk is ── */
   const bySector = {};
-  live.forEach(o => { const p = pool(o.poolId); bySector[p.sector] = (bySector[p.sector] || 0) + o.amount; });
-  const sectorItems = Object.keys(bySector).map(k => ({ label: k, value: bySector[k] })).sort((a, b) => b.value - a.value);
+  holdings.forEach(h => {
+    const sec = (base.poolsById.get(h.poolId) || {}).sector || '—';
+    bySector[sec] = (bySector[sec] || 0) + h.cost;
+  });
+  const sectorItems = Object.keys(bySector)
+    .map(k => ({ label: k, value: bySector[k] })).sort((a, b) => b.value - a.value);
+
+  const band4 = '<div class="grid grid--2 grid--top">'
+    + '<div class="card"><div class="card__head"><h2>التوزيعات المستلمة</h2>'
+    + '<span class="spacer num sm">' + rial(dists.total, 3) + '</span></div>'
+    + '<div class="card__body card__body--flush">'
+    + (dists.count
+        ? '<div class="tablewrap"><table><thead><tr><th>المرجع</th><th>الفترة</th>'
+          + '<th class="n">حصتك</th><th>التاريخ</th></tr></thead><tbody>'
+          + dists.timeline.slice().reverse().map(r =>
+              '<tr><td><span class="mono xs">' + esc(r.distributionId) + '</span></td>'
+              + '<td class="sm">' + esc(r.period || '—') + '</td>'
+              + '<td class="n">' + fmt(r.amount) + '</td>'
+              + '<td class="sm">' + dt(r.at) + '</td></tr>').join('')
+          + '</tbody></table></div>'
+        : '<p class="empty">' + esc(EMPTY_TEXT.distributions) + '</p>')
+    + '</div></div>'
+    + '<div class="card"><div class="card__body">' + frameHtml({
+        title: 'تركّز محفظتك على القطاعات',
+        sub: 'تركّز رأس مالك في قطاع واحد يجعل تعثّره تعثّرك — وهذا الرسم كل ما تملكه '
+           + 'من إنذار مبكر، إذ لا سوق تخرج منها.',
+        chart: barsHtml(sectorItems, v => fmt(v, 0) + ' ر.ع'),
+        cols: ['القطاع', 'رأس المال (ر.ع)', 'النسبة'],
+        rows: sectorItems.map(s => [esc(s.label), fmt(s.value, 0),
+          cost ? pct(Math.round((s.value * 10000) / cost)) : '—']),
+      }) + '</div></div></div>';
+
+  /* ── the headroom, before the next commitment rather than after it ── */
+  const band5 = '<div class="card"><div class="card__head"><h2>ما زال متاحًا لك</h2>'
+    + '<span class="chip">' + esc(CLASS_AR[allowance.cls] || allowance.cls) + '</span></div>'
+    + '<div class="card__body">'
+    + (allowance.remaining == null
+        ? '<div class="note note--info">لا حدّ سنويّ منشور لصنفك. ما يحدّك هو سعة الفرصة '
+          + 'نفسها، وما يعتمده الشريك المرخّص.</div>'
+        : '<div class="grid grid--3">'
+          + kpiCard('المتبقي خلال 12 شهرًا', rial(allowance.remaining))
+          + kpiCard('استُخدم', rial(allowance.used), allowance.countedOrders + ' التزامًا في النافذة')
+          + kpiCard('حدّ صنفك', rial(allowance.cap))
+          + '</div>'
+          + ratioMeter(allowance.used, allowance.cap, v => fmt(v, 0) + ' ر.ع',
+              allowance.remaining === 0 ? TONE.critical
+              : allowance.used * 4 > allowance.cap * 3 ? TONE.warning : TONE.good))
+    + '<p class="xs muted">نافذة متحرّكة: التزام مضى عليه أكثر من اثني عشر شهرًا يخرج من '
+    + 'العدّ ويعود إليك متّسعه. تُعرض هنا قبل أن تلتزم، لا في رسالة رفض بعدها.</p>'
+    + '<div class="row"><a class="btn btn--primary" href="' + hrefFor({ view: 'inv.pools' })
+    + '">تصفّح الفرص</a></div>'
+    + '</div></div>';
 
   return {
-    crumb: 'مستثمر', title: 'محفظتي',
-    lede: 'كل التزام أنشأته، وحالته الحالية، وما وصلك من توزيعات نقدية.',
-    body: (() => {
-        const reopened = mine.filter(o => o.withdrawReason === 'material_change' && withdrawOpenUntil(o));
-        if (!reopened.length) return '';
-        const p0 = pool(reopened[0].poolId) || {};
-        return '<div class="note note--warn"><strong>تغيّر جوهري في الإفصاح.</strong> '
-          + 'صدرت نسخة جديدة من إفصاح «' + esc(p0.title || '') + '»، ولك حق العدول عن '
-          + reopened.length + ' التزامًا حتى '
-          + dt(withdrawOpenUntil(reopened[0]).toISOString(), true) + ' دون إبداء سبب. '
-          + 'اقرأ ما تغيّر في تبويب الإفصاح قبل أن تقرّر.</div>';
-      })()
-      + '<div class="grid grid--4">'
-      + [['الملتزم به', rial(committed)], ['عدد الالتزامات القائمة', String(live.length)],
-         ['توزيعات مستلمة', rial(received, 3)],
-         ['المتبقي من حدّك السنوي', STATE.settings.limits[u.cls].rolling12m == null ? 'بلا حدّ منشور'
-            : rial(Math.max(0, STATE.settings.limits[u.cls].rolling12m - rolling12m(u.id)))]]
-        .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
-      + '</div>'
-      + '<div class="card"><div class="card__head"><h2>الالتزامات</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
-      + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th><th class="n">المخصَّص</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>'
-      + (mine.length ? mine.slice().reverse().map(o => {
-          const p = pool(o.poolId);
-          return '<tr><td><span class="mono xs">' + o.id + '</span></td><td class="sm">' + esc(p.title) + '</td>'
-            + '<td class="n">' + fmt(o.amount, 0) + '</td>'
-            + '<td class="n">' + (o.allocated != null ? fmt(o.allocated, 0) : '—') + '</td>'
-            + '<td>' + chip(ORDER_STATUS, o.status)
-            + (o.refundReason ? '<div class="xs muted">' + esc(REFUND_REASON[o.refundReason] || o.refundReason) + '</div>' : '') + '</td>'
-            + '<td class="sm">' + dt(o.createdAt) + '</td>'
-            + '<td>' + (() => {
-                const until = ['pending', 'confirmed'].includes(o.status) ? withdrawOpenUntil(o) : null;
-                if (!until) return '';
-                return '<button class="btn btn--sm btn--danger" data-act="withdrawOrder" data-order="' + o.id + '">عدول</button>'
-                  + '<div class="xs muted">حتى ' + dt(until.toISOString(), true) + '</div>';
-              })() + '</td></tr>';
-        }).join('') : '<tr><td colspan="7" class="empty">لا التزامات بعد.</td></tr>')
-      + '</tbody></table></div></div></div>'
-      + '<div class="grid grid--2">'
-      + '<div class="card"><div class="card__body">' + frameHtml({
-          title: 'توزُّع التزاماتك على القطاعات',
-          sub: 'تركّز المحفظة في قطاع واحد يزيد أثر تعثّره عليك.',
-          chart: barsHtml(sectorItems, v => fmt(v, 0), CAT),
-          cols: ['القطاع', 'المبلغ (ر.ع)'],
-          rows: sectorItems.map(s => [esc(s.label), fmt(s.value, 0)]),
-        }) + '</div></div>'
-      + '<div class="card"><div class="card__head"><h2>التوزيعات المستلمة</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
-      + '<thead><tr><th>المرجع</th><th>الفترة</th><th class="n">حصتك</th><th>التاريخ</th></tr></thead><tbody>'
-      + (dists.length ? dists.map(x => '<tr><td><span class="mono xs">' + x.d.id + '</span></td>'
-          + '<td class="sm">' + esc(x.d.period) + '</td><td class="n">' + fmt(x.s.amount) + '</td>'
-          + '<td class="sm">' + dt(x.d.paidAt) + '</td></tr>').join('')
-        : '<tr><td colspan="4" class="empty">لا توزيعات بعد.</td></tr>')
-      + '</tbody></table></div></div></div></div>',
+    crumb: 'مستثمر · ' + (CLASS_AR[u.cls] || ''), title: 'محفظتي',
+    lede: 'ما تملكه، وما وصلك منه نقدًا، وما زال أمامك من متّسع — وكل رقم هنا محسوب '
+        + 'من السجل لحظة العرض، لا مخزَّنًا في حقل يمكن أن يتقادم.',
+    body: band0 + band1 + band2 + band3 + band4 + band5,
   };
 };
 
@@ -4182,6 +4568,786 @@ function healthCounters() {
   const awaiting = STATE.disbursements.filter(d => d.status === 'requested');
   return { openCases, overSla, recon, lateReports, dueSoon, awaiting };
 }
+
+/* ╔══════════════════════════════════════════════════════════════════════════╗
+   ║  METRICS — a derived read layer                                          ║
+   ╚══════════════════════════════════════════════════════════════════════════╝
+
+   Every number a dashboard shows is the return value of a pure function of
+   state. Nothing here is stored, no field is added to appstate, and no
+   assignment to state appears below this line.
+
+   Two layers, not one:
+
+     BASE(state)                  indexes and raw totals · same for everyone ·
+                                  cached on state.version
+     sel*(base, session, params)  displayed numbers · gated by permission ·
+                                  never cached
+
+   The split is a privacy rule, not a performance one. Indexes are expensive
+   and identical for every reader, so they are worth caching. Displayed numbers
+   differ by account, and caching those would serve one account's figures to
+   the next.
+
+   Three contracts hold throughout:
+
+     undefined ≠ 0.  No permission returns undefined and the card is not drawn.
+                     No data returns 0 or [] and the card is drawn empty.
+                     Collapsing them shows "٠ ر.ع" to someone not allowed to
+                     know, which reads as a fact rather than a refusal.
+
+     can() not assertPerm().  assertPerm throws, which is right for a mutation
+                     and wrong here: one forbidden card must not take down the
+                     dashboard around it. Hiding the card in the DOM is not the
+                     control — the number is never computed.
+
+     Time is a parameter.  No selector reads the clock. `params.now` is set
+                     once at the boundary by metricsParams(), so a test can
+                     drive any moment and get the same answer twice.
+
+   Money is integer baisa throughout, and ratios leave as integer basis points.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── the five bases, in one place ──────────────────────────────────────────
+   Each of these changes a figure people act on, and none of them can be
+   derived from the code. They live here rather than scattered through the
+   selectors so that a change of policy is one edit and one place to argue
+   with. */
+const VALUATION_BASIS    = 'COST';             // COST | COST_PLUS_DISTRIBUTIONS | UNIT_PRICE
+const PLATFORM_FEE_BASIS = 'RAISED_AT_CLOSE';  // RAISED_AT_CLOSE | DISBURSED | DISTRIBUTED
+const SUCCESS_FEE_BASIS  = 'PROFIT_ONLY';      // PROFIT_ONLY | GROSS_DISTRIBUTION
+const ALLOWANCE_WINDOW   = 'ROLLING_12M';      // ROLLING_12M | LIFETIME | CALENDAR_YEAR
+const ACTIVE_USER_BASIS  = 'SIGNIN_30D';       // SIGNIN_30D | ACTED_30D | HOLDS_POSITION
+const ACTIVE_WINDOW_DAYS = 30;
+
+/* Ratios leave this layer as integer basis points: 2.1% is 210, never 0.021.
+   Everything stays in integers until the view formats it. */
+const bps = (part, whole) => (whole ? Math.round((part * 10000) / whole) : 0);
+const sumBaisa = (rows, pick) => rows.reduce((s, r) => s + (pick ? pick(r) : r), 0);
+
+/* Time enters the layer exactly here. Selectors read params.now and never the
+   clock, so the same state and the same params always give the same answer. */
+function metricsParams(extra) {
+  return Object.assign({ now: Date.now() }, extra || {});
+}
+
+/* ── settings as they stood at a moment ────────────────────────────────────
+   settingsHistory records only what changed, and `settings` already holds the
+   latest value of every key. So a snapshot is built by walking history newest
+   first and undoing every change that had not yet taken effect — a key changed
+   twice lands on the value it actually held.
+
+   Every selector that touches a money rule must come through here with a
+   timestamp. Reading current settings to price a two-year-old commitment
+   reprices history by today's rules, and does it silently. */
+function settingsAt(st, ts) {
+  const at = ts == null ? Infinity : new Date(String(ts).length === 10 ? ts + 'T00:00:00Z' : ts).getTime();
+  const snap = JSON.parse(JSON.stringify(st.settings));
+  const holder = { settings: snap };
+  st.settingsHistory.slice()
+    .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))
+    .forEach(h => {
+      const eff = new Date(h.effectiveFrom + 'T00:00:00Z').getTime();
+      /* settingSet is the same key-path writer the approval path uses, so
+         there is never a second copy of "which nested field is this". */
+      if (eff > at) settingSet(holder, h.key, h.before);
+    });
+  return snap;
+}
+
+/* ── a distribution's split, whether it was seeded or created here ──────────
+   Only actCreateDistribution writes `shares`; a seeded distribution has none,
+   and a holder reading their own portfolio would be shown zero received
+   against money that plainly moved. Splitting it on read with the same
+   proRata the action uses keeps one apportionment rule in the system. */
+function distributionShares(st, d) {
+  if (Array.isArray(d.shares) && d.shares.length) return d.shares;
+  const holders = st.orders.filter(o => o.poolId === d.poolId && o.status === 'allocated');
+  if (!holders.length) return [];
+  const cut = proRata(d.gross, holders.map(o => (o.allocated != null ? o.allocated : o.amount)));
+  return holders.map((o, i) => ({ userId: o.userId, orderId: o.id, amount: cut[i] }));
+}
+
+/* ── BASE ──────────────────────────────────────────────────────────────────
+   Cached on state.version alone: no clock, no filters, no account. Anything
+   time-dependent is computed in a selector from params.now instead, so a case
+   crossing its SLA does not need a state change to be noticed. */
+let _base = { version: null, value: null };
+/* Instrumentation, and the only reason it exists: "built once per version"
+   is the whole claim of this cache, and a claim no test can read is a
+   comment rather than a guarantee. */
+let _baseBuilds = 0;
+
+function buildBase(st) {
+  _baseBuilds += 1;
+  const group = (rows, key) => {
+    const m = new Map();
+    rows.forEach(r => {
+      const k = typeof key === 'function' ? key(r) : r[key];
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    });
+    return m;
+  };
+  const index = (rows, key) => {
+    const m = new Map();
+    rows.forEach(r => m.set(r[key], r));
+    return m;
+  };
+
+  /* The spec asked for casesBySeverity. Cases carry no severity — they carry
+     `kind` and `slaDays`, and what actually orders the queue is how far past
+     its own SLA a case has run. That is a function of the clock, so it belongs
+     in the selector; the index stays on status, which is not. */
+  const sharesByUser = new Map();
+  st.distributions.forEach(d => {
+    distributionShares(st, d).forEach(sh => {
+      if (!sharesByUser.has(sh.userId)) sharesByUser.set(sh.userId, []);
+      sharesByUser.get(sh.userId).push({
+        distributionId: d.id, poolId: d.poolId, period: d.period,
+        at: d.paidAt, amount: sh.amount, orderId: sh.orderId,
+      });
+    });
+  });
+
+  return {
+    state: st,
+    version: st.version,
+    settings: st.settings,
+    settingsAt: ts => settingsAt(st, ts),
+    ordersByPool:        group(st.orders, 'poolId'),
+    ordersByUser:        group(st.orders, 'userId'),
+    disbursementsByPool: group(st.disbursements, 'poolId'),
+    distributionsByPool: group(st.distributions, 'poolId'),
+    casesByStatus:       group(st.cases, 'status'),
+    auditByDay:          group(st.audit, r => String(r.at).slice(0, 10)),
+    usersById:           index(st.users, 'id'),
+    poolsById:           index(st.pools, 'id'),
+    sharesByUser,
+  };
+}
+
+function BASE(st) {
+  const state = st || STATE;
+  if (_base.value && _base.version === state.version && _base.state === state) return _base.value;
+  const value = buildBase(state);
+  _base = { version: state.version, state, value };
+  return value;
+}
+
+/* ── who is asking ─────────────────────────────────────────────────────────
+   The session names the account; nothing accepts a userId from outside. A
+   selector that took one as a parameter would be a way to read someone else's
+   portfolio by editing a link. */
+const actorOf = (base, session) =>
+  (session && session.authUserId ? base.usersById.get(session.authUserId) : null) || null;
+
+/* ══ 1 · investor — inv.portfolio ══════════════════════════════════════════
+   Scope is the signed-in account and nothing else. */
+
+function selInvestedCapital(base, session) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const mine = (base.ordersByUser.get(u.id) || []).filter(o => COUNTED.has(o.status));
+  return sumBaisa(mine, o => (o.allocated != null ? o.allocated : o.amount));
+}
+
+function selHoldingsByPool(base, session) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const byPool = new Map();
+  (base.ordersByUser.get(u.id) || []).filter(o => COUNTED.has(o.status)).forEach(o => {
+    const h = byPool.get(o.poolId) || { poolId: o.poolId, cost: 0, allocated: 0, orders: 0 };
+    h.cost += o.amount;
+    h.allocated += (o.allocated != null ? o.allocated : o.amount);
+    h.orders += 1;
+    byPool.set(o.poolId, h);
+  });
+  return [...byPool.values()].map(h => {
+    const p = base.poolsById.get(h.poolId) || {};
+    /* Units are cut at close, so they are priced by the rules in force then. */
+    const s = base.settingsAt(p.fundedAt || p.publishedAt);
+    const poolAllocated = sumBaisa(
+      (base.ordersByPool.get(h.poolId) || []).filter(o => o.status === 'allocated'),
+      o => (o.allocated != null ? o.allocated : o.amount));
+    return {
+      poolId: h.poolId, ref: p.ref || h.poolId, title: p.title || '', status: p.status || '',
+      orders: h.orders, cost: h.cost, allocated: h.allocated,
+      units: s.unitPrice ? Math.floor(h.allocated / s.unitPrice) : 0,
+      sharesBps: bps(h.allocated, poolAllocated),
+    };
+  }).sort((a, b) => b.allocated - a.allocated);
+}
+
+function selDistributionsReceived(base, session) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const rows = (base.sharesByUser.get(u.id) || [])
+    .slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+  return { total: sumBaisa(rows, r => r.amount), count: rows.length, timeline: rows };
+}
+
+function selCurrentValue(base, session) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const cost = selInvestedCapital(base, session);
+  if (VALUATION_BASIS === 'COST_PLUS_DISTRIBUTIONS')
+    return cost + selDistributionsReceived(base, session).total;
+  if (VALUATION_BASIS === 'UNIT_PRICE')
+    return sumBaisa(selHoldingsByPool(base, session),
+      h => h.units * base.settingsAt((base.poolsById.get(h.poolId) || {}).fundedAt).unitPrice);
+  return cost;
+}
+
+/* Under a cost basis the only honest return is cash actually received: there
+   is no secondary market and no independent valuer, so any other figure is a
+   claim rather than a fact. `basis` travels with the number so a screen can
+   say which one it is showing. */
+function selNetReturn(base, session) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const cost = selInvestedCapital(base, session);
+  const received = selDistributionsReceived(base, session).total;
+  const value = selCurrentValue(base, session);
+  return {
+    basis: VALUATION_BASIS,
+    cost, received, value,
+    gain: value + received - cost,
+    bps: bps(value + received - cost, cost),
+  };
+}
+
+/* The number that stops an investor typing a figure the engine will refuse.
+   It belongs above the commitment form, not in the error after it. */
+function selRemainingAllowance(base, session, p) {
+  const u = actorOf(base, session);
+  if (!u || u.role !== 'investor') return undefined;
+  const caps = base.settings.limits[u.cls] || { perIssuer: null, rolling12m: null };
+  const from = ALLOWANCE_WINDOW === 'ROLLING_12M' ? p.now - 365 * DAY
+             : ALLOWANCE_WINDOW === 'CALENDAR_YEAR' ? Date.UTC(new Date(p.now).getUTCFullYear(), 0, 1)
+             : -Infinity;
+  const counted = (base.ordersByUser.get(u.id) || []).filter(o =>
+    COUNTED.has(o.status) && new Date(o.createdAt).getTime() >= from);
+  const used = sumBaisa(counted, o => o.amount);
+  return {
+    window: ALLOWANCE_WINDOW,
+    cls: u.cls,
+    cap: caps.rolling12m,
+    used,
+    /* null is "no published limit", which is not the same as nothing left. */
+    remaining: caps.rolling12m == null ? null : Math.max(0, caps.rolling12m - used),
+    perIssuerCap: caps.perIssuer,
+    countedOrders: counted.length,
+  };
+}
+
+function selCoolingOffState(base, session, p) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  return (base.ordersByUser.get(u.id) || [])
+    .filter(o => ['pending', 'confirmed'].includes(o.status))
+    .map(o => {
+      const s = base.settingsAt(o.createdAt);
+      const cool = new Date(o.createdAt).getTime() + s.coolingOffHours * 3600000;
+      const reopened = o.withdrawUntil ? new Date(o.withdrawUntil).getTime() : 0;
+      const endsAt = Math.max(cool, reopened);
+      return {
+        orderId: o.id, poolId: o.poolId, amount: o.amount,
+        active: endsAt > p.now, endsAt,
+        reason: reopened > cool ? 'material_change' : 'cooling_off',
+      };
+    })
+    .filter(x => x.active)
+    .sort((a, b) => a.endsAt - b.endsAt);
+}
+
+/* ══ 2 · owner — own.project · own.funds ═══════════════════════════════════
+   A pool the account does not own returns undefined, never zeros. */
+
+function ownsPool(base, session, poolId) {
+  const u = actorOf(base, session);
+  if (!u || !poolId) return false;
+  if (u.pool === poolId) return true;
+  return base.state.applications.some(a => a.ownerId === u.id && a.poolId === poolId);
+}
+
+function selFundingProgress(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  const pl = base.poolsById.get(p.poolId);
+  const s = base.settingsAt(pl.publishedAt);
+  const raisedNow = sumBaisa(
+    (base.ordersByPool.get(pl.id) || []).filter(o => COUNTED.has(o.status)), o => o.amount);
+  const cap = ceilingOf(pl, s);
+  return {
+    raised: raisedNow, target: pl.target, minClose: pl.minClose,
+    pctOfTarget: bps(raisedNow, pl.target),
+    pctOfMinimum: bps(raisedNow, pl.minClose),
+    overfundCap: cap,
+    headroom: Math.max(0, cap - raisedNow),
+    meetsMinimum: raisedNow >= pl.minClose,
+    status: pl.status,
+  };
+}
+
+function selInvestorCount(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  const live = (base.ordersByPool.get(p.poolId) || []).filter(o => COUNTED.has(o.status));
+  return new Set(live.map(o => o.userId)).size;
+}
+
+function selTicketStats(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  const amounts = (base.ordersByPool.get(p.poolId) || [])
+    .filter(o => COUNTED.has(o.status)).map(o => o.amount).sort((a, b) => a - b);
+  if (!amounts.length)
+    return { count: 0, avg: 0, median: 0, min: 0, max: 0, belowMinCount: 0 };
+  const mid = Math.floor(amounts.length / 2);
+  return {
+    count: amounts.length,
+    avg: Math.floor(sumBaisa(amounts) / amounts.length),
+    /* Integer median: an even count averages the middle pair and floors, so
+       the result stays a whole baisa like every other figure here. */
+    median: amounts.length % 2 ? amounts[mid] : Math.floor((amounts[mid - 1] + amounts[mid]) / 2),
+    min: amounts[0], max: amounts[amounts.length - 1],
+    belowMinCount: amounts.filter(a => a < base.settings.minTicket).length,
+  };
+}
+
+function selDisbursementLedger(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  const ds = base.disbursementsByPool.get(p.poolId) || [];
+  const paid = sumBaisa(ds.filter(d => d.status === 'executed'), d => d.amount);
+  const pl = base.poolsById.get(p.poolId) || { milestones: [] };
+  const planned = sumBaisa(pl.milestones || [], m => m.amount);
+  return {
+    requested: sumBaisa(ds.filter(d => d.status === 'requested'), d => d.amount),
+    paid,
+    planned,
+    remaining: Math.max(0, planned - paid),
+    milestonesPaid: (pl.milestones || []).filter(m => m.state === 'executed').length,
+    milestonesTotal: (pl.milestones || []).length,
+  };
+}
+
+function selReconciliationStatus(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  const all = base.state.reconciliations;
+  const open = all.find(r => r.status !== 'signed') || null;
+  const last = all.filter(r => r.status === 'signed').slice(-1)[0] || null;
+  if (!open && !last) return { hasAny: false, isOpen: false, lastPeriod: null, variance: 0, signedBy: null };
+  const r = open || last;
+  const unresolved = (r.breaks || []).filter(b => !(b.kind && b.note) && !b.caseId);
+  return {
+    hasAny: true,
+    isOpen: !!open,
+    id: r.id,
+    lastPeriod: r.periodFrom + ' → ' + r.periodTo,
+    variance: sumBaisa(r.breaks || [], b => b.amount),
+    unresolvedCount: unresolved.length,
+    signedBy: last ? ((base.usersById.get(last.signedBy) || {}).name || null) : null,
+  };
+}
+
+/* Fees, priced by the rules in force when the pool closed — never today's. */
+function poolFees(base, pl) {
+  const s = base.settingsAt(pl.fundedAt || pl.publishedAt);
+  const allocated = sumBaisa(
+    (base.ordersByPool.get(pl.id) || []).filter(o => o.status === 'allocated'),
+    o => (o.allocated != null ? o.allocated : o.amount));
+  const distributed = sumBaisa(base.distributionsByPool.get(pl.id) || [], d => d.gross);
+  const disbursed = sumBaisa(
+    (base.disbursementsByPool.get(pl.id) || []).filter(d => d.status === 'executed'), d => d.amount);
+  /* Decision: the platform fee is charged once, on capital actually raised at
+     close — which is exactly what the disclosure tells the investor. A pool
+     that never closed has raised nothing to charge against. */
+  const platformOn = PLATFORM_FEE_BASIS === 'DISBURSED' ? disbursed
+                   : PLATFORM_FEE_BASIS === 'DISTRIBUTED' ? distributed
+                   : allocated;
+  /* Decision: success is charged only on what exceeds the capital returned.
+     Charging a "success" fee before an investor is whole would not survive
+     being read aloud. */
+  const profit = Math.max(0, distributed - allocated);
+  const successOn = SUCCESS_FEE_BASIS === 'GROSS_DISTRIBUTION' ? distributed : profit;
+  return {
+    poolId: pl.id, ref: pl.ref,
+    allocated, distributed, disbursed, profit,
+    platform: Math.floor((platformOn * s.feeBps.platform) / 10000),
+    success: Math.floor((successOn * s.feeBps.success) / 10000),
+    platformBasis: PLATFORM_FEE_BASIS, successBasis: SUCCESS_FEE_BASIS,
+  };
+}
+
+function selFeesAccrued(base, session, p) {
+  if (!ownsPool(base, session, p.poolId)) return undefined;
+  return poolFees(base, base.poolsById.get(p.poolId));
+}
+
+/* ══ 3 · operations — ops.dash ═════════════════════════════════════════════
+   Not a board of numbers: a work queue. */
+
+const AGE_BANDS = [
+  { k: 'fresh', label: 'أقل من 24 ساعة', maxDays: 1 },
+  { k: 'days',  label: 'من 1 إلى 3 أيام', maxDays: 3 },
+  { k: 'stale', label: 'أكثر من 3 أيام', maxDays: Infinity },
+];
+const ageDays = (iso, now) => Math.floor((now - new Date(iso).getTime()) / DAY);
+const bandOf = d => (AGE_BANDS.find(b => d < b.maxDays) || AGE_BANDS[AGE_BANDS.length - 1]).k;
+
+/* Only what this account can actually approve. The three second-party rules
+   are applied by exclusion here, using the same predicates the actions refuse
+   with — so nothing is offered that will be rejected on click. */
+function selMyApprovalQueue(base, session, p) {
+  const u = actorOf(base, session);
+  if (!u) return undefined;
+  const out = [];
+
+  if (can(u, DUAL.disbursement.perm))
+    base.state.disbursements
+      .filter(d => dualOpen('disbursement', d, u.id))
+      .forEach(d => out.push({
+        kind: 'disbursement', id: d.id, act: 'approveDsb', dataKey: 'dsb',
+        amount: d.amount, at: d.requestedAt,
+        who: (base.usersById.get(d.requestedBy) || {}).name || '',
+        what: 'صرف ' + ((base.poolsById.get(d.poolId) || {}).ref || d.poolId),
+      }));
+
+  if (can(u, DUAL.settingProposal.perm))
+    base.state.settingProposals
+      .filter(x => dualOpen('settingProposal', x, u.id))
+      .forEach(x => out.push({
+        kind: 'settingProposal', id: x.id, act: 'decideSetting', dataKey: 'id',
+        amount: null, at: x.proposedAt,
+        who: (base.usersById.get(x.proposedBy) || {}).name || '',
+        what: 'تغيير إعداد ' + x.key,
+      }));
+
+  if (can(u, DUAL.reconciliation.perm))
+    base.state.reconciliations
+      .filter(r => dualOpen('reconciliation', r, u.id))
+      .forEach(r => out.push({
+        kind: 'reconciliation', id: r.id, act: 'signRecon', dataKey: 'rec',
+        amount: r.closingBalance, at: r.preparedAt,
+        who: (base.usersById.get(r.preparedBy) || {}).name || '',
+        what: 'مطابقة ' + r.periodFrom + ' → ' + r.periodTo,
+      }));
+
+  return out
+    .map(x => Object.assign(x, { ageDays: ageDays(x.at, p.now), band: bandOf(ageDays(x.at, p.now)) }))
+    .sort((a, b) => b.ageDays - a.ageDays);
+}
+
+function selPendingDisbursements(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'funds.read')) return undefined;
+  const rows = base.state.disbursements
+    .filter(d => DUAL.disbursement.ready(d))
+    .map(d => ({
+      id: d.id, poolRef: (base.poolsById.get(d.poolId) || {}).ref || d.poolId,
+      amount: d.amount, at: d.requestedAt, ageDays: ageDays(d.requestedAt, p.now),
+      band: bandOf(ageDays(d.requestedAt, p.now)),
+      requestedBy: (base.usersById.get(d.requestedBy) || {}).name || '',
+      mine: d.requestedBy === (u || {}).id,
+    }))
+    .sort((a, b) => b.ageDays - a.ageDays);
+  const byBand = {};
+  AGE_BANDS.forEach(b => { byBand[b.k] = rows.filter(r => r.band === b.k).length; });
+  return { rows, byBand, total: rows.length, amount: sumBaisa(rows, r => r.amount) };
+}
+
+function selKycQueue(base, session, p) {
+  const u = actorOf(base, session);
+  /* The work surface gates on the permission that can act, not the one that
+     can look: a queue offered to someone who may only read is a list of other
+     people's work with no button on it. */
+  if (!can(u, 'kyc.approve')) return undefined;
+  return base.state.users
+    .filter(x => ['investor', 'owner'].includes(x.role) && x.kyc === 'pending')
+    .map(x => ({
+      id: x.id, name: x.name, role: x.role, cls: x.cls || null,
+      claimedCls: x.claimedCls || null, suit: x.suit || null,
+      at: x.createdAt || null,
+      ageDays: x.createdAt ? ageDays(x.createdAt, p.now) : null,
+    }))
+    .sort((a, b) => (b.ageDays || 0) - (a.ageDays || 0));
+}
+
+/* Cases carry no severity field. What orders this queue is how far past its
+   own SLA each case has run — computed here rather than indexed, because it
+   moves with the clock and not with the state. */
+function selOpenCases(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'case.work')) return undefined;
+  const open = (base.casesByStatus.get('open') || [])
+    .concat(base.casesByStatus.get('assigned') || []);
+  const sev = filters => filters;
+  return open
+    .map(c => {
+      const age = ageDays(c.openedAt, p.now);
+      const over = age - c.slaDays;
+      return {
+        id: c.id, kind: c.kind, subject: c.subject, status: c.status,
+        poolRef: (base.poolsById.get(c.poolId) || {}).ref || null,
+        assignedTo: c.assignedTo ? ((base.usersById.get(c.assignedTo) || {}).name || '') : null,
+        ageDays: age, slaDays: c.slaDays, overDays: over,
+        breached: over > 0,
+      };
+    })
+    .filter(c => !(p.filters && p.filters.breachedOnly) || c.breached)
+    .sort((a, b) => b.overDays - a.overDays);
+}
+
+function selApplicationsUnderReview(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'application.review')) return undefined;
+  return base.state.applications
+    .filter(a => ['submitted', 'in_review', 'info_requested'].includes(a.status))
+    .map(a => {
+      const at = a.resubmittedAt || a.submittedAt;
+      return {
+        id: a.id, title: a.project.title, company: a.company.name,
+        status: a.status, target: a.ask.target,
+        at, ageDays: at ? ageDays(at, p.now) : null,
+        complete: checkApplication(a).ok,
+      };
+    })
+    .sort((a, b) => (b.ageDays || 0) - (a.ageDays || 0));
+}
+
+function selPendingSettingProposals(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'settings.read')) return undefined;
+  return base.state.settingProposals
+    .filter(x => DUAL.settingProposal.ready(x))
+    .map(x => ({
+      id: x.id, key: x.key, before: x.before, value: x.value,
+      effectiveFrom: x.effectiveFrom, reason: x.reason,
+      proposedBy: (base.usersById.get(x.proposedBy) || {}).name || '',
+      at: x.proposedAt, ageDays: ageDays(x.proposedAt, p.now),
+      mine: x.proposedBy === (u || {}).id,
+    }))
+    .sort((a, b) => b.ageDays - a.ageDays);
+}
+
+function selOpenVariances(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'funds.read')) return undefined;
+  const out = [];
+  base.state.reconciliations.filter(r => r.status !== 'signed').forEach(r => {
+    (r.breaks || []).forEach(b => out.push({
+      recId: r.id, id: b.id, side: b.side, ref: b.ref, amount: b.amount,
+      what: b.what, kind: b.kind, explained: !!(b.kind && b.note),
+      caseId: b.caseId || null,
+    }));
+  });
+  return out.sort((a, b) => b.amount - a.amount);
+}
+
+/* ══ 4 · administration — ops.adash ════════════════════════════════════════ */
+
+function selPlatformAum(base, session) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const m = moneyPosition();
+  const held = sumBaisa(m.parts.filter(x => x.key === 'escrow' || x.key === 'funding'), x => x.value);
+  return {
+    held, total: m.total, distributed: m.distributed,
+    spent: sumBaisa(m.parts.filter(x => x.key === 'spent'), x => x.value),
+    overDisbursed: m.overDisbursed,
+  };
+}
+
+function selActivePools(base, session) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const byStatus = {};
+  base.state.pools.forEach(p => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
+  return {
+    byStatus,
+    open: base.state.pools.filter(p => p.status === 'funding').length,
+    operating: base.state.pools.filter(p => ['funded', 'operating'].includes(p.status)).length,
+    total: base.state.pools.length,
+  };
+}
+
+function selActiveUsers(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const since = p.now - ACTIVE_WINDOW_DAYS * DAY;
+  const members = base.state.users.filter(x => x.role !== 'staff');
+  const active = members.filter(x => {
+    if (ACTIVE_USER_BASIS === 'HOLDS_POSITION')
+      return (base.ordersByUser.get(x.id) || []).some(o => COUNTED.has(o.status));
+    if (ACTIVE_USER_BASIS === 'ACTED_30D')
+      return base.state.audit.some(r => r.actor === x.id && new Date(r.at).getTime() >= since);
+    return !!x.lastSignInAt && new Date(x.lastSignInAt).getTime() >= since;
+  });
+  return {
+    basis: ACTIVE_USER_BASIS, windowDays: ACTIVE_WINDOW_DAYS,
+    active: active.length, members: members.length,
+    staff: base.state.users.filter(x => x.role === 'staff' && !x.suspended).length,
+  };
+}
+
+function selFeeRevenue(base, session) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const rows = base.state.pools.map(pl => poolFees(base, pl));
+  return {
+    platform: sumBaisa(rows, r => r.platform),
+    success: sumBaisa(rows, r => r.success),
+    total: sumBaisa(rows, r => r.platform + r.success),
+    platformBasis: PLATFORM_FEE_BASIS, successBasis: SUCCESS_FEE_BASIS,
+    byPool: rows.filter(r => r.platform || r.success),
+  };
+}
+
+function selConversionFunnel(base, session) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const investors = base.state.users.filter(x => x.role === 'investor');
+  const kycOk = investors.filter(x => x.kyc === 'approved');
+  const eligible = kycOk.filter(x => x.suit === 'pass' && x.consents);
+  const committed = eligible.filter(x =>
+    (base.ordersByUser.get(x.id) || []).some(o => COUNTED.has(o.status)));
+  const stages = [
+    { k: 'registered', label: 'مستثمرون مسجَّلون', value: investors.length },
+    { k: 'kyc',        label: 'اكتمل التحقق',       value: kycOk.length },
+    { k: 'eligible',   label: 'اجتازوا الملاءمة',   value: eligible.length },
+    { k: 'committed',  label: 'أنشؤوا التزامًا',     value: committed.length },
+  ];
+  return stages.map((s, i) => Object.assign({}, s, {
+    fromPrevBps: i ? bps(s.value, stages[i - 1].value) : 10000,
+    fromBaseBps: bps(s.value, stages[0].value),
+  }));
+}
+
+function selPoolHealth(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  let onTarget = 0, behind = 0, closedUnderfunded = 0;
+  base.state.pools.forEach(pl => {
+    if (pl.status === 'refunding') { closedUnderfunded += 1; return; }
+    if (pl.status !== 'funding') { onTarget += 1; return; }
+    const got = sumBaisa((base.ordersByPool.get(pl.id) || []).filter(o => COUNTED.has(o.status)), o => o.amount);
+    if (got >= pl.minClose) onTarget += 1; else behind += 1;
+  });
+  return { onTarget, behind, closedUnderfunded, total: base.state.pools.length };
+}
+
+/* The chain check is a first-class indicator, not a technical footnote: an
+   FNV-1a chain breaks at any edited row and every row after it shows. Noticing
+   that a week later is far worse than noticing it now.
+
+   It walks the whole log, so it is deliberately lazy and cached apart from
+   BASE — putting it there would rehash the entire audit on every action even
+   when nobody has the administration screen open. */
+let _integrity = { version: null, value: null };
+function selAuditIntegrity(base, session) {
+  const u = actorOf(base, session);
+  if (!can(u, 'audit.read')) return undefined;
+  if (_integrity.version !== base.version) {
+    const r = auditIntegrity();
+    const first = r.recomputed.concat(r.breaks).sort((a, b) => a - b)[0];
+    _integrity = {
+      version: base.version,
+      value: { ok: r.intact, brokenAtIndex: first == null ? null : first, checkedCount: r.total },
+    };
+  }
+  return _integrity.value;
+}
+
+function selActivityByType(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'audit.read')) return undefined;
+  const days = (p.filters && p.filters.days) || 30;
+  const start = p.now - (days - 1) * DAY;
+  const series = [];
+  for (let i = 0; i < days; i += 1) {
+    const key = new Date(start + i * DAY).toISOString().slice(0, 10);
+    series.push({ day: key, value: (base.auditByDay.get(key) || []).length });
+  }
+  const byAction = {};
+  base.state.audit.forEach(r => {
+    if (new Date(r.at).getTime() < start) return;
+    byAction[r.action] = (byAction[r.action] || 0) + 1;
+  });
+  return {
+    days, series,
+    total: sumBaisa(series, s => s.value),
+    byAction: Object.keys(byAction).map(k => ({ label: k, value: byAction[k] }))
+      .sort((a, b) => b.value - a.value),
+  };
+}
+
+/* ══ 5 · display components ════════════════════════════════════════════════
+   The seeded database is small and most series will be nearly empty. A chart
+   drawn from one point is not a trend, it is a number wearing a chart's
+   clothes — and it reads as broken. The threshold lives here so it is one
+   rule for every screen rather than a judgement call per card. */
+const MIN_SERIES = 3;
+
+const EMPTY_TEXT = {
+  holdings:     'لا التزامات بعد — يظهر أول التزام هنا فور إنشائه.',
+  distributions:'لا توزيعات بعد — تظهر هنا عند أول توزيع على المستثمرين.',
+  queue:        'لا شيء ينتظرك — كل ما يخصّ صلاحياتك محسوم.',
+  cases:        'لا حالات مفتوحة.',
+  kyc:          'لا طلبات تحقق معلّقة.',
+  variances:    'لا فروق مفتوحة في المطابقة.',
+  series:       'لا نشاط في هذه الفترة.',
+  proposals:    'لا اقتراحات إعدادات معلّقة.',
+};
+
+function emptyHtml(key) {
+  return '<p class="empty">' + esc(EMPTY_TEXT[key] || 'لا بيانات بعد.') + '</p>';
+}
+
+/* undefined means the account may not know, so nothing is drawn — not even a
+   frame. A drawn-but-empty card would answer a question it was not allowed to
+   answer. */
+function kpiCard(label, value, note) {
+  if (value === undefined) return '';
+  return '<div class="kv"><div class="kv__k">' + esc(label) + '</div>'
+    + '<div class="kv__v">' + value + '</div>'
+    + (note ? '<div class="xs muted">' + esc(note) + '</div>' : '') + '</div>';
+}
+
+/* Defers to barsHtml so there is one bar in the system, not two that drift. */
+function hbarHtml(items, fmtValue) {
+  if (!items || !items.length) return emptyHtml('series');
+  return barsHtml(items, fmtValue);
+}
+
+/* Below MIN_SERIES points the component draws the number instead of the
+   chart. Same call site, same data, honest picture. */
+function seriesHtml(points, fmtValue, emptyKey) {
+  const live = (points || []).filter(p => p.value > 0);
+  if (!live.length) return emptyHtml(emptyKey || 'series');
+  if (live.length < MIN_SERIES) {
+    const last = live[live.length - 1];
+    return '<div class="hero"><span class="hero__v">' + fmtValue(last.value) + '</span>'
+      + '<span class="hero__k">' + esc(last.day || last.label || '')
+      + ' · نقطة واحدة لا تصنع اتجاهًا، فالرقم أصدق من الرسم</span></div>';
+  }
+  return columnsSvg(points.map(p => ({ label: (p.day || p.label || '').slice(5), value: p.value, count: p.value })), fmtValue);
+}
+
+function queueHtml(rows, emptyKey, rowHtml) {
+  if (rows === undefined) return '';
+  if (!rows.length) return emptyHtml(emptyKey);
+  return '<div class="exc">' + rows.map(rowHtml).join('') + '</div>';
+}
+
+function timelineHtml(items, emptyKey) {
+  if (items === undefined) return '';
+  if (!items || !items.length) return emptyHtml(emptyKey);
+  return '<div class="tl">' + items.map(i =>
+    '<div class="tl__item"><span class="tl__dot tl__dot--done"></span><div>'
+    + '<div class="tl__t">' + esc(i.title) + '</div>'
+    + '<div class="tl__d">' + dt(i.at, true) + '</div>'
+    + (i.note ? '<p class="sm">' + esc(i.note) + '</p>' : '')
+    + '</div></div>').join('') + '</div>';
+}
+/* ══ end METRICS ══════════════════════════════════════════════════════════ */
 /* ══════════════════════════════════════════════════════════════════════════
    ops · the operations dashboard
    Four bands, each headed by the question it answers, in the order an
@@ -4199,33 +5365,17 @@ function band(n, title, sub, body, actions) {
     + '</div>' + body + '</section>';
 }
 
-VIEWS['ops.dash'] = () => {
-  const u = me();
+/* ── the money bands, moved off the work surface ───────────────────────────
+   ops.dash answers "what do I do now"; these three answer "how are things
+   going", which is a different question on a different horizon. They are not
+   deleted — they move to the screen already named التحليلات, where the funnel
+   and the concentration figures already live. */
+function moneyBands(u) {
   const days = SESSION.win || 90;
-  const exc = exceptions();
   const money = moneyPosition();
   const inflow = weeklyInflow(days);
   const rows = poolRows();
   const omr0 = v => fmt(v, 0) + ' ر.ع';
-
-  /* ── band 1 ── */
-  const b1 = exc.length
-    ? '<div class="card"><div class="card__body card__body--flush" style="padding:.4rem 1rem">'
-      + '<div class="exc">' + exc.slice(0, 8).map(x => {
-          const cls = x.over > 5 ? ' exc__age--crit' : x.over > 0 ? ' exc__age--warn' : '';
-          return '<div class="exc__row">'
-            + '<span class="exc__age' + cls + '">' + (x.over > 0 ? x.over + ' ي' : 'اليوم') + '</span>'
-            + '<span><span class="exc__what">' + esc(x.what) + '</span>'
-            + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
-            + (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view))
-                ? '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
-                  + (x.rec ? 'افتح السطر' : 'افتح') + '</a>'
-                : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
-            + '</div>';
-        }).join('') + '</div>'
-      + (exc.length > 8 ? '<p class="xs muted" style="padding:.5rem 0">و' + (exc.length - 8) + ' بندًا آخر أقل تأخرًا.</p>' : '')
-      + '</div></div>'
-    : '<div class="note note--pos">لا شيء متأخر. كل الحالات والتقارير والطلبات ضمن مهلها.</div>';
 
   /* ── band 2 ── */
   const b2 = '<div class="grid grid--2 grid--top">'
@@ -4300,20 +5450,320 @@ VIEWS['ops.dash'] = () => {
     '<button data-act="setWin" data-win="' + w[0] + '" aria-pressed="' + (days === w[0]) + '">'
     + w[1] + '</button>').join('') + '</span>';
 
+
+  return band('05', 'أين المال الآن؟', 'من إجمالي ' + omr0(money.total) + ' التزم بها المستثمرون', b2)
+    + band('06', 'هل يتحرك التمويل؟', 'الداخل أسبوعيًا خلال الفترة المختارة', b3, winPicker)
+    + band('07', 'أين تقف كل فرصة؟', 'الأقرب إغلاقًا أولًا', b4);
+}
+
+
+
+/* ── ops · pipeline ───────────────────────────────────────────────────── */
+/* ╔══════════════════════════════════════════════════════════════════════════╗
+   ║  ops.dash — a work surface, not a board of numbers                       ║
+   ╚══════════════════════════════════════════════════════════════════════════╝
+
+   The question here is "what do I do now", and the unit is a thing that can
+   be acted on. "How are things going" is a different question on a different
+   horizon, and it lives on التحليلات.
+
+   The governing rule: every row shown is actionable by this account at this
+   moment. A row that is offered and then refused on click is a defect, not an
+   error message — so the filtering happens in selMyApprovalQueue, using the
+   same predicates the actions refuse with, before anything is drawn.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Relative, because "منذ ٣ أيام" is the fact a queue is read for; the exact
+   stamp is in the tooltip for whoever needs it. */
+function agoAr(days) {
+  if (days == null) return '—';
+  if (days <= 0) return 'اليوم';
+  if (days === 1) return 'أمس';
+  if (days === 2) return 'منذ يومين';
+  if (days <= 10) return 'منذ ' + days + ' أيام';
+  return 'منذ ' + days + ' يومًا';
+}
+
+/* Which row is showing its reason box. One at a time, held here rather than in
+   the DOM so a rebuild after any other action cannot strand a half-typed
+   refusal in a row that no longer exists. */
+let REJECTING = null;      // { kind, id } | null
+
+/* Eight, not five: the row is 40px now rather than 62, so the same card
+   height carries more of the queue before «عرض الكل» is needed. */
+const QUEUE_CAP = 8;
+
+/* undefined means this account may not know, so no card is drawn at all — not
+   an empty one, which would answer a question it was not allowed to answer.
+   An empty array is different: the card is drawn with its own written empty
+   line, because a queue that disappears when it clears reads as a fault, and
+   one that sits there empty reads as finished. */
+function queueCard(o) {
+  if (o.rows === undefined) return '';
+  const rows = o.rows;
+  const shown = rows.slice(0, QUEUE_CAP);
+  return '<section class="card qcard' + (o.tone ? ' qcard--' + o.tone : '') + '">'
+    + '<div class="card__head"><h2>' + esc(o.title) + '</h2>'
+    + '<span class="chip' + (rows.length ? (o.tone === 'crit' ? ' chip--crit' : ' chip--warn') : ' chip--pos') + '">'
+    + rows.length + '</span>'
+    + (o.note ? '<span class="xs muted">' + esc(o.note) + '</span>' : '')
+    + (o.actions ? '<span class="spacer">' + o.actions + '</span>' : '')
+    + '</div>'
+    + '<div class="card__body card__body--flush">'
+    + (rows.length
+        ? '<div class="qrows">' + shown.map(o.rowHtml).join('') + '</div>'
+          + (rows.length > QUEUE_CAP
+              ? '<a class="qmore" href="' + o.moreHref + '">عرض الكل (' + rows.length + ') ←</a>'
+              : '')
+        : '<p class="empty">' + esc(o.empty) + '</p>')
+    + '</div></section>';
+}
+
+/* One row of the approval queue, and the inline refusal it can open. */
+function approvalRow(x) {
+  const open = REJECTING && REJECTING.kind === x.kind && REJECTING.id === x.id;
+  const KIND_AR = { disbursement: 'صرف', settingProposal: 'إعداد', reconciliation: 'مطابقة' };
+  return '<div class="qrow" id="rec-' + esc(x.id) + '">'
+    + '<div class="qrow__main">'
+    +   '<span class="chip chip--brand">' + esc(KIND_AR[x.kind] || x.kind) + '</span>'
+    +   '<span class="qrow__what">' + esc(x.what) + '</span>'
+    +   '<span class="qrow__who">' + esc(x.who) + '</span>'
+    +   '<span class="qrow__age" title="' + esc(dt(x.at, true)) + '">' + esc(agoAr(x.ageDays)) + '</span>'
+    +   '<span class="qrow__amt">' + (x.amount == null ? '—' : rial(x.amount)) + '</span>'
+    + '</div>'
+    + (open
+        ? '<div class="qrow__reject">'
+          + '<div class="field"><label for="rejWhy">سبب الرفض</label>'
+          + '<textarea id="rejWhy" rows="2" placeholder="ما الذي يمنع اعتماد هذا، بعشرة أحرف على الأقل"></textarea></div>'
+          + '<div class="row row--tight">'
+          + '<button class="btn btn--sm btn--danger" data-act="doReject" data-kind="' + x.kind + '" data-id="' + esc(x.id) + '">تأكيد الرفض</button>'
+          + '<button class="btn btn--sm" data-act="cancelReject">تراجع</button></div>'
+          + '<p class="xs muted">السبب يدخل سجل التدقيق كما تكتبه — هو الجواب الوحيد لاحقًا على «لماذا لم يخرج هذا المال».</p>'
+          + '</div>'
+        : '<div class="row row--tight qrow__acts">'
+          + '<button class="btn btn--sm btn--primary" data-act="' + x.act + '" data-' + x.dataKey + '="' + esc(x.id) + '"'
+          + (x.kind === 'settingProposal' ? ' data-ok="1"' : '') + '>اعتماد</button>'
+          + '<button class="btn btn--sm btn--danger" data-act="askReject" data-kind="' + x.kind + '" data-id="' + esc(x.id) + '">رفض</button>'
+          + '</div>')
+    + '</div>';
+}
+
+/* Three numbers, deliberately not a chart: at this size a column plot carries
+   less than the digits do, and the third bucket is the one that matters. */
+function ageBuckets(byBand) {
+  const cells = AGE_BANDS.map(b => {
+    const n = byBand[b.k] || 0;
+    const hot = b.k === 'stale' && n > 0;
+    return '<div class="agecell' + (hot ? ' agecell--hot' : '') + '">'
+      + '<div class="agecell__v">' + n + '</div>'
+      + '<div class="agecell__k">' + esc(b.label) + '</div></div>';
+  }).join('');
+  return '<div class="agerow">' + cells + '</div>';
+}
+
+const DASH_TABS = [
+  { k: 'kyc',       label: 'التحقق',   sel: selKycQueue,                 empty: 'kyc' },
+  { k: 'cases',     label: 'الحالات',  sel: selOpenCases,                empty: 'cases' },
+  { k: 'apps',      label: 'الطلبات',  sel: selApplicationsUnderReview,  empty: 'apps' },
+  { k: 'proposals', label: 'الإعدادات', sel: selPendingSettingProposals, empty: 'proposals' },
+];
+
+const TAB_EMPTY = {
+  kyc:       'لا طلبات تحقق معلّقة.',
+  cases:     'لا حالات مفتوحة.',
+  apps:      'لا طلبات تمويل قيد المعالجة.',
+  proposals: 'لا اقتراحات إعدادات معلّقة.',
+};
+
+function tabRow(kind, x) {
+  if (kind === 'kyc')
+    return '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+      + '<span class="qrow__what">' + esc(x.name) + '</span>'
+      + '<span class="qrow__who">' + esc(ROLE_AR[x.role] || x.role)
+      + (x.claimedCls ? ' · يطلب ' + esc(CLASS_AR[x.claimedCls] || x.claimedCls) : '') + '</span>'
+      + '<span class="qrow__age">' + esc(agoAr(x.ageDays)) + '</span></div>'
+      + '<div class="row row--tight qrow__acts">'
+      + '<button class="btn btn--sm btn--primary" data-act="approveKyc" data-user="' + esc(x.id) + '" data-grant="0">اعتماد</button>'
+      + '<button class="btn btn--sm btn--danger" data-act="rejectKyc" data-user="' + esc(x.id) + '">رفض</button>'
+      + '</div></div>';
+  if (kind === 'cases')
+    return '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+      + '<span class="chip' + (x.breached ? ' chip--crit' : '') + '">' + esc(x.kind) + '</span>'
+      + '<span class="qrow__what">' + esc(x.subject) + '</span>'
+      + '<span class="qrow__who">' + (x.assignedTo ? esc(x.assignedTo) : 'بلا مسؤول') + '</span>'
+      + '<span class="qrow__age' + (x.breached ? ' qrow__age--crit' : '') + '">'
+      + (x.breached ? 'تجاوزت بـ' + x.overDays + ' يومًا' : esc(agoAr(x.ageDays))) + '</span></div>'
+      + '<div class="row row--tight qrow__acts">'
+      + '<a class="btn btn--sm" href="' + hrefFor({ view: 'ops.cases' }) + '">افتح</a></div></div>';
+  if (kind === 'apps')
+    return '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+      + '<span class="chip">' + esc((APP_STATUS[x.status] || [x.status])[0]) + '</span>'
+      + '<span class="qrow__what">' + esc(x.title) + '</span>'
+      + '<span class="qrow__who">' + esc(x.company) + '</span>'
+      + '<span class="qrow__age">' + esc(agoAr(x.ageDays)) + '</span>'
+      + '<span class="qrow__amt">' + rial(x.target) + '</span></div>'
+      + '<div class="row row--tight qrow__acts">'
+      + '<a class="btn btn--sm" href="' + hrefFor({ view: 'ops.apps', id: x.id }) + '">افتح</a></div></div>';
+  /* proposals */
+  return '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+    + '<span class="qrow__what">' + esc(x.key) + '</span>'
+    + '<span class="qrow__who">' + esc(x.proposedBy) + '</span>'
+    + '<span class="qrow__age">' + esc(agoAr(x.ageDays)) + '</span></div>'
+    + '<div class="row row--tight qrow__acts">'
+    + (x.mine
+        ? '<span class="chip chip--crit"><span class="chip__dot"></span>اقتراحك</span>'
+        : '<a class="btn btn--sm" href="' + hrefFor({ view: 'ops.settings' }) + '">افتح</a>')
+    + '</div></div>';
+}
+
+VIEWS['ops.dash'] = () => {
+  const u = me();
+  const base = BASE(STATE);
+  const p = metricsParams({ filters: {} });
+
+  /* ── the chain, first and unmissable ── */
+  /* Intact is the expected case and gets a chip; broken keeps the whole band.
+     A full-width bar spent on "nothing is wrong" is the most expensive way to
+     say nothing on a screen read forty times a day. */
+  const integrity = selAuditIntegrity(base, SESSION, p);
+  const badge = integrity === undefined ? ''
+    : integrity.ok
+      ? '<div class="statusline"><span class="statusbar__dot statusbar__dot--ok"></span>'
+        + 'سلسلة التدقيق سليمة عبر ' + integrity.checkedCount + ' سطرًا</div>'
+      : '<div class="note note--crit"><strong>سلسلة التدقيق مكسورة.</strong> '
+        + 'أول موضع لا يطابق إعادة الحساب: السطر ' + (integrity.brokenAtIndex + 1)
+        + ' من ' + integrity.checkedCount + '. سطر عُدِّل بعد كتابته، أو سطر قبله — '
+        + 'وكل ما بعده يظهر. هذا يوقف العمل ولا يُؤجَّل.'
+        + '<div class="row" style="margin-block-start:.5rem">'
+        + '<a class="btn btn--sm btn--danger" href="' + hrefFor({ view: 'ops.audit' }) + '">افتح السجل</a></div></div>';
+
+  /* ── ① what is waiting on me ── */
+  const mine = selMyApprovalQueue(base, SESSION, p);
+  const card1 = queueCard({
+    title: 'بانتظار اعتمادي', rows: mine, tone: 'crit',
+    note: 'الطابور الوحيد الذي يحجز مال شخص آخر',
+    empty: 'لا شيء ينتظرك — الطابور نظيف.',
+    rowHtml: approvalRow,
+    moreHref: hrefFor({ view: 'ops.money' }),
+  });
+
+  /* ── ② disbursements, whole — including your own, marked and inert ── */
+  const dsb = selPendingDisbursements(base, SESSION, p);
+  const card2 = dsb === undefined ? '' : queueCard({
+    title: 'طلبات الصرف المعلّقة', rows: dsb.rows,
+    note: 'الطابور كاملًا · ' + rial(dsb.amount),
+    empty: 'لا طلبات صرف معلّقة.',
+    actions: dsb.rows.length ? ageBuckets(dsb.byBand) : '',
+    moreHref: hrefFor({ view: 'ops.money' }),
+    rowHtml: x => '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+      + '<span class="mono xs">' + esc(x.id) + '</span>'
+      + '<span class="qrow__what">' + esc(x.poolRef) + '</span>'
+      + '<span class="qrow__who">' + esc(x.requestedBy) + '</span>'
+      + '<span class="qrow__age' + (x.band === 'stale' ? ' qrow__age--crit' : '') + '" title="'
+      + esc(dt(x.at, true)) + '">' + esc(agoAr(x.ageDays)) + '</span>'
+      + '<span class="qrow__amt">' + rial(x.amount) + '</span></div>'
+      + (x.mine ? '<span class="chip chip--sand">طلبك — يعتمده غيرك</span>' : '')
+      + '</div>',
+  });
+
+  /* ── ③ the rest of the work, behind its own permissions ── */
+  const active = DASH_TABS.some(t => t.k === SESSION.dashTab) ? SESSION.dashTab : null;
+  const live = DASH_TABS.map(t => ({ t, rows: t.sel(base, SESSION, p) }))
+    .filter(x => x.rows !== undefined);
+  const current = live.find(x => x.t.k === active) || live[0] || null;
+  const card3 = !live.length ? '' :
+    '<section class="card"><div class="card__head">'
+    + '<div class="tabs" role="tablist">' + live.map(x =>
+        '<a role="tab" class="tablink" data-tab="' + x.t.k + '" aria-selected="' + (x.t.k === current.t.k) + '" href="'
+        + hrefFor({ view: 'ops.dash', query: { tab: x.t.k } }) + '">' + esc(x.t.label)
+        + '<span class="tablink__n">' + x.rows.length + '</span></a>').join('')
+    + '</div></div>'
+    + '<div class="card__body card__body--flush">'
+    + (current.rows.length
+        ? '<div class="qrows">' + current.rows.slice(0, QUEUE_CAP)
+            .map(r => tabRow(current.t.k, r)).join('') + '</div>'
+          + (current.rows.length > QUEUE_CAP
+              ? '<a class="qmore" href="' + hrefFor({ view: {
+                  kyc: 'ops.kyc', cases: 'ops.cases', apps: 'ops.apps', proposals: 'ops.settings',
+                }[current.t.k] }) + '">عرض الكل (' + current.rows.length + ') ←</a>'
+              : '')
+        : '<p class="empty">' + esc(TAB_EMPTY[current.t.k]) + '</p>')
+    + '</div></section>';
+
+  /* ── ⓪ everything already past its own deadline ───────────────────────
+     The four queues below each answer for one kind of work. This one cuts
+     across all of them and reaches things none of them holds: a report the
+     owner never filed, a pool whose funding window closed unnoticed, money
+     disbursed beyond what was ever allocated to it. Dropping it in favour of
+     the tidier queues would have quietly retired the only place an
+     over-disbursement is announced. It stays first, because "past its
+     deadline" outranks "waiting". */
+  const exc = exceptions().filter(x =>
+    !x.view || canOpen(u, STAFF_NAV.find(n => n.k === x.view)));
+  const card0 = !exc.length ? '' :
+    '<section class="card qcard qcard--crit"><div class="card__head"><h2>تجاوز مهلته</h2>'
+    + '<span class="chip chip--crit">' + exc.length + '</span>'
+    + '<span class="xs muted">الأكثر تأخرًا أولًا · عبر كل أنواع العمل</span></div>'
+    + '<div class="card__body card__body--flush" style="padding:.2rem 1rem">'
+    + '<div class="exc">' + exc.slice(0, QUEUE_CAP + 3).map(x => {
+        const cls = x.over > 5 ? ' exc__age--crit' : x.over > 0 ? ' exc__age--warn' : '';
+        return '<div class="exc__row" id="rec-' + esc(x.ref) + '">'
+          + '<span class="exc__age' + cls + '">' + (x.over > 0 ? x.over + ' ي' : 'اليوم') + '</span>'
+          + '<span><span class="exc__what">' + esc(x.what) + '</span>'
+          + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
+          /* Seven rows carrying the identical word «افتح السطر» spend the
+             widest slot in the row on nothing: the label is the same whichever
+             row you are on, so it distinguishes none of them. The arrow keeps
+             the control obvious and the accessible name says what it opens —
+             which is more than the visible text ever did. */
+          + (x.view
+              ? '<a class="btn btn--sm btn--go" href="' + esc(hrefFor({ view: x.view, id: x.rec || null }))
+                + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + x.what) + '">'
+                + '<span aria-hidden="true">←</span></a>'
+              : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
+          + '</div>';
+      }).join('') + '</div>'
+    + (exc.length > QUEUE_CAP + 3
+        ? '<p class="xs muted" style="padding:.5rem 0">و' + (exc.length - QUEUE_CAP - 3)
+          + ' بندًا آخر أقل تأخرًا.</p>' : '')
+    + '</div></section>';
+
+  /* ── ④ what the books disagree about ── */
+  const vars = selOpenVariances(base, SESSION, p);
+  const card4 = queueCard({
+    title: 'فروق المطابقة المفتوحة', rows: vars,
+    note: 'بحجم الفرق تنازليًا — لا بالتاريخ',
+    empty: 'كل الفترات مطابَقة.',
+    moreHref: hrefFor({ view: 'ops.recon' }),
+    rowHtml: x => '<div class="qrow" id="rec-' + esc(x.id) + '"><div class="qrow__main">'
+      + '<span class="chip ' + (x.side === 'statement' ? 'chip--sand' : 'chip--brand') + '">'
+      + (x.side === 'statement' ? 'في الكشف' : 'في السجل') + '</span>'
+      + '<span class="qrow__what">' + esc(x.what) + '</span>'
+      + '<span class="qrow__who mono xs">' + esc(x.ref) + '</span>'
+      + '<span class="qrow__amt">' + rial(x.amount) + '</span></div>'
+      + '<div class="row row--tight qrow__acts">'
+      + (x.explained
+          ? '<span class="chip chip--pos"><span class="chip__dot"></span>مفسَّر</span>'
+          : x.caseId
+            ? '<span class="chip chip--warn"><span class="chip__dot"></span>حالة ' + esc(x.caseId) + '</span>'
+            : '<a class="btn btn--sm" href="' + hrefFor({ view: 'ops.recon' }) + '">فسّره</a>')
+      + '</div></div>',
+  });
+
+  const drawn = [card0, card1, card2, card3, card4].filter(Boolean).length;
+
   return {
     crumb: 'فريق التشغيل · ' + (JOB_AR[u.job] || ''), title: 'لوحة التشغيل',
-    lede: 'أربعة أسئلة بترتيب الحاجة إليها. كل رقم هنا محسوب من السجل لحظة العرض — لا قيمة مكتوبة ولا نسخة مخزَّنة.',
-    body: '<div class="stack" style="gap:2rem">'
-      + band('01', 'ما الذي يحتاج تدخّلًا الآن؟',
-             exc.length ? exc.length + ' بندًا، الأكثر تأخرًا أولًا' : 'لا شيء متأخر', b1)
-      + band('02', 'أين المال الآن؟', 'من إجمالي ' + omr0(money.total) + ' التزم بها المستثمرون', b2)
-      + band('03', 'هل يتحرك التمويل؟', 'الداخل أسبوعيًا خلال الفترة المختارة', b3, winPicker)
-      + band('04', 'أين تقف كل فرصة؟', 'الأقرب إغلاقًا أولًا', b4)
-      + '</div>',
+    wide: true, lede: '',
+    hint: 'ما ينتظر تصرّفك أنت، الآن. كل صفّ هنا تستطيع التصرّف فيه بصلاحيتك '
+        + 'وبقواعد الرقابة الثنائية — ما لا تستطيعه لا يُعرض عليك أصلًا.',
+    body: badge
+      + (exc.length ? '' : '<div class="note note--pos">لا شيء تجاوز مهلته — الحالات والتقارير والطلبات كلّها ضمن مهلها.</div>')
+      + (drawn ? '' : '<div class="note note--warn">لا يفتح حسابك أي طابور عمل على هذه الشاشة.</div>')
+      + '<div class="stack" style="gap:1.2rem">' + card0 + card1 + card2 + card3 + card4 + '</div>',
   };
 };
 
-/* ── ops · pipeline ───────────────────────────────────────────────────── */
 /* ══════════════════════════════════════════════════════════════════════════
    ops · the administration dashboard
    ══════════════════════════════════════════════════════════════════════════ */
@@ -4354,8 +5804,9 @@ function excTail(x, u) {
      *and* the row, instead of leaving the reader to find again what this
      dashboard had already found for them. */
   if (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view)))
-    return '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
-      + (x.rec ? 'افتح السطر' : 'افتح') + '</a>';
+    return '<a class="btn btn--sm btn--go" href="' + esc(hrefFor({ view: x.view, id: x.rec || null }))
+      + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + x.what) + '">'
+      + '<span aria-hidden="true">←</span></a>';
   return '<span class="xs muted mono">' + esc(x.ref || '') + '</span>';
 }
 
@@ -4535,7 +5986,7 @@ VIEWS['ops.adash'] = () => {
   const older = allChanges.length - changes.length;
   const b4 = '<div class="card"><div class="card__body">'
     + (changes.length
-        ? '<div class="tl">' + changes.map(r => {
+        ? '<div class="tl tl--tight">' + changes.map(r => {
             const who = (user(r.actor) || {}).name || 'غير معروف';
             return '<div class="tl__item"><span class="tl__dot tl__dot--done"></span><div>'
               + '<div class="tl__t">' + esc(r.action) + ' — <span class="sm">' + esc(who) + '</span></div>'
@@ -4609,19 +6060,27 @@ VIEWS['ops.adash'] = () => {
 
   return {
     crumb: 'إدارة النظام', title: 'لوحة إدارة النظام',
-    lede: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يصل إليه، وهل يصل أحد وحده، '
+    wide: true, lede: '',
+    hint: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يصل إليه، وهل يصل أحد وحده، '
         + 'وما الذي تغيّر في الوصول، وهل ما زال سجل «من فعل ماذا» متماسكًا.',
-    body: '<div class="stack" style="gap:2rem">'
+    /* Four bands, not five. "Who holds what" and "who can act alone" were two
+       questions only on the screen — a reader asks them as one, and the answer
+       to the second is the one they can act on. So the grouping leads and the
+       matrix follows it folded: a reference is looked up, not read, and
+       eighteen permissions across every active account was the single tallest
+       thing on the page. */
+    body: '<div class="stack" style="gap:1.4rem">'
       + band('01', 'هل في الوصول خلل؟',
              exc.length ? exc.length + ' بندًا، لا يُقتطع منها شيء' : 'لا شيء يستدعي تدخّلًا',
              b1, exc.length ? filter : '')
       + band('02', 'من يستطيع أن يفعل ماذا وحده؟',
-             SOD_RULES.length + ' تجميعًا معلنًا على ' + active.length + ' حسابًا نشطًا', b2)
-      + band('03', 'من يملك ماذا؟',
-             PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا', b3)
-      + band('04', 'ما الذي تغيّر في الوصول؟',
+             SOD_RULES.length + ' تجميعًا معلنًا على ' + active.length + ' حسابًا نشطًا',
+             b2 + '<details class="fold"><summary>مصفوفة الصلاحيات كاملة — '
+             + PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا</summary>'
+             + '<div class="fold__b">' + b3 + '</div></details>')
+      + band('03', 'ما الذي تغيّر في الوصول؟',
              changes.length + ' تغييرًا خلال ' + days + ' يومًا', b4, winPicker)
-      + band('05', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b5)
+      + band('04', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b5)
       + '</div>',
   };
 };
@@ -4694,7 +6153,7 @@ VIEWS['ops.pipeline'] = () => {
 
   return {
     crumb: 'فريق التشغيل', title: 'التحليلات',
-    lede: 'التوزيعات والتركّزات: من أين يأتي المال، وأين يتوقف الناس، وكم يعتمد النشاط على قلّة منهم. حالة كل فرصة على لوحة التشغيل ولا تُكرَّر هنا.',
+    lede: 'أسئلة «كيف تسير الأمور» مجتمعةً: أين يتوقف الناس، ومن أين يأتي المال، وأين يقف كل ريال، وهل يتحرك التمويل، وأين تقف كل فرصة. أما «ماذا أفعل الآن» فعلى لوحة التشغيل.',
     body: '<div class="stack" style="gap:2rem">'
 
     + band('01', 'أين يتوقف الناس؟', 'كل مرحلة مجموعة فرعية من التي قبلها',
@@ -4713,7 +6172,7 @@ VIEWS['ops.pipeline'] = () => {
         + '<div class="card"><div class="card__body">' + frameHtml({
             title: 'الملتزم به حسب القطاع',
             sub: 'المبالغ القائمة فعلًا، لا الأهداف المعلنة.',
-            chart: barsHtml(sectors, omr0, CAT),
+            chart: barsHtml(sectors, omr0),
             cols: ['القطاع', 'الملتزم به (ر.ع)', 'النسبة'],
             rows: sectors.map(s => [esc(s.label), fmt(s.value, 0),
               total ? ((s.value / total) * 100).toFixed(1) + '%' : '—']),
@@ -4758,6 +6217,8 @@ VIEWS['ops.pipeline'] = () => {
             + '<td class="n">' + (total ? ((x.value / total) * 100).toFixed(1) : '0') + '%</td></tr>').join('')
           : '<tr><td colspan="3" class="empty">لا التزامات بعد.</td></tr>')
         + '</tbody></table></div></div></div></div>')
+
+    + moneyBands(me())
 
     + '</div>',
   };
@@ -4878,6 +6339,10 @@ VIEWS['ops.money'] = () => {
   const staff = STATE.users.filter(x => x.role === 'staff' && (x.perms || []).includes('funds.approve'));
   const requested = STATE.disbursements.filter(d => d.status === 'requested');
   const done = STATE.disbursements.filter(d => d.status === 'executed');
+  /* Refused requests would otherwise vanish from every screen: they are in
+     neither queue and neither total, and the reason for refusing them is the
+     one thing an auditor comes here to read. */
+  const refused = STATE.disbursements.filter(d => d.status === 'rejected');
   const canApprove = (u.perms || []).includes('funds.approve');
 
   return {
@@ -4901,8 +6366,21 @@ VIEWS['ops.money'] = () => {
                 ? '<span class="xs muted">لا صلاحية</span>'
                 : self
                   ? '<span class="chip chip--crit"><span class="chip__dot"></span>أنت الطالب</span>'
-                  : '<button class="btn btn--sm btn--primary" data-act="approveDsb" data-dsb="' + d.id + '">اعتماد وصرف</button>')
-            + '</td></tr>';
+                  : '<div class="row row--tight">'
+                    + '<button class="btn btn--sm btn--primary" data-act="approveDsb" data-dsb="' + d.id + '">اعتماد وصرف</button>'
+                    + '<button class="btn btn--sm btn--danger" data-act="askReject" data-kind="disbursement" data-id="' + d.id + '">رفض</button>'
+                    + '</div>')
+            + '</td></tr>'
+            + (REJECTING && REJECTING.kind === 'disbursement' && REJECTING.id === d.id
+                ? '<tr><td colspan="7"><div class="qrow__reject">'
+                  + '<div class="field"><label for="rejWhy">سبب الرفض</label>'
+                  + '<textarea id="rejWhy" rows="2" placeholder="ما الذي يمنع صرف هذا المبلغ"></textarea></div>'
+                  + '<div class="row row--tight">'
+                  + '<button class="btn btn--sm btn--danger" data-act="doReject" data-kind="disbursement" data-id="' + d.id + '">تأكيد الرفض</button>'
+                  + '<button class="btn btn--sm" data-act="cancelReject">تراجع</button></div>'
+                  + '<p class="xs muted">تعود المرحلة إلى «لم تُطلب» فتُطلب من جديد، ويبقى السبب في السجل.</p>'
+                  + '</div></td></tr>'
+                : '');
         }).join('') : '<tr><td colspan="7" class="empty">لا طلبات معلّقة.</td></tr>')
       + '</tbody></table></div></div></div>'
       + (can(u, 'funds.request')
@@ -4918,7 +6396,22 @@ VIEWS['ops.money'] = () => {
           + '<td class="sm">' + esc((user(d.approvedBy) || {}).name) + '</td>'
           + '<td class="sm">' + dt(d.approvedAt) + '</td></tr>').join('')
         : '<tr><td colspan="6" class="empty">لا صرف بعد.</td></tr>')
-      + '</tbody></table></div></div></div>',
+      + '</tbody></table></div></div></div>'
+      + (refused.length
+          ? '<div class="card"><div class="card__head"><h2>طلبات مرفوضة</h2>'
+            + '<span class="spacer chip">' + refused.length + '</span></div>'
+            + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+            + '<thead><tr><th>المرجع</th><th>الفرصة</th><th class="n">المبلغ</th>'
+            + '<th>الطالب</th><th>رفضه</th><th>السبب</th><th>التاريخ</th></tr></thead><tbody>'
+            + refused.map(d => '<tr><td><span class="mono xs">' + d.id + '</span></td>'
+                + '<td class="sm">' + esc(pool(d.poolId).ref) + '</td>'
+                + '<td class="n">' + fmt(d.amount, 0) + '</td>'
+                + '<td class="sm">' + esc((user(d.requestedBy) || {}).name) + '</td>'
+                + '<td class="sm">' + esc((user(d.rejectedBy) || {}).name) + '</td>'
+                + '<td class="sm">' + esc(d.rejectReason || '') + '</td>'
+                + '<td class="sm">' + dt(d.rejectedAt) + '</td></tr>').join('')
+            + '</tbody></table></div></div></div>'
+          : ''),
   };
 };
 function createDsbForm() {
@@ -5084,6 +6577,11 @@ VIEWS['ops.recon'] = () => {
           : '<div class="note note--pos">لا فرق: كل سطر في الكشف قابله حدث في السجل، والعكس.</div>')
 
       + '<h3>الإغلاق</h3>'
+      + (open.returnReason && open.status === 'draft'
+          ? '<div class="note note--crit"><strong>أُعيدت إلى المسودة.</strong> '
+            + esc((user(open.returnedBy) || {}).name || '') + ' في ' + dt(open.returnedAt, true)
+            + ' — ' + esc(open.returnReason) + '</div>'
+          : '')
       + (open.status === 'prepared'
           ? '<div class="note note--info">أعدّها <strong>' + esc((user(open.preparedBy) || {}).name || '')
             + '</strong> في ' + dt(open.preparedAt, true) + '.'
@@ -5098,8 +6596,18 @@ VIEWS['ops.recon'] = () => {
                   + 'أعِدّها للتوقيع</button>' : '')
             + (open.status === 'prepared' && open.preparedBy !== u.id
                 ? '<button class="btn btn--primary" data-act="signRecon" data-rec="' + open.id + '">'
-                  + 'وقّع المطابقة</button>' : '')
+                  + 'وقّع المطابقة</button>'
+                  + '<button class="btn btn--danger" data-act="askReject" data-kind="reconciliation" '
+                  + 'data-id="' + open.id + '">أعِدها بسبب</button>' : '')
             + '</div>'
+            + (REJECTING && REJECTING.kind === 'reconciliation' && REJECTING.id === open.id
+                ? '<div class="qrow__reject">'
+                  + '<div class="field"><label for="rejWhy">سبب الإعادة</label>'
+                  + '<textarea id="rejWhy" rows="2" placeholder="ما الذي يمنع التوقيع عليها"></textarea></div>'
+                  + '<div class="row row--tight">'
+                  + '<button class="btn btn--sm btn--danger" data-act="doReject" data-kind="reconciliation" data-id="' + open.id + '">تأكيد الإعادة</button>'
+                  + '<button class="btn btn--sm" data-act="cancelReject">تراجع</button></div></div>'
+                : '')
             + '<p class="xs muted">التوقيع يقول «المال حيث قلنا إنه». فيحتاج طرفًا ثانيًا، ويحتاج '
             + 'أن يكون الكشف متّزنًا وكل فرق مفسَّرًا — تمامًا كما لا تُغلق فرصة لا يتطابق تخصيصها.</p>'
           : '<div class="note note--warn">حسابك يقرأ هذه المطابقة ولا يُعدّها ولا يوقّعها.</div>')
@@ -5594,8 +7102,16 @@ VIEWS['ops.settings'] = () => {
             + '<td>' + (!canPropose ? '<span class="xs muted">لا صلاحية</span>'
                 : self ? '<span class="chip chip--crit"><span class="chip__dot"></span>أنت المقترِح</span>'
                 : '<div class="row row--tight">'
-                  + '<button class="btn btn--sm btn--primary" data-act="decideSetting" data-id="' + x.id + '" data-ok="1">اعتماد</button>'
-                  + '<button class="btn btn--sm btn--danger" data-act="decideSetting" data-id="' + x.id + '" data-ok="0">رفض</button></div>')
+                  + '<button class="btn btn--sm btn--primary" data-act="decideSetting" data-id="' + x.id + '">اعتماد</button>'
+                  + '<button class="btn btn--sm btn--danger" data-act="askReject" data-kind="settingProposal" data-id="' + x.id + '">رفض</button></div>'
+                  + (REJECTING && REJECTING.kind === 'settingProposal' && REJECTING.id === x.id
+                      ? '<div class="qrow__reject" style="margin-block-start:.4rem">'
+                        + '<div class="field"><label for="rejWhy">سبب الرفض</label>'
+                        + '<textarea id="rejWhy" rows="2" placeholder="لماذا لا يُعتمد هذا التغيير"></textarea></div>'
+                        + '<div class="row row--tight">'
+                        + '<button class="btn btn--sm btn--danger" data-act="doReject" data-kind="settingProposal" data-id="' + x.id + '">تأكيد الرفض</button>'
+                        + '<button class="btn btn--sm" data-act="cancelReject">تراجع</button></div></div>'
+                      : ''))
             + '</td></tr>';
         }).join('') : '<tr><td colspan="7" class="empty">لا اقتراحات معلّقة.</td></tr>')
       + '</tbody></table></div></div></div>'
@@ -6632,9 +8148,15 @@ function appShell(u) {
   +     (u.role === 'investor' && u.kyc !== 'approved'
         ? '<div class="note note--warn xs" style="margin:.5rem .2rem 0">تحققك قيد المراجعة. التصفح متاح، وإنشاء الالتزام لا.</div>' : '')
   +   '</nav>'
-  +   '<main class="main"><div class="main__inner">'
+  /* A screen says whether its content is prose or a table; the shell does not
+     guess. Only the two work surfaces claim the width today. */
+  +   '<main class="main"><div class="main__inner' + (view.wide ? ' main__inner--wide' : '') + '">'
   +     '<div class="pagehead"><div class="pagehead__crumb">' + esc(view.crumb) + '</div>'
-  +       '<h1 id="pagetitle" tabindex="-1">' + esc(view.title) + '</h1>'
+  +       '<h1 id="pagetitle" tabindex="-1"' + (view.hint ? ' title="' + esc(view.hint) + '"' : '')
+  +         '>' + esc(view.title) + '</h1>'
+  /* A work surface is opened many times a day and its lede is read once. A
+     screen may hand its explanation to the heading as a hint instead of
+     spending forty-eight pixels on it for ever. */
   +       (view.lede ? '<p class="pagehead__lede">' + view.lede + '</p>' : '') + '</div>'
   +     view.body
   +   '</div></main>'
@@ -7090,10 +8612,30 @@ const ACTS = {
     if (ok) { setSession({ settingKey: null }); toast('قُدِّم الاقتراح — يعتمده مدير آخر.', 'good'); }
   },
   decideSetting: async d => {
-    const ok = await commit(d.ok === '1' ? 'اعتماد تغيير إعداد' : 'رفض تغيير إعداد',
-      st => actDecideSetting(st, d.id, d.ok === '1', SESSION.authUserId));
-    if (ok) toast(d.ok === '1' ? 'نُفِّذ التغيير وسُجِّل في التاريخ.' : 'رُفض الاقتراح.',
-      d.ok === '1' ? 'good' : 'bad');
+    /* Approval only. A refusal needs a reason, so it goes through askReject
+       like every other refusal on the work surface. */
+    const ok = await commit('اعتماد تغيير إعداد',
+      st => actDecideSetting(st, d.id, true, SESSION.authUserId));
+    if (ok) toast('نُفِّذ التغيير وسُجِّل في التاريخ.', 'good');
+  },
+
+  /* ── refusing something, with the reason attached ──────────────────────
+     One row opens at a time, and the reason is read from the box inside that
+     row. On failure the box stays open with the text still in it — a refused
+     refusal that wiped what you typed would be the second insult. */
+  askReject: d => { REJECTING = { kind: d.kind, id: d.id }; render(); },
+  cancelReject: () => { REJECTING = null; render(); },
+  doReject: async d => {
+    const box = document.getElementById('rejWhy');
+    const why = box ? box.value : '';
+    const spec = {
+      disbursement:    ['رفض صرف',           st => actRejectDisbursement(st, d.id, why, SESSION.authUserId)],
+      reconciliation:  ['إعادة مطابقة',       st => actRejectReconciliation(st, d.id, why, SESSION.authUserId)],
+      settingProposal: ['رفض تغيير إعداد',    st => actDecideSetting(st, d.id, false, SESSION.authUserId, why)],
+    }[d.kind];
+    if (!spec) return;
+    const ok = await commit(spec[0], spec[1]);
+    if (ok) { REJECTING = null; render(); toast('سُجّل الرفض وسببه في سجل التدقيق.', 'bad'); }
   },
 
   /* ── staff enrolment ──────────────────────────────────────────────── */
