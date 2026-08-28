@@ -114,12 +114,14 @@ ok('رجوع المتصفح يعود، والتقدّم يعيد',
 /* ══ ٤ اللوحة تربط بالسطر لا بالشاشة ════════════════════════════════════ */
 await p.goto(URL + '#/ops/adash', { waitUntil: 'load' });
 await p.waitForTimeout(600);
+/* الاسم المقروء لا النصّ المرئيّ: صار الزرّ سهمًا بدل كلمة تتكرّر في كل صفّ،
+   والاسم الآن يسمّي السطر بعينه — وهو تحقّق أقوى ممّا كان لا أضعف. */
 const tails = await p.$$eval('.exc__row a.btn', a =>
-  a.map(x => ({ href: x.getAttribute('href'), text: x.textContent.trim() })));
+  a.map(x => ({ href: x.getAttribute('href'), name: (x.getAttribute('aria-label') || x.textContent).trim() })));
 ok('أزرار «افتح» في اللوحة صارت روابط', tails.length > 0, 'لا رابط في صفوف الاستثناءات');
 const withRec = tails.filter(t => (t.href.match(/\//g) || []).length >= 3);
 ok('منها ما يحمل مُعرِّف السطر ويقول «افتح السطر»',
-  withRec.length > 0 && withRec.every(t => t.text === 'افتح السطر'),
+  withRec.length > 0 && withRec.every(t => t.name.startsWith('افتح السطر —') && t.name.length > 14),
   JSON.stringify(tails.slice(0, 4)));
 
 /* ══ ٣ عنوان يسمّي سطرًا يفتح السطر ═════════════════════════════════════ */

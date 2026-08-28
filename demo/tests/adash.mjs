@@ -62,9 +62,17 @@ if (A.inn) {
 
   const bands = await A.p.$$eval('.band__t', n => n.map(x => x.textContent.trim()));
   console.log('    الأشرطة: ' + bands.join(' · '));
-  ok('خمسة أشرطة', bands.length === 5);
+  /* صارت أربعة: «من يملك ماذا» و«من يستطيع وحده» سؤال واحد عند القارئ، فدُمجا
+     والمصفوفة طُويت داخل الثاني. المهمّ ألّا يسقط سؤال، لا أن يبقى العدد — فيُفحص
+     أن الأسئلة الأربعة قائمة وأن المصفوفة ما زالت قابلة للفتح. */
+  ok('أربعة أشرطة', bands.length === 4, bands.join(' · '));
   ok('الشريط الثاني هو سؤال فصل المهام', /وحده/.test(bands[1] || ''));
-  ok('الشريط الرابع هو سؤال تغيّر الوصول', /تغيّر في الوصول/.test(bands[3] || ''));
+  ok('الشريط الثالث هو سؤال تغيّر الوصول', /تغيّر في الوصول/.test(bands[2] || ''));
+  ok('والرابع هو تماسك السجل', /السجل/.test(bands[3] || ''));
+  const fold = await A.p.$eval('.fold > summary', e => e.textContent.trim()).catch(() => '');
+  ok('ومصفوفة الصلاحيات مطويّة لا محذوفة', /مصفوفة الصلاحيات/.test(fold), fold.slice(0, 50));
+  await A.p.click('.fold > summary'); await A.p.waitForTimeout(250);
+  ok('وتُفتح فتظهر', (await A.p.$$('.fold[open] .pmx')).length === 1);
 
   /* ٢ · لا اقتطاع صامت — الشاشة تعلن عددًا، فليُرسم كله */
   const note = await A.p.$$eval('.band p.xs.muted',

@@ -19,9 +19,20 @@
     --crit:#8e1a1a; --crit-wash:#f8e4e4;
     --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100; --cat-5:#e87ba4;
     --ord-1:#7cbfc2; --ord-2:#52a4a8; --ord-3:#2b878b; --ord-4:#136a6e; --ord-5:#0a4649;
-    --st-good:#0ca30c; --st-warn:#fab219; --st-serious:#ec835a; --st-crit:#d03b3b;
+    /* Severity is an ordered ramp — green → amber → orange → red — not a set
+       of identities, so neighbouring steps are close by design. What the old
+       steps failed was contrast, not separation: warn sat at 1.83:1 and
+       serious at 2.64:1 against white, under the 3:1 a chart mark needs, and
+       they were the two middle states an operator has to tell apart. These
+       are measured ≥4.65:1 on paper and ≥5.91:1 on the dark ground, which the
+       old set never had at all — it was declared once and inherited. */
+    --st-good:#177d3a; --st-warn:#9a6b06; --st-serious:#c2521f; --st-crit:#a81f16;
     --grid:#e2e6e2;
     --r:10px; --r-s:6px;
+    /* One rhythm for every queue row. A single line is the default; two lines
+       are an explicit choice, taken only where the second line changes what
+       the reader does. */
+    --row-1:40px; --row-2:52px;
     --ar:'IBM Plex Sans Arabic','Segoe UI',system-ui,sans-serif;
     --mo:'IBM Plex Mono',ui-monospace,Menlo,monospace;
     --shadow:0 1px 2px rgba(16,28,26,.05), 0 8px 24px rgba(16,28,26,.05);
@@ -37,6 +48,7 @@
       --crit:#e58181; --crit-wash:#331717;
       --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
       --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+      --st-good:#5cba8c; --st-warn:#d5a03c; --st-serious:#ea8a55; --st-crit:#e5736b;
       --grid:#1e2b2a;
       --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
     }
@@ -51,6 +63,7 @@
     --crit:#e58181; --crit-wash:#331717;
     --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
     --ord-1:#1d7478; --ord-2:#2b959a; --ord-3:#43b0b4; --ord-4:#67c8cb; --ord-5:#96dee0;
+    --st-good:#5cba8c; --st-warn:#d5a03c; --st-serious:#ea8a55; --st-crit:#e5736b;
     --grid:#1e2b2a;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
   }
@@ -175,6 +188,17 @@
 
   .main { padding: clamp(1rem, 3vw, 2rem) clamp(.8rem, 3vw, 2rem) 4rem; min-width: 0; }
   .main__inner { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  /* 1080px is right for a paragraph and wrong for a table: a queue with six
+     columns squeezes while a quarter of a 1440 screen stays blank. A wide
+     screen opens the container and keeps the limit on the prose inside it. */
+  .main__inner--wide { max-width: min(100%, 1560px); gap: .8rem; }
+  /* On a work surface the space above the first actionable row is pure
+     overhead — it is crossed on every visit and read on none of them. */
+  .main:has(.main__inner--wide) { padding-block-start: .8rem; }
+  .main__inner--wide .pagehead { gap: .1rem; }
+  .main__inner--wide .pagehead h1 { font-size: 1.25rem; }
+  .main__inner--wide .band__q { padding-block-end: .35rem; }
+  .main__inner--wide .pagehead__lede { max-width: 68ch; }
   .pagehead { display: flex; flex-direction: column; gap: .3rem; }
   .pagehead__crumb { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
   .pagehead__lede { color: var(--ink-2); font-size: .9rem; max-width: 74ch; }
@@ -305,6 +329,8 @@
   .btn--primary:hover:not(:disabled) { background: var(--brand-2); border-color: var(--brand-2); }
   .btn--danger { background: var(--crit-wash); color: var(--crit); border-color: color-mix(in srgb, var(--crit) 30%, transparent); }
   .btn--sm { font-size: .76rem; padding: .25rem .6rem; }
+  /* a bare direction, so it stays square instead of wearing a word's width */
+  .btn--go { padding-inline: .5rem; font-size: .9rem; line-height: 1; }
 
   /* ═══ tabs inside a view ═══════════════════════════════════════════════ */
   .tabs { display: flex; gap: .2rem; overflow-x: auto; border-block-end: 1px solid var(--rule); }
@@ -318,7 +344,13 @@
 
   /* ═══ meters, tiles, charts ════════════════════════════════════════════ */
   .meter { display: block; background: var(--panel-2); border-radius: 999px; block-size: 8px; overflow: hidden; }
-  .meter__fill { display: block; block-size: 100%; border-radius: 999px; background: var(--brand); }
+  /* A fully rounded fill turns a 2% bar into a circle and reads longer than
+     it is. The end is rounded 4px on the free side only, and never shrinks
+     below 3px so a small value stays visible without being overstated. */
+  .meter__fill {
+    display: block; block-size: 100%; min-inline-size: 3px; background: var(--brand);
+    border-start-end-radius: 4px; border-end-end-radius: 4px;
+  }
 
 
   .frame { display: flex; flex-direction: column; gap: .5rem; }
@@ -589,7 +621,8 @@
   .exc { display: flex; flex-direction: column; }
   .exc__row {
     display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .6rem .8rem;
-    align-items: center; padding: .6rem .1rem; border-block-end: 1px solid var(--rule-2);
+    align-items: center; min-block-size: var(--row-2); padding: .3rem .1rem;
+    border-block-end: 1px solid var(--rule-2);
   }
   .exc__row:last-child { border-block-end: 0; }
   /* The row an address named. It blinks once and stops: a permanent highlight
@@ -607,8 +640,8 @@
   .exc__age--crit { background: var(--crit-wash); color: var(--crit); }
   .exc__age--warn { background: var(--warn-wash); color: var(--warn); }
   /* both are spans inside one cell: without this they share a line */
-  .exc__what { display: block; font-size: .86rem; }
-  .exc__why { display: block; font-size: .74rem; color: var(--ink-3); }
+  .exc__what { display: block; font-size: .86rem; line-height: 1.4; }
+  .exc__why { display: block; font-size: .74rem; line-height: 1.45; color: var(--ink-3); }
   @media (max-width: 560px) {
     .exc__row { grid-template-columns: auto minmax(0,1fr); }
     .exc__row > :last-child { grid-column: 1 / -1; }
@@ -619,7 +652,7 @@
   .excg + .excg { border-block-start: 1px solid var(--rule); }
   .excg__h {
     display: flex; align-items: center; gap: .45rem;
-    padding-block: .7rem .2rem; font-size: .74rem; font-weight: 600;
+    padding-block: .45rem .15rem; font-size: .74rem; font-weight: 600;
     color: var(--ink-3); letter-spacing: .02em;
   }
   .excg__n {
@@ -644,6 +677,22 @@
      thirty accounts, and a thirty-column mark grid does not */
   .pmx--flip th:first-child, .pmx--flip td:first-child { min-inline-size: 10rem; }
   .pmx--flip td { vertical-align: middle; }
+
+  /* a reference is looked up, not read: it opens when asked and costs nothing
+     until then */
+  .fold { border: 1px solid var(--rule); border-radius: var(--r); background: var(--panel); }
+  .fold > summary {
+    cursor: pointer; padding: .55rem .9rem; font-size: .82rem; font-weight: 500;
+    color: var(--ink-2); border-radius: var(--r); list-style-position: inside;
+  }
+  .fold > summary:hover { color: var(--ink); background: var(--panel-2); }
+  .fold[open] > summary { border-block-end: 1px solid var(--rule-2); border-end-start-radius: 0; border-end-end-radius: 0; }
+  .fold__b { padding: .8rem .9rem; }
+  /* one line per change, not a card each */
+  .tl--tight .tl__item { padding-block-end: .45rem; }
+  .tl--tight .tl__item p { display: inline; font-size: .78rem; color: var(--ink-3); }
+  .tl--tight .tl__t { display: inline; font-size: .82rem; }
+  .tl--tight .tl__d { display: inline; margin-inline-start: .4rem; }
 
   .segsm { display: flex; background: var(--panel-2); border-radius: 999px; padding: 2px; gap: 2px; }
   .segsm button {
@@ -736,7 +785,11 @@
   @media (pointer: coarse) {
     .btn, .iconbtn, .navlink, .linkbtn, .seg button, .segsm button, .frame__toggle,
     .demoacct, .picker__opt, .skip, .riskbar__short summary,
-    .tabs button, .tabbar__i, .tablink, .qmore { min-block-size: 44px; }
+    .tabs button, .tabbar__i, .tablink, .qmore, .fold > summary { min-block-size: 44px; }
+    .fold > summary { display: flex; align-items: center; }
+    /* A link inside a table cell is a control like any other. This was the
+       one finding the interface audit still carried. */
+    td a, .deflist__v a { display: inline-flex; align-items: center; min-block-size: 44px; }
     .tablink, .qmore { display: flex; align-items: center; }
     .btn, .iconbtn { display: inline-flex; align-items: center; justify-content: center; }
     .btn--sm { padding-inline: .8rem; }
@@ -753,15 +806,23 @@
     font-size: .8rem; color: var(--ink-2);
     background: var(--panel-2); border-radius: var(--r-s); padding: .45rem .8rem;
   }
+  /* the healthy case: a line, not a band */
+  .statusline {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .74rem; color: var(--ink-3); align-self: flex-start;
+  }
+  .qcard .card__head { padding: .5rem 1rem; }
   .statusbar__dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
   .statusbar__dot--ok { background: var(--pos); }
 
   .qcard--crit { border-color: color-mix(in srgb, var(--crit) 30%, var(--rule)); }
   .qrows { display: flex; flex-direction: column; }
   .qrow {
-    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem;
-    padding: .6rem 1rem; border-block-end: 1px solid var(--rule-2);
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .7rem;
+    min-block-size: var(--row-1); padding: .3rem 1rem;
+    border-block-end: 1px solid var(--rule-2);
   }
+  .qrow--2 { min-block-size: var(--row-2); }
   .qrow:last-child { border-block-end: 0; }
   .qrow:hover { background: var(--rule-2); }
   .qrow__main { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; flex: 1 1 17rem; min-width: 0; }
@@ -2903,14 +2964,29 @@ function frameHtml(o) {
       : '<tr><td colspan="' + o.cols.length + '" class="empty">لا بيانات بعد.</td></tr>')
     + '</tbody></table></div></div>';
 }
-function barsHtml(items, valueFmt, colors) {
+/* One series across categories, so one hue for every bar. Giving each row its
+   own colour spends the only free channel on information the row label and the
+   bar length already carry twice over — and on nominal categories (sectors,
+   suppliers) the hue then implies an order that does not exist.
+
+   `ramp` is for the case where the categories really are ordered — a funnel,
+   amount bands — and there the darkening step means something. Every bar
+   carries its value and share in a native tooltip, because a bar chart with no
+   hover is a picture rather than a reading. */
+function barsHtml(items, valueFmt, ramp) {
   if (!items.length) return '<p class="empty">لا بيانات.</p>';
   const max = Math.max.apply(null, items.map(i => i.value)) || 1;
-  return '<div class="bars">' + items.map((it, i) =>
-    '<div class="bars__row"><span class="bars__label">' + esc(it.label) + '</span>'
-    + '<span class="meter"><span class="meter__fill" style="width:' + ((it.value / max) * 100).toFixed(1)
-    + '%;background:' + (it.color || colors[i % colors.length]) + '"></span></span>'
-    + '<span class="bars__val">' + valueFmt(it.value) + '</span></div>').join('') + '</div>';
+  const total = items.reduce((a, b) => a + b.value, 0);
+  return '<div class="bars">' + items.map((it, i) => {
+    const share = total ? Math.round((it.value / total) * 100) : 0;
+    const tip = it.label + ' — ' + valueFmt(it.value) + (total ? ' · ' + share + '%' : '');
+    return '<div class="bars__row" title="' + esc(tip) + '">'
+      + '<span class="bars__label">' + esc(it.label) + '</span>'
+      + '<span class="meter"><span class="meter__fill" style="width:'
+      + ((it.value / max) * 100).toFixed(1) + '%;background:'
+      + (it.color || (ramp ? ramp[i % ramp.length] : 'var(--cat-1)')) + '"></span></span>'
+      + '<span class="bars__val">' + valueFmt(it.value) + '</span></div>';
+  }).join('') + '</div>';
 }
 
 function funnelHtml(stages) {
@@ -2991,12 +3067,19 @@ function columnsSvg(points, valueFmt) {
 }
 
 /* A ratio against a limit reads as a meter, never as a two-slice pie. */
+/* The one place severity used to travel as colour and nothing else: the fill
+   was tinted by tone with no word saying which tone it was. A reader who
+   cannot separate the amber from the orange — or who prints the page — got
+   nothing. The state now says its own name. */
+const TONE_AR = { good: 'ضمن الحدّ', warning: 'يقترب', serious: 'مرتفع', critical: 'حرِج' };
 function ratioMeter(value, target, valueFmt, tone) {
   const pct = target ? (value / target) * 100 : 0;
+  const key = Object.keys(TONE).find(k => TONE[k] === tone);
   return '<div class="ratio">'
     + '<div class="ratio__track"><span class="ratio__fill" style="width:' + Math.min(100, pct).toFixed(1)
     + '%;background:' + (tone || 'var(--brand)') + '"></span></div>'
     + '<div class="ratio__row"><span class="num">' + valueFmt(value) + '</span>'
+    + (key ? '<span class="xs" style="color:' + tone + ';font-weight:600">' + TONE_AR[key] + '</span>' : '')
     + '<span class="xs muted">من ' + valueFmt(target) + ' · ' + Math.round(pct) + '%</span></div></div>';
 }
 
@@ -3355,7 +3438,7 @@ VIEWS['inv.portfolio'] = () => {
         title: 'تركّز محفظتك على القطاعات',
         sub: 'تركّز رأس مالك في قطاع واحد يجعل تعثّره تعثّرك — وهذا الرسم كل ما تملكه '
            + 'من إنذار مبكر، إذ لا سوق تخرج منها.',
-        chart: barsHtml(sectorItems, v => fmt(v, 0) + ' ر.ع', CAT),
+        chart: barsHtml(sectorItems, v => fmt(v, 0) + ' ر.ع'),
         cols: ['القطاع', 'رأس المال (ر.ع)', 'النسبة'],
         rows: sectorItems.map(s => [esc(s.label), fmt(s.value, 0),
           cost ? pct(Math.round((s.value * 10000) / cost)) : '—']),
@@ -5215,14 +5298,10 @@ function kpiCard(label, value, note) {
     + (note ? '<div class="xs muted">' + esc(note) + '</div>' : '') + '</div>';
 }
 
+/* Defers to barsHtml so there is one bar in the system, not two that drift. */
 function hbarHtml(items, fmtValue) {
   if (!items || !items.length) return emptyHtml('series');
-  const max = Math.max.apply(null, items.map(i => i.value)) || 1;
-  return '<div class="bars">' + items.map((it, i) =>
-    '<div class="bars__row"><span class="bars__label">' + esc(it.label) + '</span>'
-    + '<span class="meter"><span class="meter__fill" style="width:'
-    + Math.round((it.value * 100) / max) + '%;background:' + CAT[i % CAT.length] + '"></span></span>'
-    + '<span class="bars__val">' + fmtValue(it.value) + '</span></div>').join('') + '</div>';
+  return barsHtml(items, fmtValue);
 }
 
 /* Below MIN_SERIES points the component draws the number instead of the
@@ -5397,7 +5476,9 @@ function agoAr(days) {
    refusal in a row that no longer exists. */
 let REJECTING = null;      // { kind, id } | null
 
-const QUEUE_CAP = 5;
+/* Eight, not five: the row is 40px now rather than 62, so the same card
+   height carries more of the queue before «عرض الكل» is needed. */
+const QUEUE_CAP = 8;
 
 /* undefined means this account may not know, so no card is drawn at all — not
    an empty one, which would answer a question it was not allowed to answer.
@@ -5528,10 +5609,13 @@ VIEWS['ops.dash'] = () => {
   const p = metricsParams({ filters: {} });
 
   /* ── the chain, first and unmissable ── */
+  /* Intact is the expected case and gets a chip; broken keeps the whole band.
+     A full-width bar spent on "nothing is wrong" is the most expensive way to
+     say nothing on a screen read forty times a day. */
   const integrity = selAuditIntegrity(base, SESSION, p);
   const badge = integrity === undefined ? ''
     : integrity.ok
-      ? '<div class="statusbar"><span class="statusbar__dot statusbar__dot--ok"></span>'
+      ? '<div class="statusline"><span class="statusbar__dot statusbar__dot--ok"></span>'
         + 'سلسلة التدقيق سليمة عبر ' + integrity.checkedCount + ' سطرًا</div>'
       : '<div class="note note--crit"><strong>سلسلة التدقيق مكسورة.</strong> '
         + 'أول موضع لا يطابق إعادة الحساب: السطر ' + (integrity.brokenAtIndex + 1)
@@ -5614,9 +5698,15 @@ VIEWS['ops.dash'] = () => {
           + '<span class="exc__age' + cls + '">' + (x.over > 0 ? x.over + ' ي' : 'اليوم') + '</span>'
           + '<span><span class="exc__what">' + esc(x.what) + '</span>'
           + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
+          /* Seven rows carrying the identical word «افتح السطر» spend the
+             widest slot in the row on nothing: the label is the same whichever
+             row you are on, so it distinguishes none of them. The arrow keeps
+             the control obvious and the accessible name says what it opens —
+             which is more than the visible text ever did. */
           + (x.view
-              ? '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
-                + (x.rec ? 'افتح السطر' : 'افتح') + '</a>'
+              ? '<a class="btn btn--sm btn--go" href="' + esc(hrefFor({ view: x.view, id: x.rec || null }))
+                + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + x.what) + '">'
+                + '<span aria-hidden="true">←</span></a>'
               : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
           + '</div>';
       }).join('') + '</div>'
@@ -5651,7 +5741,8 @@ VIEWS['ops.dash'] = () => {
 
   return {
     crumb: 'فريق التشغيل · ' + (JOB_AR[u.job] || ''), title: 'لوحة التشغيل',
-    lede: 'ما ينتظر تصرّفك أنت، الآن. كل صفّ هنا تستطيع التصرّف فيه بصلاحيتك '
+    wide: true, lede: '',
+    hint: 'ما ينتظر تصرّفك أنت، الآن. كل صفّ هنا تستطيع التصرّف فيه بصلاحيتك '
         + 'وبقواعد الرقابة الثنائية — ما لا تستطيعه لا يُعرض عليك أصلًا.',
     body: badge
       + (exc.length ? '' : '<div class="note note--pos">لا شيء تجاوز مهلته — الحالات والتقارير والطلبات كلّها ضمن مهلها.</div>')
@@ -5700,8 +5791,9 @@ function excTail(x, u) {
      *and* the row, instead of leaving the reader to find again what this
      dashboard had already found for them. */
   if (x.view && canOpen(u, STAFF_NAV.find(n => n.k === x.view)))
-    return '<a class="btn btn--sm" href="' + esc(hrefFor({ view: x.view, id: x.rec || null })) + '">'
-      + (x.rec ? 'افتح السطر' : 'افتح') + '</a>';
+    return '<a class="btn btn--sm btn--go" href="' + esc(hrefFor({ view: x.view, id: x.rec || null }))
+      + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + x.what) + '">'
+      + '<span aria-hidden="true">←</span></a>';
   return '<span class="xs muted mono">' + esc(x.ref || '') + '</span>';
 }
 
@@ -5881,7 +5973,7 @@ VIEWS['ops.adash'] = () => {
   const older = allChanges.length - changes.length;
   const b4 = '<div class="card"><div class="card__body">'
     + (changes.length
-        ? '<div class="tl">' + changes.map(r => {
+        ? '<div class="tl tl--tight">' + changes.map(r => {
             const who = (user(r.actor) || {}).name || 'غير معروف';
             return '<div class="tl__item"><span class="tl__dot tl__dot--done"></span><div>'
               + '<div class="tl__t">' + esc(r.action) + ' — <span class="sm">' + esc(who) + '</span></div>'
@@ -5955,19 +6047,27 @@ VIEWS['ops.adash'] = () => {
 
   return {
     crumb: 'إدارة النظام', title: 'لوحة إدارة النظام',
-    lede: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يصل إليه، وهل يصل أحد وحده، '
+    wide: true, lede: '',
+    hint: 'أسئلة الإدارة غير أسئلة التشغيل: لا أين المال، بل من يصل إليه، وهل يصل أحد وحده، '
         + 'وما الذي تغيّر في الوصول، وهل ما زال سجل «من فعل ماذا» متماسكًا.',
-    body: '<div class="stack" style="gap:2rem">'
+    /* Four bands, not five. "Who holds what" and "who can act alone" were two
+       questions only on the screen — a reader asks them as one, and the answer
+       to the second is the one they can act on. So the grouping leads and the
+       matrix follows it folded: a reference is looked up, not read, and
+       eighteen permissions across every active account was the single tallest
+       thing on the page. */
+    body: '<div class="stack" style="gap:1.4rem">'
       + band('01', 'هل في الوصول خلل؟',
              exc.length ? exc.length + ' بندًا، لا يُقتطع منها شيء' : 'لا شيء يستدعي تدخّلًا',
              b1, exc.length ? filter : '')
       + band('02', 'من يستطيع أن يفعل ماذا وحده؟',
-             SOD_RULES.length + ' تجميعًا معلنًا على ' + active.length + ' حسابًا نشطًا', b2)
-      + band('03', 'من يملك ماذا؟',
-             PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا', b3)
-      + band('04', 'ما الذي تغيّر في الوصول؟',
+             SOD_RULES.length + ' تجميعًا معلنًا على ' + active.length + ' حسابًا نشطًا',
+             b2 + '<details class="fold"><summary>مصفوفة الصلاحيات كاملة — '
+             + PERM_CATALOG.length + ' صلاحية على ' + active.length + ' حسابًا نشطًا</summary>'
+             + '<div class="fold__b">' + b3 + '</div></details>')
+      + band('03', 'ما الذي تغيّر في الوصول؟',
              changes.length + ' تغييرًا خلال ' + days + ' يومًا', b4, winPicker)
-      + band('05', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b5)
+      + band('04', 'هل السجل متماسك؟', 'إعادة حساب السلسلة كاملة عند كل فتح', b5)
       + '</div>',
   };
 };
@@ -6059,7 +6159,7 @@ VIEWS['ops.pipeline'] = () => {
         + '<div class="card"><div class="card__body">' + frameHtml({
             title: 'الملتزم به حسب القطاع',
             sub: 'المبالغ القائمة فعلًا، لا الأهداف المعلنة.',
-            chart: barsHtml(sectors, omr0, CAT),
+            chart: barsHtml(sectors, omr0),
             cols: ['القطاع', 'الملتزم به (ر.ع)', 'النسبة'],
             rows: sectors.map(s => [esc(s.label), fmt(s.value, 0),
               total ? ((s.value / total) * 100).toFixed(1) + '%' : '—']),
@@ -8035,9 +8135,15 @@ function appShell(u) {
   +     (u.role === 'investor' && u.kyc !== 'approved'
         ? '<div class="note note--warn xs" style="margin:.5rem .2rem 0">تحققك قيد المراجعة. التصفح متاح، وإنشاء الالتزام لا.</div>' : '')
   +   '</nav>'
-  +   '<main class="main"><div class="main__inner">'
+  /* A screen says whether its content is prose or a table; the shell does not
+     guess. Only the two work surfaces claim the width today. */
+  +   '<main class="main"><div class="main__inner' + (view.wide ? ' main__inner--wide' : '') + '">'
   +     '<div class="pagehead"><div class="pagehead__crumb">' + esc(view.crumb) + '</div>'
-  +       '<h1 id="pagetitle" tabindex="-1">' + esc(view.title) + '</h1>'
+  +       '<h1 id="pagetitle" tabindex="-1"' + (view.hint ? ' title="' + esc(view.hint) + '"' : '')
+  +         '>' + esc(view.title) + '</h1>'
+  /* A work surface is opened many times a day and its lede is read once. A
+     screen may hand its explanation to the heading as a hint instead of
+     spending forty-eight pixels on it for ever. */
   +       (view.lede ? '<p class="pagehead__lede">' + view.lede + '</p>' : '') + '</div>'
   +     view.body
   +   '</div></main>'
