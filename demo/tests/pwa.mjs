@@ -114,8 +114,13 @@ try {
   if (inn) {
     await p.click('[data-view="ops.adash"]');
     await p.waitForSelector('.band__t', { timeout: 5000 });
-    const bands = await p.$$eval('.band__t', n => n.length);
-    ok('لوحة الإدارة تُبنى كاملة دون اتصال', bands === 5, bands + ' أشرطة');
+    /* المهم أن اللوحة تُبنى إلى آخرها دون شبكة، لا أن يبقى عدد الأشرطة كما
+       كان: «من يملك ماذا» و«من يستطيع وحده» دُمجا فصارت أربعة. فيُفحص آخر
+       شريط — تماسك السجل — لأنه أثقلها حسابًا: بلوغه يعني أن الشاشة اكتملت. */
+    const bands = await p.$$eval('.band__t', n => n.map(x => x.textContent.trim()));
+    ok('لوحة الإدارة تُبنى كاملة دون اتصال',
+      bands.length >= 4 && /السجل/.test(bands[bands.length - 1] || ''),
+      bands.join(' · ') || '(بلا أشرطة)');
     /* والاختصار نفسه: عنوان اللوحة يُفتح والشبكة مقطوعة، وهو ما يفعله
        الضغط المطوّل على أيقونة التطبيق في شاشة الهاتف. */
     await p.goto(BASE + '#/ops/audit', { waitUntil: 'load' });
