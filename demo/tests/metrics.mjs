@@ -346,6 +346,20 @@ head('إضافي · سقف الاكتتاب ونافذة الحدّ');
   ok('المتّسع = السقف ناقص المجموع', fp.headroom === Math.max(0, 78_000_000 - fp.raised));
   ok('ومالك آخر لا يرى الفرصة', LAYER.sel.selFundingProgress(base, S('u_own2'), P({ poolId: 'p_cafe' })) === undefined);
 
+  /* المطابقة على مستوى المنصّة لا على مستوى فرصة، فسيلكتور مبوَّب بالملكية
+     لا يجوز أن يسلّم مالكًا واحدًا أرقام المنصّة كلّها: الفرق ومن وقّعه
+     خلف funds.read في selOpenVariances، وما يخصّ المالك هو الواقعة. */
+  const rc = LAYER.sel.selReconciliationStatus(base, S('u_own1'), P({ poolId: 'p_cafe' }));
+  ok('حالة المطابقة تصل المالك',
+     rc !== undefined && typeof rc.hasAny === 'boolean', JSON.stringify(rc));
+  ok('ولا تحمل مبلغ فرق ولا اسم موقِّع ولا عدّ فروق',
+     rc.variance === undefined && rc.signedBy === undefined && rc.unresolvedCount === undefined,
+     Object.keys(rc).join('،'));
+  ok('ولا يراها من لا يملك الفرصة',
+     LAYER.sel.selReconciliationStatus(base, S('u_own2'), P({ poolId: 'p_cafe' })) === undefined);
+  ok('ولا حساب فريق تشغيل',
+     LAYER.sel.selReconciliationStatus(base, S('u_fin1'), P({ poolId: 'p_cafe' })) === undefined);
+
   /* نافذة الاثني عشر شهرًا: التزام أقدم من سنة يخرج من العدّ. */
   const st = clone(SEED);
   st.orders.push({ id: 'ORD-OLD', poolId: 'p_cafe', userId: 'u_inv1', amount: 5_000_000,

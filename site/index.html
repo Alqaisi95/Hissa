@@ -3925,10 +3925,168 @@ const NO_PROJECT = {
     + '<div class="row"><button class="btn btn--primary" data-act="go" data-view="own.new">تقديم مشروع</button>'
     + '<button class="btn" data-act="go" data-view="own.apps">متابعة طلباتي</button></div>',
 };
+/* ── owner · the project board ─────────────────────────────────────────────
+   The fourth surface the metrics layer was written for, and the last one
+   still computing its own arithmetic. Six selectors were written for it and
+   not one had a caller: an owner opened this screen and saw a status chip, a
+   total, a percentage, and a timeline of eight sentences that were equally
+   true of every project on the platform.
+
+   What an owner actually needs is narrower and harder. Whether the raise
+   will clear its minimum before the clock runs out — below it every riyal
+   goes back and they receive nothing at all. How much of their own milestone
+   money has actually been released, and how much is still held. What the
+   platform will take, on what basis, and priced by which day's rules. And
+   whether the account holding the money has been tied out against the
+   partner who holds it.
+
+   Every figure comes from a selector keyed to this pool, and each returns
+   undefined for an account that does not own it. The gate is not a hidden
+   card: it is a number that was never computed.
+   ────────────────────────────────────────────────────────────────────────── */
 VIEWS['own.project'] = () => {
   const p = ownerPool();
   if (!p) return NO_PROJECT;
-  const got = raised(p.id);
+  const base = BASE(STATE);
+  const par = metricsParams({ poolId: p.id });
+
+  const prog = selFundingProgress(base, SESSION, par);
+  const heads = selInvestorCount(base, SESSION, par);
+  const tick = selTicketStats(base, SESSION, par);
+  const ledg = selDisbursementLedger(base, SESSION, par);
+  const fees = selFeesAccrued(base, SESSION, par);
+  const rec = selReconciliationStatus(base, SESSION, par);
+
+  const omr0 = v => fmt(v, 0) + ' ر.ع';
+  const pctOf = b => (b / 100).toFixed(1) + '%';
+  const daysLeft = p.closesAt
+    ? Math.ceil((new Date(p.closesAt + 'T23:59:59Z').getTime() - Date.now()) / DAY) : null;
+
+  /* ── ⓪ the one fact that decides whether the project happens ──
+     Below the minimum at close, the rule refunds everyone and the owner gets
+     nothing — so this is not a progress bar, it is a deadline. */
+  const band0 = prog === undefined ? '' : (() => {
+    if (p.status === 'refunding')
+      return '<div class="note note--crit"><strong>لم يبلغ التمويل حدّه الأدنى في مدته.</strong> '
+        + 'تُسترد الالتزامات كاملةً للمستثمرين ولا يُصرف من هذه الفرصة شيء. '
+        + 'تقديم طلب جديد متاح، ويبدأ من الفحص لا من حيث توقّف.</div>';
+    if (p.status !== 'funding')
+      return '<div class="note note--pos"><strong>أُغلق التمويل بنجاح.</strong> '
+        + 'خُصِّص ' + omr0(prog.raised) + ' ولم يعد بابُ الالتزام مفتوحًا — '
+        + 'وما يليه صرفٌ على المراحل بدليل واعتماد طرف ثانٍ.</div>';
+    const short = Math.max(0, prog.minClose - prog.raised);
+    if (!prog.meetsMinimum)
+      return '<div class="note note--crit"><strong>لم يبلغ الحدّ الأدنى بعد.</strong> '
+        + 'ينقص <span class="num">' + omr0(short) + '</span>'
+        + (daysLeft == null ? '' : (daysLeft > 0 ? '، وبقي ' + daysLeft + ' يومًا على الإغلاق'
+                                                 : '، وقد انتهت مدة التمويل'))
+        + '. الإغلاق دون الحدّ الأدنى يعني استرداد كل ريال للمستثمرين ولا يُصرف لك شيء — '
+        + 'وهذه القاعدة تُنفَّذ آليًّا، لا تُقدَّر.</div>';
+    return '<div class="note note--pos"><strong>بلغ الحدّ الأدنى.</strong> '
+      + 'الإغلاق الآن ناجح، ويبقى متّسع <span class="num">' + omr0(prog.headroom) + '</span> '
+      + 'حتى سقف الاكتتاب'
+      + (daysLeft != null && daysLeft > 0 ? ' خلال ' + daysLeft + ' يومًا.' : '.')
+      + '</div>';
+  })();
+
+  /* ── ① the raise, against the line that matters ── */
+  const band1 = prog === undefined ? '' : '<div class="grid grid--4">'
+    + kpiCard('الملتزم به', omr0(prog.raised), heads === undefined ? '' : heads + ' مستثمرًا')
+    + kpiCard('الحدّ الأدنى للإغلاق', omr0(prog.minClose), pctOf(prog.pctOfMinimum) + ' منه')
+    + kpiCard('الهدف المعلن', omr0(prog.target), pctOf(prog.pctOfTarget) + ' منه')
+    + kpiCard('سقف الاكتتاب', omr0(prog.overfundCap), 'يبقى منه ' + omr0(prog.headroom))
+    + '</div>'
+    + '<div class="card"><div class="card__body">'
+    + ratioMeter(prog.raised, prog.minClose, v => fmt(v, 0) + ' ر.ع',
+        prog.meetsMinimum ? TONE.good
+        : daysLeft != null && daysLeft <= 14 ? TONE.critical : TONE.warning)
+    + '<p class="xs muted">المقياس مقابل الحدّ الأدنى لا الهدف: الهدف طموح، والحدّ الأدنى '
+    + 'هو الخطّ الذي دونه لا يقوم المشروع.</p>'
+    + (tick === undefined || !tick.count ? '' : '<div class="grid grid--4">'
+        + kpiCard('عدد الالتزامات', String(tick.count))
+        + kpiCard('الالتزام الوسيط', omr0(tick.median), 'المتوسط ' + omr0(tick.avg))
+        + kpiCard('أصغر التزام', omr0(tick.min))
+        + kpiCard('أكبر التزام', omr0(tick.max),
+            tick.max && prog.raised ? pctOf(bps(tick.max, prog.raised)) + ' من الملتزم به' : '')
+        + '</div>'
+        /* Concentration only bites while the raise is open: once allocated,
+           a withdrawal is no longer possible and the warning would be
+           describing a risk that has already passed. */
+        + (p.status === 'funding' && tick.max && prog.raised && bps(tick.max, prog.raised) > 3000
+            ? '<div class="note note--warn sm">أكبر التزام واحد يحمل أكثر من ثلث ما جُمع. '
+              + 'عدوله في مهلته أو سقوطه عند التخصيص يعيدك دون الحدّ الأدنى.</div>'
+            : '')
+        + (tick.belowMinCount
+            ? '<div class="note sm">' + tick.belowMinCount + ' التزامًا دون الحدّ الأدنى للتذكرة. '
+              + 'عند التخصيص التناسبي تُردّ الحصة التي تنزل تحت الحدّ كاملةً لصاحبها، '
+              + 'ويُعاد توزيع مبلغها على الباقين.</div>'
+            : ''))
+    + '</div></div>';
+
+  /* ── ② the money that is actually yours to draw ── */
+  const band2 = ledg === undefined ? '' : '<div class="card"><div class="card__body">'
+    + '<div class="grid grid--4">'
+    + kpiCard('مخطَّط على المراحل', omr0(ledg.planned),
+        ledg.milestonesTotal + ' مرحلة')
+    + kpiCard('صُرف لك فعلًا', omr0(ledg.paid),
+        ledg.milestonesPaid + ' من ' + ledg.milestonesTotal + ' مرحلة')
+    + kpiCard('ما زال محتجزًا', omr0(ledg.remaining))
+    + kpiCard('قيد انتظار اعتماد', omr0(ledg.requested),
+        ledg.requested ? 'يلزمه طرف ثانٍ' : 'لا طلب معلّق')
+    + '</div>'
+    + ratioMeter(ledg.paid, ledg.planned || 1, v => fmt(v, 0) + ' ر.ع',
+        ledg.planned && ledg.paid >= ledg.planned ? TONE.good
+        : ledg.requested ? TONE.warning : TONE.good)
+    + '<p class="xs muted">لا يخرج مبلغ مرحلة قبل دليل يثبت شرطها، وباعتماد شخص غير من طلب '
+    + 'الصرف. المحتجز ليس تأخيرًا إداريًّا — هو الضمانة التي بُنيت عليها ثقة المستثمر.</p>'
+    + '<div class="row"><a class="btn btn--primary" href="' + hrefFor({ view: 'own.funds' })
+    + '">استخدام الأموال وطلب صرف مرحلة</a>'
+    + '<a class="btn" href="' + hrefFor({ view: 'own.reports' }) + '">التقارير المستحقة</a></div>'
+    + '</div></div>';
+
+  /* ── ③ what the platform takes, and on what basis ──
+     Stated to the owner in the same terms the disclosure states it to the
+     investor, and priced by the settings in force when the pool closed —
+     never by today's, which would reprice a two-year-old agreement. */
+  const band3 = fees === undefined ? '' : '<div class="card"><div class="card__body">'
+    + '<div class="grid grid--3">'
+    + kpiCard('رسم المنصة', omr0(fees.platform),
+        fees.platformBasis === 'RAISED_AT_CLOSE' ? 'على ما خُصِّص عند الإغلاق' : 'أساس ' + fees.platformBasis)
+    + kpiCard('رسم النجاح', omr0(fees.success),
+        fees.successBasis === 'PROFIT_ONLY' ? 'على الربح وحده' : 'أساس ' + fees.successBasis)
+    + kpiCard('ما وُزّع على المستثمرين', omr0(fees.distributed),
+        fees.profit ? 'منه ربح ' + omr0(fees.profit) : 'لم يتجاوز رأس المال بعد')
+    + '</div>'
+    + '<p class="xs muted">رسم المنصة يُحتسب مرة واحدة على رأس المال المخصَّص عند الإغلاق، '
+    + 'ورسم النجاح لا يُحتسب إلا على ما يزيد عمّا استردّه المستثمر من رأس ماله — '
+    + 'فلا «نجاح» قبل أن يعود إليه ما دفعه. وكلاهما بأسعار الإعدادات النافذة يوم إغلاق '
+    + 'فرصتك، لا بأسعار اليوم.</p>'
+    + '</div></div>';
+
+  /* ── ④ is the money where we said it is ──
+     The fact only: the amounts and the names live behind funds.read. */
+  const band4 = rec === undefined ? '' : '<div class="card"><div class="card__body">'
+    + (!rec.hasAny
+        ? '<div class="note">لم تُجرَ مطابقة بنكية بعد. المطابقة تقابل سجلّ المنصة بكشف '
+          + 'الشريك المرخّص، ولا تُغلق إلا بتوقيع طرفين.</div>'
+        : rec.isOpen
+          ? '<div class="note note--warn"><strong>مطابقة مفتوحة الآن.</strong> '
+            + 'يُقابَل سجلّ المنصة بكشف الشريك المرخّص، ولا تُغلق قبل تفسير كل فرق '
+            + 'وتوقيع طرف ثانٍ.'
+            + (rec.lastPeriod ? ' آخر فترة موقَّعة: ' + esc(rec.lastPeriod) + '.' : '')
+            + '</div>'
+          : '<div class="note note--pos"><strong>الحساب مطابَق ومُوقَّع.</strong> '
+            + 'الفترة ' + esc(rec.lastPeriod || '—')
+            + (rec.signedAt ? ' · وُقّعت ' + dt(rec.signedAt) : '') + '.</div>')
+    + '<p class="xs muted">تفاصيل الفروق ومبالغها ومن وقّعها تخصّ فريق المالية والمدقّق، '
+    + 'ولا تُعرض هنا: ما يخصّك هو أن الحساب الذي يحمل مالك قد قوبل بكشف من يحمله.</p>'
+    + '</div></div>';
+
+  /* ── the path, derived and folded ──
+     It answers "where am I in the process", which is a question asked once
+     and then not again for weeks — so it opens on demand rather than taking
+     a third of the screen every visit. */
+  const published = STATE.reports.some(r => r.poolId === p.id && r.status === 'published');
   const steps = [
     { t: 'تقديم الطلب', d: 'المستندات التأسيسية والقوائم المالية وعروض الأسعار', done: true },
     { t: 'الفحص النافي للجهالة', d: 'تحقق من المنشأة والمُلاك وعروض الموردين', done: true },
@@ -3936,23 +4094,40 @@ VIEWS['own.project'] = () => {
     { t: 'بناء الإفصاح ونشره', d: 'نسخة v' + p.disclosureVersion + ' منشورة في ' + dt(p.publishedAt), done: true },
     { t: 'فترة التمويل', d: 'تُغلق في ' + dt(p.closesAt), done: p.status !== 'funding', now: p.status === 'funding' },
     { t: 'الإغلاق والتخصيص', d: p.fundedAt ? 'أُغلقت في ' + dt(p.fundedAt) : 'لم تُغلق بعد', done: !!p.fundedAt },
-    { t: 'الصرف على المراحل', d: 'بموافقة طرفين ودليل لكل مرحلة', done: p.milestones.some(m => m.state === 'executed'), now: p.status === 'operating' },
-    { t: 'التقارير الدورية', d: 'ربع سنوية طوال المدة', done: STATE.reports.some(r => r.poolId === p.id && r.status === 'published') },
+    { t: 'الصرف على المراحل',
+      d: ledg === undefined ? 'بموافقة طرفين ودليل لكل مرحلة'
+        : ledg.milestonesPaid + ' من ' + ledg.milestonesTotal + ' مرحلة صُرفت بدليل واعتماد طرف ثانٍ',
+      done: !!(ledg && ledg.milestonesPaid), now: p.status === 'operating' },
+    { t: 'التقارير الدورية', d: 'ربع سنوية طوال المدة', done: published },
   ];
+  const at = steps.filter(s => s.done).length;
+  const path = '<details class="fold"><summary>المسار — الخطوة ' + at + ' من '
+    + steps.length + '</summary><div class="tl" style="padding-block-start:.6rem">'
+    + steps.map(s => '<div class="tl__item"><span class="tl__dot '
+        + (s.done ? 'tl__dot--done' : s.now ? 'tl__dot--now' : '') + '"></span>'
+        + '<div><div class="tl__t">' + esc(s.t) + '</div>'
+        + '<div class="tl__d">' + esc(s.d) + '</div></div></div>').join('')
+    + '</div></details>';
+
   return {
-    crumb: 'صاحب مشروع · ' + p.ref, title: p.title,
-    lede: 'حالة مشروعك في المسار، من الطلب حتى نهاية المدة.',
-    body: ownerPicker()
-      + '<div class="grid grid--4">'
-      + [['الحالة', POOL_STATUS[p.status][0]], ['الملتزم به', rial(got)],
-         ['الهدف', rial(p.target)], ['نسبة الإنجاز', Math.round((got / p.target) * 100) + '%']]
-        .map(k => '<div class="kv"><div class="kv__k">' + k[0] + '</div><div class="kv__v">' + k[1] + '</div></div>').join('')
-      + '</div>'
-      + '<div class="card"><div class="card__head"><h2>المسار</h2></div><div class="card__body"><div class="tl">'
-      + steps.map(s => '<div class="tl__item"><span class="tl__dot ' + (s.done ? 'tl__dot--done' : s.now ? 'tl__dot--now' : '') + '"></span>'
-        + '<div><div class="tl__t">' + esc(s.t) + '</div><div class="tl__d">' + esc(s.d) + '</div></div></div>').join('')
-      + '</div></div></div>'
-      + '<div class="note note--warn">لا يجوز لك أو لأي طرف نيابة عنك وعدُ المستثمرين بعائد أو بضمان رأس المال، في التقارير أو خارج المنصة.</div>',
+    crumb: 'صاحب مشروع · ' + p.ref, title: p.title, wide: true,
+    lede: 'أرقام مشروعك محسوبة من السجل لحظة العرض، ومرتَّبة بما تقرّره: '
+        + 'هل يبلغ التمويل حدّه، وكم خرج إليك، وماذا تأخذ المنصّة، وهل قوبل الحساب بكشف الشريك.',
+    body: '<div class="stack" style="gap:1rem">'
+      + ownerPicker()
+      + band0
+      + band('①', 'هل يبلغ التمويل حدّه؟',
+             p.status === 'funding' && daysLeft != null
+               ? (daysLeft > 0 ? 'بقي ' + daysLeft + ' يومًا' : 'انتهت المدة') : POOL_STATUS[p.status][0],
+             band1)
+      + band('②', 'كم خرج إليك، وكم بقي محتجزًا؟',
+             ledg === undefined ? '' : ledg.milestonesPaid + '/' + ledg.milestonesTotal + ' مرحلة', band2)
+      + band('③', 'ماذا تأخذ المنصّة؟', 'وبأي أساس', band3)
+      + band('④', 'هل المال حيث قيل إنه؟', 'مطابقة حساب الضمان', band4)
+      + path
+      + '<div class="note note--warn sm">لا يجوز لك أو لأي طرف نيابة عنك وعدُ المستثمرين بعائد '
+      + 'أو بضمان رأس المال، في التقارير أو خارج المنصة.</div>'
+      + '</div>',
   };
 };
 
@@ -4929,22 +5104,26 @@ function selDisbursementLedger(base, session, p) {
   };
 }
 
+/* The escrow is reconciled for the whole platform, not per pool, so an
+   owner-gated selector must not hand one owner the platform's figures. What
+   an owner is owed is the fact — has the account holding their money been
+   tied out against the partner, and for which period. The amounts, the
+   unexplained differences and the name of whoever signed belong to
+   selOpenVariances and the reconciliation screen, both behind funds.read.
+
+   This is why the split is a privacy rule and not a caching one: the same
+   BASE feeds both, and only the selector decides who may know what. */
 function selReconciliationStatus(base, session, p) {
   if (!ownsPool(base, session, p.poolId)) return undefined;
   const all = base.state.reconciliations;
   const open = all.find(r => r.status !== 'signed') || null;
   const last = all.filter(r => r.status === 'signed').slice(-1)[0] || null;
-  if (!open && !last) return { hasAny: false, isOpen: false, lastPeriod: null, variance: 0, signedBy: null };
-  const r = open || last;
-  const unresolved = (r.breaks || []).filter(b => !(b.kind && b.note) && !b.caseId);
+  if (!open && !last) return { hasAny: false, isOpen: false, lastPeriod: null, signedAt: null };
   return {
     hasAny: true,
     isOpen: !!open,
-    id: r.id,
-    lastPeriod: r.periodFrom + ' → ' + r.periodTo,
-    variance: sumBaisa(r.breaks || [], b => b.amount),
-    unresolvedCount: unresolved.length,
-    signedBy: last ? ((base.usersById.get(last.signedBy) || {}).name || null) : null,
+    lastPeriod: last ? last.periodFrom + ' → ' + last.periodTo : null,
+    signedAt: last ? last.signedAt : null,
   };
 }
 
