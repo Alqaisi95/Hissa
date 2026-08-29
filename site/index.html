@@ -4174,35 +4174,66 @@ VIEWS['own.project'] = () => {
 VIEWS['own.funds'] = () => {
   const p = ownerPool();
   if (!p) return NO_PROJECT;
-  const pend = p.milestones.filter(m => m.state === 'pending');
-  const canRequest = p.status === 'funded' || p.status === 'operating';
+  const base = BASE(STATE);
+  const par = metricsParams({ poolId: p.id });
+  const uof = selUseOfFunds(base, SESSION, par);
+  const plan = selMilestonePlan(base, SESSION, par);
+  const ledg = selDisbursementLedger(base, SESSION, par);
+
+  const stateChip = m => (m.state === 'executed'
+    ? '<span class="chip chip--pos"><span class="chip__dot"></span>صُرفت</span>'
+    : m.state === 'requested'
+      ? '<span class="chip chip--warn"><span class="chip__dot"></span>بانتظار اعتماد طرف ثانٍ</span>'
+      : '<span class="chip">لم تُطلب</span>');
+
   return {
     crumb: 'صاحب مشروع · ' + p.ref, title: 'استخدام الأموال والمراحل',
     lede: 'الأموال مفصَّلة على بنود ومورّدين. طلب صرف أي مرحلة يحتاج دليلًا، ويعتمده طرف ثانٍ من فريق المالية.',
     body: ownerPicker()
-      + '<div class="card"><div class="card__head"><h2>البنود المعتمدة</h2>'
-      + '<span class="spacer num sm">' + rial(uofTotal(p)) + '</span></div>'
-      + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
-      + '<thead><tr><th>البند</th><th>المورد</th><th class="n">المبلغ</th><th>عرض السعر</th></tr></thead><tbody>'
-      + p.uof.map(u => '<tr><td>' + esc(u.item) + '</td><td>' + esc(u.supplier) + '</td>'
-        + '<td class="n">' + fmt(u.amount, 0) + '</td><td><span class="mono xs">' + u.quote + '</span></td></tr>').join('')
-      + '</tbody></table></div></div></div>'
-      + '<div class="card"><div class="card__head"><h2>المراحل</h2></div><div class="card__body card__body--flush"><div class="tablewrap"><table>'
-      + '<thead><tr><th>المرحلة</th><th>شرط الصرف</th><th class="n">المبلغ</th><th>الحالة</th></tr></thead><tbody>'
-      + (p.milestones.length ? p.milestones.map(m => '<tr><td>' + esc(m.label) + '</td>'
-          + '<td class="sm">' + esc(m.condition) + '</td><td class="n">' + fmt(m.amount, 0) + '</td>'
-          + '<td>' + (m.state === 'executed' ? '<span class="chip chip--pos"><span class="chip__dot"></span>صُرفت</span>'
-                     : m.state === 'requested' ? '<span class="chip chip--warn"><span class="chip__dot"></span>بانتظار اعتماد</span>'
-                     : '<span class="chip">لم تُطلب</span>') + '</td></tr>').join('')
-        : '<tr><td colspan="4" class="empty">لا مراحل.</td></tr>')
-      + '</tbody></table></div></div></div>'
+      + (ledg === undefined ? '' : '<div class="grid grid--4">'
+          + kpiCard('مخطَّط على المراحل', rial(ledg.planned), ledg.milestonesTotal + ' مرحلة')
+          + kpiCard('صُرف فعلًا', rial(ledg.paid), ledg.milestonesPaid + ' من ' + ledg.milestonesTotal)
+          + kpiCard('ما زال محتجزًا', rial(ledg.remaining))
+          + kpiCard('بانتظار اعتماد', rial(ledg.requested),
+              ledg.requested ? 'يلزمه طرف ثانٍ' : 'لا طلب معلّق')
+          + '</div>')
+
+      + (uof === undefined ? '' : '<div class="card"><div class="card__head"><h2>البنود المعتمدة</h2>'
+          + '<span class="spacer num sm">' + rial(uof.total) + '</span></div>'
+          + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+          + '<thead><tr><th>البند</th><th>المورد</th><th class="n">المبلغ</th><th>عرض السعر</th></tr></thead><tbody>'
+          + uof.lines.map(r => '<tr><td>' + esc(r.item) + '</td><td>' + esc(r.supplier) + '</td>'
+            + '<td class="n">' + fmt(r.amount, 0) + '</td>'
+            + '<td><span class="mono xs">' + esc(r.quote) + '</span></td></tr>').join('')
+          + '</tbody></table></div></div></div>')
+
+      + (plan === undefined ? '' : '<div class="card"><div class="card__head"><h2>المراحل</h2>'
+          + '<span class="spacer chip">' + plan.rows.length + '</span></div>'
+          + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
+          + '<thead><tr><th>المرحلة</th><th>شرط الصرف</th><th class="n">المبلغ</th><th>الحالة</th></tr></thead><tbody>'
+          + (plan.rows.length ? plan.rows.map(m => '<tr id="rec-' + esc(m.id) + '">'
+              + '<td>' + esc(m.label) + '</td>'
+              + '<td class="sm">' + esc(m.condition) + '</td>'
+              + '<td class="n">' + fmt(m.amount, 0) + '</td>'
+              + '<td>' + stateChip(m)
+              /* A refused request is history the owner has to see: without it
+                 the milestone silently returns to "not requested" and the
+                 reason for the refusal reaches nobody. */
+              + (m.refusedReason
+                  ? '<div class="xs muted">رُفض سابقًا: ' + esc(m.refusedReason) + '</div>' : '')
+              + '</td></tr>').join('')
+            : '<tr><td colspan="4" class="empty">لا مراحل.</td></tr>')
+          + '</tbody></table></div></div></div>')
+
       + '<div class="card"><div class="card__head"><h2>طلب صرف مرحلة</h2></div><div class="card__body">'
-      + (!canRequest
+      + (plan === undefined ? '<div class="note note--warn">لا تملك صلاحية قراءة مراحل هذا المشروع.</div>'
+        : !plan.canRequest
           ? '<div class="note note--warn">لا يبدأ الصرف قبل إغلاق التمويل بنجاح.</div>'
-          : !pend.length
+          : !plan.requestable.length
             ? '<div class="note note--pos">كل المراحل طُلبت أو صُرفت.</div>'
             : '<div class="field"><label for="msel">المرحلة</label><select id="msel">'
-              + pend.map(m => '<option value="' + m.id + '">' + esc(m.label) + ' — ' + fmt(m.amount, 0) + ' ر.ع</option>').join('')
+              + plan.requestable.map(m => '<option value="' + m.id + '">' + esc(m.label)
+                  + ' — ' + fmt(m.amount, 0) + ' ر.ع</option>').join('')
               + '</select></div>'
               + '<div class="field"><label for="mev">وصف الدليل المرفق</label>'
               + '<textarea id="mev" placeholder="رقم المحضر أو الفاتورة وما تثبته"></textarea>'
@@ -4216,23 +4247,45 @@ VIEWS['own.funds'] = () => {
 VIEWS['own.reports'] = () => {
   const p = ownerPool();
   if (!p) return NO_PROJECT;
-  const rs = STATE.reports.filter(r => r.poolId === p.id);
-  const openR = rs.find(r => ['scheduled', 'late'].includes(r.status));
+  const base = BASE(STATE);
+  const sched = selReportSchedule(base, SESSION, metricsParams({ poolId: p.id }));
+  if (sched === undefined) return NO_PROJECT;
+  const openR = sched.open;
+
   return {
     crumb: 'صاحب مشروع · ' + p.ref, title: 'التقارير',
     lede: 'التقرير ليس نصًا حرًا: يحمل مؤشرات فعلية مقابل ما نشره الإفصاح، وتفسيرًا لأي انحراف.',
     body: ownerPicker()
+      + (sched.rows.some(r => r.overdue)
+          ? '<div class="note note--crit"><strong>تقرير متأخر عن موعده.</strong> '
+            + sched.rows.filter(r => r.overdue)
+                .map(r => esc(r.period) + ' — ' + r.daysLate + ' يومًا').join(' · ')
+            + '. التأخر يُسجَّل في مؤشر الالتزام بالمواعيد ويراه المستثمر في حالة التقرير.</div>'
+          : '')
       + '<div class="card"><div class="card__body card__body--flush"><div class="tablewrap"><table>'
       + '<thead><tr><th>الفترة</th><th>الاستحقاق</th><th>الحالة</th><th>التقديم</th><th>النشر</th></tr></thead><tbody>'
-      + (rs.length ? rs.map(r => '<tr><td>' + esc(r.period) + '</td><td class="sm">' + dt(r.dueAt) + '</td>'
-          + '<td>' + chip(REPORT_STATUS, r.status) + '</td><td class="sm">' + dt(r.submittedAt) + '</td>'
+      + (sched.rows.length ? sched.rows.map(r => '<tr id="rec-' + esc(r.id) + '">'
+          + '<td>' + esc(r.period) + '</td>'
+          + '<td class="sm">' + dt(r.dueAt)
+          + (r.overdue ? '<div class="xs" style="color:var(--crit)">متأخر ' + r.daysLate + ' يومًا</div>' : '')
+          + '</td>'
+          + '<td>' + chip(REPORT_STATUS, r.status)
+          /* Returned for correction is the state an owner most needs the
+             reason for, and it was recorded and never shown. */
+          + (r.returnNote
+              ? '<div class="xs muted">أُعيد للتعديل: ' + esc(r.returnNote) + '</div>' : '')
+          + '</td>'
+          + '<td class="sm">' + dt(r.submittedAt) + '</td>'
           + '<td class="sm">' + dt(r.publishedAt) + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يبدأ جدول التقارير قبل إغلاق التمويل بنجاح.</td></tr>')
       + '</tbody></table></div></div></div>'
       + (openR
         ? '<div class="card"><div class="card__head"><h2>تقديم تقرير ' + esc(openR.period) + '</h2>'
-          + '<span class="spacer xs muted">الاستحقاق ' + dt(openR.dueAt) + '</span></div><div class="card__body">'
+          + '<span class="spacer xs muted">الاستحقاق ' + dt(openR.dueAt)
+          + (openR.overdue ? ' · متأخر ' + openR.daysLate + ' يومًا' : '') + '</span></div><div class="card__body">'
           + '<div class="note note--info">لا يرى المستثمر هذا التقرير قبل مراجعته ونشره من فريق المتابعة.</div>'
+          + (openR.returnNote
+              ? '<div class="note note--warn">أُعيد إليك للتعديل: ' + esc(openR.returnNote) + '</div>' : '')
           + '<div id="kpiRows" class="stack-s">' + kpiRowHtml(0) + '</div>'
           + '<button class="btn btn--sm" data-act="addKpi">+ مؤشر</button>'
           + '<div class="field"><label for="rnarr">السرد</label>'
@@ -4241,7 +4294,10 @@ VIEWS['own.reports'] = () => {
           + '<div class="field"><label for="rvar">تفسير الانحراف</label><textarea id="rvar"></textarea></div>'
           + '<button class="btn btn--primary" data-act="submitReport" data-report="' + openR.id + '">تقديم التقرير</button>'
           + '</div></div>'
-        : '<div class="note note--pos">لا يوجد تقرير مستحق التقديم الآن.</div>'),
+        : sched.awaitingReview.length
+          ? '<div class="note note--info">قُدِّم ' + sched.awaitingReview.length
+            + ' تقريرًا وينتظر مراجعة فريق المتابعة — لا يصل المستثمر قبلها.</div>'
+          : '<div class="note note--pos">لا يوجد تقرير مستحق التقديم الآن.</div>'),
   };
 };
 let kpiSeq = 0;
@@ -5198,6 +5254,164 @@ function poolFees(base, pl) {
 function selFeesAccrued(base, session, p) {
   if (!ownsPool(base, session, p.poolId)) return undefined;
   return poolFees(base, base.poolsById.get(p.poolId));
+}
+
+/* ── the three surfaces that still counted for themselves ──────────────────
+   own.funds summed its own use-of-funds table and read milestone state off
+   the pool; own.reports filtered the report list and decided by hand which
+   one was open; ops.dist re-derived every holder's weight in the render loop
+   and — the same defect the portfolio carried — read `d.shares || []`, so the
+   seeded distribution showed a dash where 2,100 riyals had plainly moved.
+
+   These five close that. The gate on each is "owns the pool, or holds the
+   permission the screen is behind", because the same figures are read from
+   two sides: the owner asking what is owed to them, and operations asking
+   what is owed to everyone. */
+const ownsOrCan = (base, session, poolId, perm) =>
+  ownsPool(base, session, poolId) || can(actorOf(base, session), perm);
+
+function selUseOfFunds(base, session, p) {
+  if (!ownsOrCan(base, session, p.poolId, 'funds.read')) return undefined;
+  const pl = base.poolsById.get(p.poolId);
+  if (!pl) return undefined;
+  const lines = (pl.uof || []).map(r => ({
+    item: r.item, supplier: r.supplier, amount: r.amount, quote: r.quote,
+  }));
+  return { lines, total: sumBaisa(lines, r => r.amount) };
+}
+
+/* One row per milestone, carrying the disbursement that names it. A milestone
+   is `requested` in two records at once — its own state and the disbursement's
+   — and the screen was reading only the first, so a rejected request left a
+   milestone that said "awaiting approval" with nothing awaiting anything. */
+function selMilestonePlan(base, session, p) {
+  if (!ownsOrCan(base, session, p.poolId, 'funds.read')) return undefined;
+  const pl = base.poolsById.get(p.poolId);
+  if (!pl) return undefined;
+  const ds = base.disbursementsByPool.get(p.poolId) || [];
+  const open = pl.status === 'funded' || pl.status === 'operating';
+  const rows = (pl.milestones || []).map(m => {
+    const live = ds.filter(d => d.milestoneId === m.id);
+    const paid = live.find(d => d.status === 'executed') || null;
+    const waiting = live.find(d => d.status === 'requested') || null;
+    const refused = live.filter(d => d.status === 'rejected').slice(-1)[0] || null;
+    return {
+      id: m.id, label: m.label, condition: m.condition, amount: m.amount,
+      state: paid ? 'executed' : waiting ? 'requested' : 'pending',
+      disbursementId: (paid || waiting || {}).id || null,
+      paidAt: paid ? paid.approvedAt : null,
+      requestedAt: waiting ? waiting.requestedAt : null,
+      /* A refusal is part of a milestone's history, not a dead end: the
+         request goes back to pending and the reason travels with it. */
+      refusedReason: refused && !paid && !waiting ? refused.rejectReason || '' : null,
+      canRequest: open && !paid && !waiting,
+    };
+  });
+  return {
+    rows,
+    canRequest: open,
+    requestable: rows.filter(r => r.canRequest),
+    poolStatus: pl.status,
+  };
+}
+
+/* The reporting duty, from both ends: the owner who owes a report and the
+   reviewer who publishes it. `overdue` is computed against params.now rather
+   than stored, so a period crossing its due date needs no state change to be
+   noticed — the same rule the case queue follows. */
+function selReportSchedule(base, session, p) {
+  if (!ownsOrCan(base, session, p.poolId, 'report.publish')) return undefined;
+  const rows = base.state.reports
+    .filter(r => r.poolId === p.poolId)
+    .map(r => {
+      const due = new Date(r.dueAt + 'T23:59:59Z').getTime();
+      /* Late means the owner still owes it. A report already handed in is
+         waiting on the reviewer, not on its author. */
+      const late = p.now > due && !r.submittedAt && r.status !== 'published';
+      return {
+        id: r.id, period: r.period, dueAt: r.dueAt, status: r.status,
+        submittedAt: r.submittedAt || null, publishedAt: r.publishedAt || null,
+        returnedAt: r.returnedAt || null, returnNote: r.returnNote || null,
+        overdue: late, daysLate: late ? Math.floor((p.now - due) / DAY) : 0,
+        kpiCount: (r.kpis || []).length,
+      };
+    })
+    .sort((a, b) => (a.dueAt < b.dueAt ? -1 : a.dueAt > b.dueAt ? 1 : 0));
+  const counts = { scheduled: 0, submitted: 0, late: 0, published: 0 };
+  rows.forEach(r => { if (counts[r.status] !== undefined) counts[r.status] += 1; });
+  return {
+    rows, counts,
+    /* The one the owner can act on now. `late` is a state a scheduled report
+       enters by the clock, so both are open for submission. */
+    open: rows.find(r => !r.submittedAt && ['scheduled', 'late'].includes(r.status)) || null,
+    awaitingReview: rows.filter(r => r.submittedAt && r.status !== 'published'),
+  };
+}
+
+/* ── distributions ────────────────────────────────────────────────────────
+   What a payout would do, before it is made. The weights are the same
+   allocations proRata will apportion over, so the preview and the act cannot
+   disagree — and the preview is the only place an operator sees the split
+   before the money is irreversible. */
+/* The pools a distribution can be made from at all. It belongs beside the
+   preview rather than in the screen because "has allocated investors" is the
+   same predicate the preview gates on, and two copies of one predicate drift. */
+function selPayablePools(base, session) {
+  if (!can(actorOf(base, session), 'distribution.create')) return undefined;
+  return base.state.pools
+    .filter(pl => (base.ordersByPool.get(pl.id) || []).some(o => o.status === 'allocated'))
+    .map(pl => ({ id: pl.id, ref: pl.ref, title: pl.title }));
+}
+
+function selDistributionPreview(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'distribution.create')) return undefined;
+  const holders = (base.ordersByPool.get(p.poolId) || [])
+    .filter(o => o.status === 'allocated');
+  const amounts = holders.map(o => (o.allocated != null ? o.allocated : o.amount));
+  const total = sumBaisa(holders, o => (o.allocated != null ? o.allocated : o.amount));
+  /* The weights are apportioned by the same largest-remainder rule the money
+     is, not rounded one by one. Rounded independently these three come to
+     99.99%, and a preview whose percentages do not reach a whole gives the
+     operator a reason to doubt a split that is in fact exact. */
+  const weights = total > 0 ? proRata(10000, amounts) : amounts.map(() => 0);
+  return {
+    holders: holders.map((o, i) => ({
+      orderId: o.id, userId: o.userId,
+      name: (base.usersById.get(o.userId) || {}).name || o.userId,
+      allocated: amounts[i], weightBps: weights[i],
+    })),
+    allocatedTotal: total,
+    payable: holders.length > 0,
+  };
+}
+
+/* The history, with every share derived rather than read. A distribution
+   written before shares[] existed carried none, and the screen printed a dash
+   against money that had plainly moved — the same defect the portfolio had,
+   in the other direction: there the investor saw zero, here operations saw
+   nothing at all. One apportionment rule, applied on read. */
+function selDistributionLedger(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'distribution.create') && !can(u, 'funds.read')) return undefined;
+  return base.state.distributions
+    .filter(d => !p.poolId || d.poolId === p.poolId)
+    .map(d => {
+      const shares = distributionShares(base.state, d);
+      const paid = sumBaisa(shares, s => s.amount);
+      return {
+        id: d.id, poolId: d.poolId,
+        poolRef: (base.poolsById.get(d.poolId) || {}).ref || d.poolId,
+        period: d.period, gross: d.gross, paidAt: d.paidAt,
+        holders: shares.length, distributed: paid,
+        /* Largest-remainder means these tie exactly; if they ever do not, the
+           screen says so rather than showing a total that is not one. */
+        ties: paid === d.gross,
+        stored: Array.isArray(d.shares) && d.shares.length > 0,
+      };
+    })
+    .slice()
+    .reverse();
 }
 
 /* ══ 3 · operations — ops.dash ═════════════════════════════════════════════
@@ -6903,14 +7117,18 @@ VIEWS['ops.recon'] = () => {
 
 /* ── ops · distributions ──────────────────────────────────────────────── */
 VIEWS['ops.dist'] = () => {
-  const payable = STATE.pools.filter(p => allocatedOf(p.id).length > 0);
-  const p = payable.find(x => x.id === SESSION.poolId) || payable[0];
-  const holders = p ? allocatedOf(p.id) : [];
+  const base = BASE(STATE);
+  const payable = selPayablePools(base, SESSION) || [];
+  const p = payable.find(x => x.id === SESSION.poolId) || payable[0] || null;
+  const prev = p ? selDistributionPreview(base, SESSION, metricsParams({ poolId: p.id })) : undefined;
+  const ledger = selDistributionLedger(base, SESSION, metricsParams()) || [];
+
   return {
     crumb: 'فريق التشغيل', title: 'التوزيعات',
     lede: 'يُقسَّم مبلغ التوزيع على المستثمرين بنسبة ما خُصص لكل منهم، بطريقة أكبر باقٍ — فمجموع الحصص يساوي المبلغ بالضبط.',
-    body: (!p ? '<p class="empty">لا توجد فرصة بمستثمرين مخصَّصين بعد.</p>'
-      : '<div class="card"><div class="card__head"><h2>توزيع جديد</h2></div><div class="card__body">'
+    body: (!p || !prev ? '<p class="empty">لا توجد فرصة بمستثمرين مخصَّصين بعد.</p>'
+      : '<div class="card"><div class="card__head"><h2>توزيع جديد</h2>'
+        + '<span class="spacer num sm">' + rial(prev.allocatedTotal) + ' مخصَّصة</span></div><div class="card__body">'
         + '<div class="field"><label for="dpool">الفرصة</label><select id="dpool" data-act="pickPool">'
         + payable.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>'
           + esc(x.title) + '</option>').join('') + '</select></div>'
@@ -6919,23 +7137,28 @@ VIEWS['ops.dist'] = () => {
         + '<input id="dgross" class="num" dir="ltr" inputmode="decimal" value="2100.000"></div>'
         + '<button class="btn btn--primary" data-act="createDist" data-pool="' + p.id + '">تنفيذ التوزيع</button>'
         + '<div class="tablewrap"><table><thead><tr><th>المستثمر</th><th class="n">المخصَّص</th><th class="n">الوزن</th></tr></thead><tbody>'
-        + holders.map(o => {
-            const tot = holders.reduce((s, x) => s + (x.allocated || x.amount), 0);
-            const a = o.allocated || o.amount;
-            return '<tr><td class="sm">' + esc((user(o.userId) || {}).name) + '</td>'
-              + '<td class="n">' + fmt(a, 0) + '</td><td class="n">' + ((a / tot) * 100).toFixed(2) + '%</td></tr>';
-          }).join('')
+        + prev.holders.map(h => '<tr><td class="sm">' + esc(h.name) + '</td>'
+            + '<td class="n">' + fmt(h.allocated, 0) + '</td>'
+            + '<td class="n">' + (h.weightBps / 100).toFixed(2) + '%</td></tr>').join('')
         + '</tbody></table></div></div></div>')
       + '<div class="card"><div class="card__head"><h2>سجل التوزيعات</h2></div>'
       + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
       + '<thead><tr><th>المرجع</th><th>الفرصة</th><th>الفترة</th><th class="n">الإجمالي</th><th class="n">الحصص</th><th>التاريخ</th></tr></thead><tbody>'
-      + (STATE.distributions.length ? STATE.distributions.slice().reverse().map(d => {
-          const sum = (d.shares || []).reduce((s, x) => s + x.amount, 0);
-          return '<tr><td><span class="mono xs">' + d.id + '</span></td><td class="sm">' + esc(pool(d.poolId).ref) + '</td>'
-            + '<td class="sm">' + esc(d.period) + '</td><td class="n">' + fmt(d.gross, 0) + '</td>'
-            + '<td class="n">' + (d.shares ? fmt(sum, 0) + ' على ' + d.shares.length : '—') + '</td>'
-            + '<td class="sm">' + dt(d.paidAt) + '</td></tr>';
-        }).join('') : '<tr><td colspan="6" class="empty">لا توزيعات.</td></tr>')
+      + (ledger.length ? ledger.map(d => '<tr id="rec-' + esc(d.id) + '">'
+          + '<td><span class="mono xs">' + esc(d.id) + '</span></td>'
+          + '<td class="sm">' + esc(d.poolRef) + '</td>'
+          + '<td class="sm">' + esc(d.period) + '</td>'
+          + '<td class="n">' + fmt(d.gross, 0) + '</td>'
+          /* The split is derived on read, so a distribution written before
+             shares[] existed shows the money it actually moved instead of a
+             dash. `stored` says which of the two you are looking at, and
+             `ties` says so out loud if they ever fail to add up. */
+          + '<td class="n">' + fmt(d.distributed, 0) + ' على ' + d.holders
+            + (d.stored ? '' : '<div class="xs muted">محسوبة على التخصيص</div>')
+            + (d.ties ? '' : '<div class="xs" style="color:var(--crit)">لا تساوي الإجمالي</div>')
+            + '</td>'
+          + '<td class="sm">' + dt(d.paidAt) + '</td></tr>').join('')
+        : '<tr><td colspan="6" class="empty">لا توزيعات.</td></tr>')
       + '</tbody></table></div></div></div>',
   };
 };

@@ -71,6 +71,8 @@ const LAYER = new Function(`
       selApplicationsUnderReview, selPendingSettingProposals, selOpenVariances,
       selPlatformAum, selActivePools, selActiveUsers, selFeeRevenue,
       selConversionFunnel, selPoolHealth, selAuditIntegrity, selActivityByType,
+      selUseOfFunds, selMilestonePlan, selReportSchedule,
+      selPayablePools, selDistributionPreview, selDistributionLedger,
     },
   };
 `)();
@@ -401,6 +403,145 @@ head('إضافي · النسب تخرج bps صحيحة');
   ok('العائد يحمل أساسه معه', ret.basis === 'COST', ret.basis);
   ok('وكل مبالغه أعداد صحيحة',
      [ret.cost, ret.received, ret.value, ret.gain, ret.bps].every(Number.isInteger));
+}
+
+head('إضافي · البنود والمراحل والتقارير — عقود الملكية');
+{
+  const own = S('u_own2');          // يملك p_log
+  const other = S('u_own1');        // يملك p_cafe
+  const pl = P({ poolId: 'p_log' });
+
+  const uof = LAYER.sel.selUseOfFunds(base, own, pl);
+  ok('بنود الأموال تصل مالكها', uof !== undefined && uof.lines.length === 3);
+  ok('ومجموعها يساوي المطلوب بالضبط', uof.total === 85_000_000, String(uof.total));
+  ok('ولا تصل مالك فرصة أخرى',
+     LAYER.sel.selUseOfFunds(base, other, pl) === undefined);
+  ok('ولا مستثمرًا فيها',
+     LAYER.sel.selUseOfFunds(base, S('u_inv4'), pl) === undefined);
+  ok('ويقرؤها المدقّق بصلاحية funds.read',
+     LAYER.sel.selUseOfFunds(base, S('u_aud1'), pl) !== undefined);
+
+  const plan = LAYER.sel.selMilestonePlan(base, own, pl);
+  ok('المراحل ثلاث', plan.rows.length === 3);
+  ok('واثنتان مصروفتان وواحدة بانتظار طرف ثانٍ',
+     plan.rows.map(r => r.state).join(',') === 'executed,executed,requested',
+     plan.rows.map(r => r.state).join(','));
+  ok('فلا مرحلة قابلة للطلب الآن', plan.requestable.length === 0);
+  ok('والصرف مفتوح لأن الفرصة مشغَّلة', plan.canRequest === true);
+
+  /* الفرصة في مرحلة التمويل: لا يبدأ الصرف قبل إغلاقه. */
+  const cafe = LAYER.sel.selMilestonePlan(base, other, P({ poolId: 'p_cafe' }));
+  ok('وفرصة ما زالت تُموَّل لا يبدأ صرفها', cafe.canRequest === false, cafe.poolStatus);
+  ok('فمراحلها الثلاث غير قابلة للطلب رغم أنها لم تُصرف',
+     cafe.rows.every(r => r.state === 'pending') && cafe.requestable.length === 0);
+
+  /* طلب مرفوض: المرحلة تعود قابلة للطلب، والسبب يسافر معها. */
+  const st = clone(SEED);
+  const d3 = st.disbursements.find(d => d.id === 'DSB-2026-0003');
+  d3.status = 'rejected'; d3.rejectReason = 'محضر التركيب بلا توقيع المورد';
+  st.version = 971;
+  LAYER.setState(st);
+  const b = LAYER.BASE(st);
+  const after = LAYER.sel.selMilestonePlan(b, own, pl);
+  const m3 = after.rows.find(r => r.id === 'm3');
+  ok('رفض الطلب يعيد المرحلة إلى «لم تُطلب»', m3.state === 'pending', m3.state);
+  ok('وسبب الرفض يصل صاحب المشروع',
+     m3.refusedReason === 'محضر التركيب بلا توقيع المورد', String(m3.refusedReason));
+  ok('وتصير قابلة للطلب من جديد',
+     after.requestable.length === 1 && after.requestable[0].id === 'm3');
+  ok('والمبالغ تتبع الحالة: لا مبلغ معلَّق بعد الرفض',
+     LAYER.sel.selDisbursementLedger(b, own, pl).requested === 0);
+  LAYER.setState(SEED); LAYER.BASE(SEED);
+}
+
+head('إضافي · جدول التقارير — الاستحقاق بالساعة لا بالحالة المخزَّنة');
+{
+  const own = S('u_own2');
+  const pl = P({ poolId: 'p_log' });
+  const sc = LAYER.sel.selReportSchedule(base, own, pl);
+  ok('تقريران في الجدول', sc.rows.length === 2);
+  ok('ولا شيء متأخر اليوم', sc.rows.every(r => !r.overdue));
+  ok('والمفتوح للتقديم هو الربع الثالث',
+     sc.open && sc.open.id === 'RPT-2026-0002', String(sc.open && sc.open.id));
+  ok('ولا شيء ينتظر المراجعة', sc.awaitingReview.length === 0);
+  ok('ولا يقرؤه مالك فرصة أخرى',
+     LAYER.sel.selReportSchedule(base, S('u_own1'), pl) === undefined);
+  ok('ويقرؤه فريق المتابعة بصلاحية النشر',
+     LAYER.sel.selReportSchedule(base, S('u_pf1'), pl) !== undefined);
+
+  /* الاستحقاق يمرّ: لا كتابة في الحالة، والتأخّر يُقرأ من الساعة. */
+  const late = clone(SEED);
+  late.reports.find(r => r.id === 'RPT-2026-0002').dueAt = '2026-08-01';
+  late.version = 972;
+  LAYER.setState(late);
+  const bl = LAYER.BASE(late);
+  const sl = LAYER.sel.selReportSchedule(bl, own, pl);
+  const r2 = sl.rows.find(r => r.id === 'RPT-2026-0002');
+  ok('تقرير تجاوز موعده يُقرأ متأخرًا بلا تغيير حالة',
+     r2.overdue === true && r2.status === 'scheduled', `${r2.overdue}/${r2.status}`);
+  ok('وعدد أيام التأخّر محسوب لا مخزَّن', r2.daysLate === 24, String(r2.daysLate));
+
+  /* قُدِّم بعد موعده: الانتظار انتقل إلى المراجع، فلا يُحسب على صاحبه. */
+  const sub = clone(late);
+  const rr = sub.reports.find(r => r.id === 'RPT-2026-0002');
+  rr.submittedAt = '2026-08-20T09:00:00Z'; rr.status = 'submitted';
+  sub.version = 973;
+  LAYER.setState(sub);
+  const ss = LAYER.sel.selReportSchedule(LAYER.BASE(sub), own, pl);
+  ok('تقرير قُدِّم لا يُعدّ متأخرًا على صاحبه',
+     ss.rows.find(r => r.id === 'RPT-2026-0002').overdue === false);
+  ok('ولا يبقى مفتوحًا للتقديم', ss.open === null);
+  ok('بل ينتظر المراجعة', ss.awaitingReview.length === 1);
+
+  /* أُعيد للتعديل: يعود مفتوحًا ومعه سبب الإعادة. */
+  const ret = clone(sub);
+  const r3 = ret.reports.find(r => r.id === 'RPT-2026-0002');
+  r3.submittedAt = null; r3.status = 'late';
+  r3.returnedAt = '2026-08-22T10:00:00Z'; r3.returnNote = 'المؤشرات بلا مقارنة بالمتوقع';
+  ret.version = 974;
+  LAYER.setState(ret);
+  const sr = LAYER.sel.selReportSchedule(LAYER.BASE(ret), own, pl);
+  ok('المُعاد للتعديل يعود مفتوحًا', sr.open && sr.open.id === 'RPT-2026-0002');
+  ok('وسبب الإعادة يصل صاحبه',
+     sr.open.returnNote === 'المؤشرات بلا مقارنة بالمتوقع', String(sr.open.returnNote));
+  LAYER.setState(SEED); LAYER.BASE(SEED);
+}
+
+head('إضافي · التوزيعات — المعاينة والسجل');
+{
+  const ops = S('u_pf1');           // distribution.create
+  const pl = P({ poolId: 'p_log' });
+
+  const pools = LAYER.sel.selPayablePools(base, ops);
+  ok('فرصة واحدة قابلة للتوزيع', pools.length === 1 && pools[0].id === 'p_log',
+     JSON.stringify(pools.map(x => x.id)));
+  ok('ولا يراها من لا يملك صلاحية التوزيع',
+     LAYER.sel.selPayablePools(base, S('u_own2')) === undefined);
+
+  const pv = LAYER.sel.selDistributionPreview(base, ops, pl);
+  ok('ثلاثة مستثمرين مخصَّصين', pv.holders.length === 3);
+  ok('ومجموع المخصَّص ٧٣٫٥ ألف ريال', pv.allocatedTotal === 73_500_000,
+     String(pv.allocatedTotal));
+  ok('والأوزان تجمع ١٠٠٠٠ نقطة أساس',
+     pv.holders.reduce((s, h) => s + h.weightBps, 0) === 10000,
+     String(pv.holders.reduce((s, h) => s + h.weightBps, 0)));
+  ok('وكل وزن عدد صحيح', pv.holders.every(h => Number.isInteger(h.weightBps)));
+  ok('ولا يرى المعاينة صاحب المشروع',
+     LAYER.sel.selDistributionPreview(base, S('u_own2'), pl) === undefined);
+
+  const led = LAYER.sel.selDistributionLedger(base, ops, P());
+  ok('توزيعة واحدة في السجل', led.length === 1);
+  const d = led[0];
+  ok('وبلا مصفوفة حصص مخزَّنة', d.stored === false);
+  /* هذا هو العطب الذي كان: المبلغ تحرَّك والشاشة تكتب «—». */
+  ok('ومع ذلك تُقرأ حصصها الثلاث محسوبةً', d.holders === 3, String(d.holders));
+  ok('ومجموعها يساوي الإجمالي بالضبط',
+     d.distributed === d.gross && d.ties === true, `${d.distributed}/${d.gross}`);
+  ok('ومرجع الفرصة مقروء لا معرِّفًا', d.poolRef === 'POOL-2026-0002', d.poolRef);
+  ok('ويقرأ السجل المدقّق بصلاحية funds.read',
+     LAYER.sel.selDistributionLedger(base, S('u_aud1'), P()) !== undefined);
+  ok('ولا يقرؤه صاحب المشروع',
+     LAYER.sel.selDistributionLedger(base, S('u_own2'), P()) === undefined);
 }
 
 /* ══ الخلاصة ═════════════════════════════════════════════════════════════ */

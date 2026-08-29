@@ -50,6 +50,29 @@ recon.reconciliations = [{
 }];
 write('recon.html', recon);
 
+/* ٣ · طلب صرف مرفوض: حالة المرحلة المخزَّنة لا تعرف بالرفض، فالشاشة كانت
+      تقول «بانتظار اعتماد» عن طلب لا ينتظره أحد. */
+const refused = clone(seed);
+{
+  const d = refused.disbursements.find(x => x.id === 'DSB-2026-0003');
+  d.status = 'rejected';
+  d.rejectedBy = 'u_fin2';
+  d.rejectedAt = '2026-08-24T10:00:00Z';
+  d.rejectReason = 'محضر التركيب بلا توقيع المورد';
+}
+write('refused.html', refused);
+
+/* ٤ · تقرير تجاوز موعده وأُعيد للتعديل بسببٍ مكتوب */
+const late = clone(seed);
+{
+  const r = late.reports.find(x => x.id === 'RPT-2026-0002');
+  r.dueAt = '2026-08-01';
+  r.status = 'late';
+  r.returnedAt = '2026-08-22T10:00:00Z';
+  r.returnNote = 'المؤشرات بلا مقارنة بالمتوقع';
+}
+write('late.html', late);
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
   /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
   .catch(() => chromium.launch());
@@ -204,16 +227,121 @@ head('٩ · الشاشة تُنسّق ولا تحسب');
 {
   const src = fs.readFileSync('hissa-demo.html', 'utf8');
   const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  /* الشاشات الثلاث التي كانت تحسب لنفسها، تُقرأ الآن ككتلة واحدة. */
   const view = strip(src.slice(src.indexOf("VIEWS['own.project']"),
-                               src.indexOf("VIEWS['own.funds']")));
+                               src.indexOf('let kpiSeq'))
+    + src.slice(src.indexOf("VIEWS['ops.dist']"),
+                src.indexOf("VIEWS['ops.kyc']")));
   ok('لا proRata', !view.includes('proRata'));
   ok('ولا feeBps', !view.includes('feeBps'));
   ok('ولا قراءة التزامات أو صرف من STATE',
      !/STATE\.(orders|disbursements|distributions|reconciliations)/.test(view),
      (view.match(/STATE\.\w+/g) || []).join('،'));
+  ok('ولا حصص مقروءة من السجل بدل حسابها', !/\.shares\b/.test(view));
   ok('وكل أرقامها من سيلكتورات',
-     (view.match(/\bsel[A-Z]\w+\(/g) || []).length >= 6,
-     (view.match(/\bsel[A-Z]\w+\(/g) || []).join('،'));
+     new Set(view.match(/\bsel[A-Z]\w+\(/g) || []).size >= 12,
+     [...new Set(view.match(/\bsel[A-Z]\w+\(/g) || [])].join('،'));
+}
+
+/* ── ١٠ · استخدام الأموال والمراحل ────────────────────────────────────── */
+head('١٠ · own.funds على السيلكتورات');
+{
+  const { ctx, p } = await open('index.html', 'owner.logistics@example.om', '#/own/funds');
+  const txt = await p.$eval('#root', e => e.textContent);
+
+  ok('المخطَّط على المراحل يطابق المحرّك', num(await kpi(p, 'مخطَّط على المراحل')) === 85_000_000,
+     String(num(await kpi(p, 'مخطَّط على المراحل'))));
+  ok('والمصروف فعلًا', num(await kpi(p, 'صُرف فعلًا')) === 72_000_000,
+     String(num(await kpi(p, 'صُرف فعلًا'))));
+  ok('وما بقي محتجزًا هو الفرق بينهما',
+     num(await kpi(p, 'ما زال محتجزًا')) === 13_000_000,
+     String(num(await kpi(p, 'ما زال محتجزًا'))));
+  ok('والمعلَّق بانتظار طرف ثانٍ', num(await kpi(p, 'بانتظار اعتماد')) === 13_000_000,
+     String(num(await kpi(p, 'بانتظار اعتماد'))));
+
+  const uofRows = await p.$$eval('.card', cs => {
+    const c = cs.find(x => /البنود المعتمدة/.test(x.textContent));
+    return c ? c.querySelectorAll('tbody tr').length : -1;
+  });
+  ok('بنود الأموال ثلاثة', uofRows === 3, String(uofRows));
+  ok('ومجموعها معلَن في ترويسة البطاقة', /85,000 ر\.ع/.test(txt));
+
+  const chips = await p.$$eval('#root tbody .chip', n => n.map(x => x.textContent.trim()));
+  ok('مرحلتان مصروفتان', chips.filter(c => /صُرفت/.test(c)).length === 2, chips.join('،'));
+  ok('وواحدة بانتظار اعتماد طرف ثانٍ',
+     chips.filter(c => /بانتظار اعتماد طرف ثانٍ/.test(c)).length === 1, chips.join('،'));
+  ok('فلا نموذج طلب مفتوح', /كل المراحل طُلبت أو صُرفت/.test(txt));
+  ok('وكل صفّ مرحلة يحمل معرِّفه ليُبرَز من لوحة أخرى',
+     (await p.$$('#root tr[id^="rec-m"]')).length === 3);
+  await ctx.close();
+}
+
+/* ── ١١ · الصرف لا يبدأ قبل الإغلاق، والرفض يعيد المرحلة ─────────────── */
+head('١١ · حالتان لا تُقرآن من حالة المرحلة وحدها');
+{
+  const { ctx, p } = await open('index.html', 'owner.cafe@example.om', '#/own/funds');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('فرصة ما زالت تُموَّل: لا يبدأ صرفها', /لا يبدأ الصرف قبل إغلاق التمويل/.test(txt));
+  ok('ولا زرّ إرسال طلب', !(await p.$('[data-act="requestDsb"]')));
+  await ctx.close();
+}
+{
+  const { ctx, p } = await open('refused.html', 'owner.logistics@example.om', '#/own/funds');
+  const txt = await p.$eval('#root', e => e.textContent);
+  /* العطب الذي أغلقه selMilestonePlan: المرحلة كانت تقول «بانتظار اعتماد»
+     بعد رفض الطلب، لأن حالتها المخزَّنة لا تعرف بالرفض. */
+  ok('بعد الرفض لا تبقى المرحلة «بانتظار اعتماد»',
+     !/بانتظار اعتماد طرف ثانٍ/.test(txt));
+  ok('وسبب الرفض معروض لصاحب المشروع',
+     /رُفض سابقًا: محضر التركيب بلا توقيع المورد/.test(txt));
+  ok('وتُفتح لطلب جديد', !!(await p.$('[data-act="requestDsb"]')));
+  ok('ولا مبلغ معلَّق بعد الرفض', num(await kpi(p, 'بانتظار اعتماد')) === 0,
+     String(num(await kpi(p, 'بانتظار اعتماد'))));
+  await ctx.close();
+}
+
+/* ── ١٢ · التقارير: الاستحقاق بالساعة، والإعادة بسببها ───────────────── */
+head('١٢ · own.reports على السيلكتورات');
+{
+  const { ctx, p } = await open('index.html', 'owner.logistics@example.om', '#/own/reports');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('تقريران في الجدول', (await p.$$('#root tr[id^="rec-RPT"]')).length === 2);
+  ok('ولا إنذار تأخّر اليوم', !/تقرير متأخر عن موعده/.test(txt));
+  ok('والنموذج مفتوح للربع الثالث', /تقديم تقرير الربع الثالث 2026/.test(txt));
+  await ctx.close();
+}
+{
+  const { ctx, p } = await open('late.html', 'owner.logistics@example.om', '#/own/reports');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('تقرير تجاوز موعده يُنذَر به', /تقرير متأخر عن موعده/.test(txt));
+  ok('وعدد الأيام معلَن لا مبهم', /متأخر \d+ يومًا/.test(txt),
+     (txt.match(/متأخر \d+ يومًا/) || ['—'])[0]);
+  ok('وسبب الإعادة يصل صاحبه',
+     /أُعيد إليك للتعديل: المؤشرات بلا مقارنة بالمتوقع/.test(txt));
+  await ctx.close();
+}
+
+/* ── ١٣ · التوزيعات: الحصص محسوبة على القراءة ────────────────────────── */
+head('١٣ · ops.dist لا يكتب «—» على مال تحرّك');
+{
+  const { ctx, p } = await open('index.html', 'huda@hissa.om', '#/ops/dist');
+  const txt = await p.$eval('#root', e => e.textContent);
+  const rowEl = await p.$('#rec-DST-2026-0001');
+  ok('سجل التوزيعات يحمل صفّ التوزيعة المزروعة', !!rowEl);
+  const row = rowEl ? await rowEl.evaluate(e => e.textContent) : '';
+  ok('ولا يكتب شرطة على مبلغ تحرّك', !/—/.test(row), row.trim());
+  ok('بل يقول ٢١٠٠ على ثلاثة', /2,100 على 3/.test(row), row.trim());
+  ok('ويصرّح أن الحصص محسوبة على التخصيص لا مخزَّنة',
+     /محسوبة على التخصيص/.test(row));
+  ok('ولا يقول إنها لا تساوي الإجمالي', !/لا تساوي الإجمالي/.test(row));
+
+  const w = await p.$$eval('#root table tbody tr td:last-child', n =>
+    n.map(x => x.textContent.trim()).filter(t => /%$/.test(t)));
+  ok('وأوزان المعاينة ثلاثة', w.length === 3, w.join('،'));
+  ok('وتجمع مئةً بالضبط',
+     Math.round(w.reduce((s, t) => s + Number(t.replace('%', '')), 0) * 100) === 10000,
+     w.join(' + '));
+  await ctx.close();
 }
 
 ok('بلا أخطاء تشغيل', errs.length === 0, errs.join(' · '));
