@@ -1,12 +1,22 @@
+# ⚠️ مُعطَّل عمدًا — يتعارض مع pages.yml على وجهة واحدة.
+#
+# هذا سير عمل Jekyll النموذجي من GitHub: يبني جذر المستودع موقعًا ثابتًا، أي
+# أن README.md يصير index.html. وpages.yml يرفع site/index.html — النسخة
+# العامة من التطبيق نفسه. الوجهة واحدة والمجموعة واحدة (concurrency: pages)،
+# فكلاهما ينشر فوق الآخر، ومن يُنهي أخيرًا يفوز. هذا سبب ظهور README مرندرًا
+# على الرابط مرّةً والتطبيقِ مرّةً.
+#
+# فأُزيل مشغّله التلقائي وبقي الملف كما كتبته: يعمل يدويًّا فقط من تبويب
+# Actions. إن أردت أن يكون المنشور هو README لا التطبيق، أعِد سطرَي push
+# أدناه وعطّل pages.yml بدلًا منه — لا يصحّ أن يعمل الاثنان.
+
 # Sample workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: (معطَّل) نشر Jekyll — يدويًّا فقط
 
 on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+  # المشغّل التلقائي مُزال — انظر الملاحظة أعلاه:
+  #  push:
+  #    branches: ["main"]
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
