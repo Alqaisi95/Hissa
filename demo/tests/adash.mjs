@@ -109,8 +109,10 @@ if (A.inn) {
   ok('المصفوفة عمودية عند العدد الصغير', !(await A.p.$('.pmx--flip')));
 
   /* ٥ · فعل من اللوحة يصل السجل */
+  /* الشارة تنطق الآن: نصّها «214 سطرًا» لقارئ الشاشة، والعدد وحده في data-n.
+     فيُقرأ العدد من حيث هو عدد. */
   const before = await A.p.$eval('[data-view="ops.audit"] .navlink__badge',
-    e => Number(e.textContent)).catch(() => 0);
+    e => Number(e.dataset.n)).catch(() => 0);
   const btn = await A.p.$('.excg [data-act="revokeReset"], .excg [data-act="toggleSuspend"], .excg [data-act="revokeInvite"]');
   if (!btn) {
     console.log('    (لا فعل مباشر مطلوب في هذه الحالة — يُتخطّى)');
@@ -119,7 +121,7 @@ if (A.inn) {
     await btn.click();
     await A.p.waitForTimeout(700);
     const after = await A.p.$eval('[data-view="ops.audit"] .navlink__badge',
-      e => Number(e.textContent)).catch(() => 0);
+      e => Number(e.dataset.n)).catch(() => 0);
     ok('فعل «' + what + '» من اللوحة يضيف سطرًا للتدقيق', after === before + 1,
       before + ' → ' + after);
   }

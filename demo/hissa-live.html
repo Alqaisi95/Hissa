@@ -159,22 +159,37 @@
     display: flex; flex-direction: column; gap: .15rem;
   }
   .side__group { font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
-                 color: var(--ink-3); padding: .9rem .6rem .3rem; }
+                 color: var(--ink-3); padding: .8rem .6rem .25rem; }
+  .side__group:first-child { padding-block-start: .2rem; }
   .navlink {
     display: flex; align-items: center; gap: .55rem; width: 100%;
     font: inherit; font-size: .86rem; text-align: start; cursor: pointer;
     background: none; border: 0; color: var(--ink-2);
-    padding: .48rem .6rem; border-radius: var(--r-s);
+    padding: .36rem .6rem; border-radius: var(--r-s);
   }
   .navlink { text-decoration: none; }
   .navlink:hover { background: var(--panel-2); color: var(--ink); }
   .navlink[aria-current="page"] { background: var(--brand-wash); color: var(--brand); font-weight: 600; }
   .navlink__n { font-family: var(--mo); font-size: .68rem; color: var(--ink-3); flex: none; }
   .navlink[aria-current="page"] .navlink__n { color: var(--brand); }
+  .navlink__t { flex: 1 1 auto; min-inline-size: 0; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
   .navlink__badge {
     margin-inline-start: auto; font-family: var(--mo); font-size: .68rem;
-    background: var(--panel-2); color: var(--ink-2); border-radius: 999px; padding: 0 .4rem;
+    background: var(--panel-2); color: var(--ink-3); border-radius: 999px; padding: 0 .4rem;
+    flex: none;
   }
+  /* A queue is coloured; the size of a record is not. */
+  .navlink__badge--work { background: var(--warn-wash); color: var(--warn); font-weight: 600; }
+  .navlink[aria-current="page"] .navlink__badge--work { background: var(--panel); }
+  /* The current entry gets an edge as well as a wash: on the dark ground the
+     wash alone is a shade, and a shade is not a position. */
+  .navlink[aria-current="page"] { box-shadow: inset 2px 0 0 var(--brand); }
+  html[dir="rtl"] .navlink[aria-current="page"] { box-shadow: inset -2px 0 0 var(--brand); }
+  /* Visually hidden, still read aloud: the badge is a bare number on screen
+     and «7 بانتظار العمل» to a screen reader. */
+  .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;
+        clip-path: inset(50%); white-space: nowrap; }
   @media (max-width: 900px) {
     .side {
       position: static; block-size: auto; flex-direction: row; overflow-x: auto;
@@ -472,6 +487,30 @@
     letter-spacing: -.02em; max-width: 20ch;
   }
   .hero__lede { font-size: clamp(.95rem, 1.6vw, 1.1rem); color: var(--ink-2); max-width: 60ch; margin-block-start: .9rem; }
+  /* The third line of the headline is the claim the whole product rests on. */
+  .hero__hl { color: var(--brand); }
+
+  /* Four figures read off the live record, directly under the claim — the
+     page says the rules are executed rather than described, and this is the
+     nearest thing to proof a stranger can see before signing in. */
+  .factstrip {
+    display: grid; gap: .8rem 1.6rem; margin-block-start: 1.8rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+    border-block-start: 1px solid var(--rule); padding-block-start: 1.1rem;
+  }
+  .factstrip__i { display: flex; flex-direction: column; gap: .1rem; }
+  .factstrip__v { font-family: var(--mo); font-size: clamp(1.3rem, 3vw, 1.75rem);
+                  font-weight: 600; line-height: 1.1; }
+  .factstrip__k { font-size: .76rem; color: var(--ink-3); }
+  .factstrip__note { margin-block-start: .9rem; }
+
+  /* The claim, then what enforces it. The second paragraph is the one that
+     makes the first checkable, so it reads as evidence, not as more prose. */
+  .pillar__proof {
+    margin-block-start: .5rem; padding-block-start: .5rem;
+    border-block-start: 1px dashed var(--rule);
+    font-size: .8rem; color: var(--ink-3);
+  }
   .hero__cta { display: flex; gap: .6rem; flex-wrap: wrap; margin-block-start: 1.5rem; }
   .btn--lg { font-size: .95rem; padding: .6rem 1.4rem; }
   .eyebrow {
@@ -5978,10 +6017,14 @@ function excTail(x, u) {
 
 VIEWS['ops.adash'] = () => {
   const u = me();
+  const base = BASE(STATE);
   const days = SESSION.win === 30 ? 30 : 90;
   const exc = accessExceptions();
   const audit = auditIntegrity();
-  const activity = auditActivity(days);
+  /* The same series the layer already builds, indexed by day in BASE rather
+     than rescanned here. */
+  const act = selActivityByType(base, SESSION, metricsParams({ filters: { days } }));
+  const activity = (act ? act.series : []).map(x => ({ label: x.day.slice(5), value: x.value, count: x.value }));
   const staff = STATE.users.filter(x => x.role === 'staff');
   const active = staff.filter(x => !x.suspended);
   const members = STATE.users.filter(x => x.role !== 'staff');
@@ -6266,22 +6309,22 @@ const TICKET_BANDS = [
 ];
 
 VIEWS['ops.pipeline'] = () => {
+  const base = BASE(STATE);
+  const par = metricsParams();
   const live = STATE.orders.filter(o => COUNTED.has(o.status));
   const total = live.reduce((s, o) => s + o.amount, 0);
 
-  /* funnel — ordered stages, so the ordinal ramp, not categorical hues */
-  const investors = usersOfRole('investor');
-  const kycOk = investors.filter(x => x.kyc === 'approved');
-  const suitOk = kycOk.filter(x => x.suit === 'pass' && x.consents);
-  const ordered = new Set(STATE.orders.map(o => o.userId));
-  const held = new Set(STATE.orders.filter(o => ['confirmed', 'allocated'].includes(o.status)).map(o => o.userId));
-  const stages = [
-    { label: 'مستثمرون مسجَّلون', value: investors.length },
-    { label: 'اكتمل التحقق من الهوية', value: kycOk.length },
-    { label: 'اجتازوا الملاءمة وأقرّوا الموافقات', value: suitOk.length },
-    { label: 'أنشؤوا التزامًا', value: ordered.size },
-    { label: 'التزام مؤكد أو مخصَّص', value: held.size },
-  ];
+  /* Six selectors were written for this screen and it computed all six by
+     hand instead — two implementations of one figure is the drift the layer
+     exists to prevent. The funnel is the layer's now; so is the platform
+     line above it. What stays inline is what no selector covers: the sector
+     mix, the class mix, the ticket bands and the concentration. */
+  const aum = selPlatformAum(base, SESSION);
+  const pools = selActivePools(base, SESSION);
+  const users = selActiveUsers(base, SESSION, par);
+  const health = selPoolHealth(base, SESSION, par);
+  const fees = selFeeRevenue(base, SESSION);
+  const stages = selConversionFunnel(base, SESSION) || [];
 
   /* sectors — identity, so categorical in fixed order */
   const bySector = {};
@@ -6319,8 +6362,45 @@ VIEWS['ops.pipeline'] = () => {
 
   return {
     crumb: 'فريق التشغيل', title: 'التحليلات',
+    wide: true,
     lede: 'أسئلة «كيف تسير الأمور» مجتمعةً: أين يتوقف الناس، ومن أين يأتي المال، وأين يقف كل ريال، وهل يتحرك التمويل، وأين تقف كل فرصة. أما «ماذا أفعل الآن» فعلى لوحة التشغيل.',
     body: '<div class="stack" style="gap:2rem">'
+
+    + (aum === undefined ? '' : band('00', 'ما حجم المنصّة الآن؟',
+        'ستة أرقام تُقرأ في سطر قبل أي رسم',
+        '<div class="card"><div class="card__body">'
+        + (aum.overDisbursed > 0
+            ? '<div class="note note--crit"><strong>صرف زائد بلا غطاء: ' + omr0(aum.overDisbursed)
+              + '.</strong> مال خرج من الضمان أكثر ممّا دخله لتلك الفرص — تُفتح المطابقة قبل أي قراءة أخرى.'
+              + '<div class="row" style="margin-block-start:.5rem"><a class="btn btn--sm btn--danger" href="'
+              + hrefFor({ view: 'ops.recon' }) + '">افتح المطابقة</a></div></div>'
+            : '')
+        + '<div class="grid grid--4">'
+        + kpiCard('محتجز لصالح المستثمرين', omr0(aum.held), 'قيد التمويل أو في الضمان')
+        + kpiCard('إجمالي ما التُزم به', omr0(aum.total))
+        + kpiCard('صُرف للمورّدين', omr0(aum.spent))
+        + kpiCard('وُزّع على المستثمرين', omr0(aum.distributed), 'عائد لا جزء من رأس المال')
+        + (pools === undefined ? '' : kpiCard('فرص مفتوحة', String(pools.open),
+            pools.operating + ' قيد التشغيل من ' + pools.total))
+        + (users === undefined ? '' : kpiCard('حسابات نشطة', String(users.active),
+            'من ' + users.members + ' · ' + (users.basis === 'SIGNIN_30D'
+              ? 'دخلت خلال ' + users.windowDays + ' يومًا' : 'أساس ' + users.basis)))
+        + (fees === undefined ? '' : kpiCard('رسوم مستحقّة', omr0(fees.total),
+            'منصّة ' + fmt(fees.platform, 0) + ' · نجاح ' + fmt(fees.success, 0)))
+        + (health === undefined ? '' : kpiCard('فرص دون حدّها الأدنى', String(health.behind),
+            health.onTarget + ' في مسارها' + (health.closedUnderfunded
+              ? ' · ' + health.closedUnderfunded + ' أُغلقت دونه' : '')))
+        + '</div>'
+        + (health === undefined || !health.total ? ''
+            : stackedBar([
+                { slot: 2, label: 'في مسارها', value: health.onTarget },
+                { slot: 3, label: 'دون حدّها الأدنى', value: health.behind },
+                { slot: 1, label: 'أُغلقت دون الحدّ', value: health.closedUnderfunded },
+              ].filter(x => x.value > 0), health.total, v => v + ' فرصة'))
+        + (fees === undefined ? '' : '<p class="xs muted">الرسوم محسوبة بأسعار الإعدادات النافذة يوم '
+            + 'إغلاق كل فرصة لا بأسعار اليوم: رسم المنصّة على رأس المال المخصَّص عند الإغلاق، '
+            + 'ورسم النجاح على ما يزيد عمّا استردّه المستثمر وحده.</p>')
+        + '</div></div>'))
 
     + band('01', 'أين يتوقف الناس؟', 'كل مرحلة مجموعة فرعية من التي قبلها',
         '<div class="card"><div class="card__body">' + frameHtml({
@@ -6328,9 +6408,11 @@ VIEWS['ops.pipeline'] = () => {
           sub: 'النسبة المعروضة هي المحمول من المرحلة السابقة لا من الأساس — فهي تقول أين يقع الفاقد بالضبط.',
           chart: funnelHtml(stages),
           cols: ['المرحلة', 'العدد', 'من السابقة', 'من الأساس'],
-          rows: stages.map((s, i) => [esc(s.label), s.value,
-            i ? (Math.round((s.value / stages[i - 1].value) * 1000) / 10) + '%' : '—',
-            (Math.round((s.value / stages[0].value) * 1000) / 10) + '%']),
+          /* The percentages come with the stages rather than being recomputed
+             from them: bps, integer, one rounding rule for the whole app. */
+          rows: stages.map((x, i) => [esc(x.label), x.value,
+            i ? (x.fromPrevBps / 100).toFixed(1) + '%' : '—',
+            (x.fromBaseBps / 100).toFixed(1) + '%']),
         }) + '</div></div>')
 
     + band('02', 'من أين يأتي المال؟', 'بالقطاع وبصنف المستثمر',
@@ -7497,6 +7579,44 @@ function navBadge(key) {
   return '';
 }
 
+/* A count beside a destination means one of two things, and they must not
+   look alike: work waiting on somebody, or the size of a record. Only the
+   first is worth a colour — a badge on the audit log saying 214 is not a
+   queue, and colouring it teaches the reader to ignore the ones that are. */
+const NAV_WORK = new Set(['ops.dash', 'ops.money', 'ops.recon', 'ops.apps',
+                          'ops.kyc', 'own.apps', 'own.reports']);
+
+/* One link, rendered the same in the sidebar and in the phone's sheet. It is
+   a real anchor: middle click, Ctrl+click, "copy link address" and the back
+   button all come free, and a screen reader announces it as what it is.
+   `data-act` is deliberately absent so the click handler leaves it alone and
+   the browser follows the href itself. */
+function navLinkHtml(n) {
+  const b = navBadge(n.k);
+  const work = b !== '' && NAV_WORK.has(n.k);
+  return '<a class="navlink" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
+    + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
+    + '<span class="navlink__t">' + esc(n.label) + '</span>'
+    + (b === '' ? ''
+       : '<span class="navlink__badge' + (work ? ' navlink__badge--work' : '') + '" data-n="' + b + '">'
+         + '<span class="vh"> </span>' + b
+         + '<span class="vh">' + (work ? ' بانتظار العمل' : ' سطرًا') + '</span></span>')
+    + '</a>';
+}
+
+/* The nav entries have carried a group since they were written and only the
+   sheet ever used it; the sidebar printed the account's role once at the top
+   and then fifteen numbered rows in one undivided column. */
+function navGroups(nav) {
+  const out = [];
+  nav.forEach(n => {
+    const g = n.group || 'أخرى';
+    const at = out.find(x => x.g === g);
+    if (at) at.items.push(n); else out.push({ g, items: [n] });
+  });
+  return out;
+}
+
 let LAST_SCREEN = null;
 let LAST_HREF = null;
 let NAVSHEET = false;      // the phone's «المزيد» sheet, open or not
@@ -7654,8 +7774,31 @@ function publicFooter() {
     + '</div></footer>';
 }
 
-function landingView() {
+/* ── the public page ───────────────────────────────────────────────────────
+   This is now the product's front door: a link that was announced, opened by
+   people who have never heard of any of it. The previous version asserted
+   four rules in prose and put the one thing a visitor can actually do — sign
+   in as somebody and look — at the very bottom, under three sections of
+   argument.
+
+   So it is reordered around what a stranger needs, in order: what this is,
+   proof it is running rather than described, a way in, and only then the
+   argument. The figures in the strip are read from the same state the
+   application reads; nothing here is a written-in number, on the public page
+   least of all.
+   ────────────────────────────────────────────────────────────────────────── */
+function landingFacts() {
   const open = STATE.pools.filter(p => p.status === 'funding');
+  const committed = STATE.orders.filter(o => COUNTED.has(o.status))
+    .reduce((s, o) => s + o.amount, 0);
+  const investors = new Set(STATE.orders.filter(o => COUNTED.has(o.status))
+    .map(o => o.userId)).size;
+  const operating = STATE.pools.filter(p => ['funded', 'operating'].includes(p.status)).length;
+  return { open, committed, investors, operating };
+}
+
+function landingView() {
+  const f = landingFacts();
   const lim = STATE.settings.limits;
   const classCard = (k, note) => {
     const c = lim[k];
@@ -7664,50 +7807,51 @@ function landingView() {
       + '<dt>خلال 12 شهرًا</dt><dd>' + (c.rolling12m == null ? 'بلا حدّ منشور' : fmt(c.rolling12m, 0) + ' ر.ع') + '</dd></dl>'
       + '<p class="xs muted">' + note + '</p></div>';
   };
+  const fact = (v, k) => '<div class="factstrip__i"><span class="factstrip__v">' + v + '</span>'
+    + '<span class="factstrip__k">' + esc(k) + '</span></div>';
 
   return '<div class="pub">'
+
+  /* ── the hero: what it is, and the state of it, in one screen ── */
   + '<section class="hero">'
   +   '<div class="eyebrow">Pilot MVP · سلطنة عُمان</div>'
-  +   '<h1 id="pagetitle" tabindex="-1">المشروع قبل القصة. الأموال منفصلة. القاعدة تُنفَّذ لا تُوثَّق.</h1>'
-  +   '<p class="hero__lede">كل فرصة على حِصّة توسّع تشغيلي محدد لمنشأة قائمة — فرع جديد أو أصل إنتاجي — باستخدام أموال مفصَّلة على بنود ومورّدين، وإفصاح موحَّد، وحساب ضمان منفصل لدى شريك مرخّص.</p>'
+  +   '<h1 id="pagetitle" tabindex="-1">المشروع قبل القصة.<br>الأموال منفصلة.<br>'
+  +     '<span class="hero__hl">القاعدة تُنفَّذ لا تُوثَّق.</span></h1>'
+  +   '<p class="hero__lede">كل فرصة هنا توسّع تشغيلي محدَّد لمنشأة قائمة — فرع جديد أو أصل '
+  +     'إنتاجي — بأموال مفصَّلة على بنود ومورّدين، وإفصاح موحَّد، وحساب ضمان منفصل لدى شريك '
+  +     'مرخّص. لا فكرة، ولا شركة تحت التأسيس، ولا وعد بعائد.</p>'
   +   '<div class="hero__cta">'
-  +     '<button class="btn btn--primary btn--lg" data-act="pub" data-pub="register">أنشئ حسابك</button>'
+/* Not an href="#try": the hash is the router now, and a fragment link
+     there reads as an address and navigates away — the same reason the
+     skip link is a button. */
+  +     '<button class="btn btn--primary btn--lg" data-act="scrollTo" data-to="try">جرّبها بحساب جاهز</button>'
+  +     '<button class="btn btn--lg" data-act="pub" data-pub="register">أنشئ حسابك</button>'
   +     '<button class="btn btn--lg" data-act="pub" data-pub="login">لديك حساب؟ ادخل</button>'
   +   '</div>'
+  +   '<div class="factstrip">'
+  +     fact(String(f.open.length), 'فرصة مفتوحة للتمويل')
+  +     fact(fmt(f.committed, 0), 'ريال عُماني ملتزم بها')
+  +     fact(String(f.investors), 'مستثمرًا لهم التزام قائم')
+  +     fact(String(f.operating), 'مشروعًا قيد التشغيل')
+  +   '</div>'
+  +   '<p class="xs muted factstrip__note">أرقام محسوبة من سجل هذه النسخة لحظة فتحها، '
+  +     'لا مكتوبة في الصفحة.</p>'
   + '</section>'
 
-  + '<section class="section"><div class="section__head"><div class="eyebrow">كيف تعمل</div>'
-  +   '<h2>من التسجيل إلى التوزيع</h2>'
-  +   '<p>لا تنتقل خطوة قبل أن تُستوفى التي قبلها، ولا يُصرف ريال واحد بقرار شخص واحد.</p></div>'
-  +   '<div class="steps">'
-  +     '<div class="step"><h3>سجّل وتحقّق</h3><p>حساب، ثم تحقق من الهوية، ثم اختبار ملاءمة يحدّد ما يناسبك. صنفك يحدّد حدودك وما تراه من فرص.</p></div>'
-  +     '<div class="step"><h3>اقرأ الإفصاح</h3><p>استخدام الأموال ببنوده ومورّديه، وثلاثة سيناريوهات أوّلها المتحفظ، والمخاطر صريحة.</p></div>'
-  +     '<div class="step"><h3>التزم</h3><p>خمسة إقرارات صريحة، ثم تحويل عبر الشريك المرخّص إلى حساب ضمان. لك مهلة عدول ' + STATE.settings.coolingOffHours + ' ساعة.</p></div>'
-  +     '<div class="step"><h3>تابِع</h3><p>صرف على مراحل بدليل وبموافقة طرفين، وتقارير دورية بمؤشرات فعلية مقابل المتوقع، ثم توزيعات.</p></div>'
-  +   '</div></section>'
+  /* ── the way in, before the argument ── */
+  + '<section class="section" id="try"><div class="section__head"><div class="eyebrow">جرّبها الآن</div>'
+  +   '<h2>ادخل بصفة جاهزة</h2>'
+  +   '<p>ثلاث عشرة شاشة تختلف باختلاف من ينظر إليها: الصلاحية على الحساب هي التي تقرّر لا '
+  +   'المسمّى الوظيفي. كل الحسابات بكلمة المرور <span class="mono">Hissa#2026</span>، '
+  +   'وكل ما تفعله يبقى في متصفّحك أنت.</p></div>'
+  +   '<div class="grid grid--2">' + demoAccounts() + '</div></section>'
 
-  + '<section class="section"><div class="section__head"><div class="eyebrow">لماذا مختلفة</div>'
-  +   '<h2>أربع قواعد مبنية في النظام لا مكتوبة في سياسة</h2></div>'
-  +   '<div class="grid grid--2">'
-  +     '<div class="pillar"><h3>الأموال لا تمرّ بنا</h3><p>التحصيل والحفظ لدى الشريك المرخّص في حساب ضمان منفصل. لا تُجمع بيانات بطاقات، ولا تُخلط أموال المستثمرين بحساب المنصة التشغيلي.</p></div>'
-  +     '<div class="pillar"><h3>لا يعتمد الصرفَ من طلبه</h3><p>كل صرف يحتاج طالبًا ومعتمِدًا مختلفَين، ودليلًا على استيفاء شرط المرحلة. القاعدة على المعاملة لا على المسمّى الوظيفي.</p></div>'
-  +     '<div class="pillar"><h3>التخصيص حسابي لا تقديري</h3><p>عند تجاوز السقف يُخصَّص الجميع تناسبيًا بطريقة «أكبر باقٍ» — نتيجة حتمية قابلة لإعادة الإنتاج، ومجموعها يطابق السقف بالبايسة.</p></div>'
-  +     '<div class="pillar"><h3>السجل لا يُعدَّل</h3><p>كل إجراء يُلحق بسجل تدقيق متسلسل التجزئة. لا تعديل ولا حذف، وأي تغيير لاحق يكسر السلسلة فيظهر.</p></div>'
-  +   '</div></section>'
-
-  + '<section class="section"><div class="section__head"><div class="eyebrow">الأصناف والحدود</div>'
-  +   '<h2>صنفك يحدّد حدّك — وما تراه</h2>'
-  +   '<p>تُحدَّد الأصناف عند التسجيل وتُراجَع عند التحقق. الحدود إعدادات مؤرَّخة النفاذ، وبعض الفرص مقصورة على الأصناف المؤهَّلة.</p></div>'
-  +   '<div class="grid grid--3">'
-  +     classCard('retail', 'الصنف الافتراضي. لا يرى الفرص المقصورة على المؤهَّلين.')
-  +     classCard('angel', 'يتطلب إقرارًا بالخبرة أو بالملاءمة المالية عند التسجيل.')
-  +     classCard('sophisticated', 'يتطلب مستندًا يثبت الأهلية، ويخضع لما يعتمده الشريك المرخّص.')
-  +   '</div></section>'
-
-  + (open.length ? '<section class="section"><div class="section__head"><div class="eyebrow">مفتوحة الآن</div>'
-  +   '<h2>' + open.length + ' فرصة مفتوحة للتمويل</h2>'
-  +   '<p>التفاصيل الكاملة والإفصاح تُقرأ بعد إنشاء الحساب.</p></div>'
-  +   '<div class="grid grid--2">' + open.map(p => {
+  /* ── the opportunities themselves ── */
+  + (f.open.length ? '<section class="section"><div class="section__head"><div class="eyebrow">مفتوحة الآن</div>'
+  +   '<h2>' + f.open.length + ' فرصة مفتوحة للتمويل</h2>'
+  +   '<p>الإفصاح الكامل — استخدام الأموال ببنوده ومورّديه، والسيناريوهات، والمخاطر — '
+  +   'يُقرأ بعد إنشاء الحساب.</p></div>'
+  +   '<div class="grid grid--2">' + f.open.map(p => {
         const got = raised(p.id), pct = Math.min(100, (got / p.target) * 100);
         return '<div class="card"><div class="card__body">'
           + '<div class="row row--tight"><span class="chip chip--brand"><span class="chip__dot"></span>مفتوحة للتمويل</span>'
@@ -7719,13 +7863,66 @@ function landingView() {
           + '<div class="sm muted">' + esc(p.issuer) + ' · ' + esc(p.governorate) + '</div>'
           + '<span class="meter"><span class="meter__fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
           + '<div class="row sm"><span class="num">' + fmt(got, 0) + ' / ' + fmt(p.target, 0) + ' ر.ع</span>'
-          + '<span class="muted spacer">' + Math.round(pct) + '%</span></div></div></div>';
+          + '<span class="muted spacer">' + Math.round(pct) + '% من الهدف</span></div></div></div>';
       }).join('') + '</div></section>' : '')
 
-  + '<section class="section"><div class="section__head"><div class="eyebrow">حسابات تجريبية</div>'
-  +   '<h2>ادخل بصفة جاهزة</h2>'
-  +   '<p>كل الحسابات بكلمة المرور <span class="mono">Hissa#2026</span>. كل صفة ترى قائمة مختلفة، لأن الصلاحية على الحساب هي التي تقرّر لا المسمّى.</p></div>'
-  +   '<div class="grid grid--2">' + demoAccounts() + '</div></section>'
+  /* ── how it works ── */
+  + '<section class="section"><div class="section__head"><div class="eyebrow">كيف تعمل</div>'
+  +   '<h2>من التسجيل إلى التوزيع</h2>'
+  +   '<p>لا تنتقل خطوة قبل أن تُستوفى التي قبلها، ولا يُصرف ريال واحد بقرار شخص واحد.</p></div>'
+  +   '<div class="steps">'
+  +     '<div class="step"><h3>سجّل وتحقّق</h3><p>حساب، ثم تحقق من الهوية، ثم اختبار ملاءمة يحدّد ما يناسبك. صنفك يحدّد حدودك وما تراه من فرص.</p></div>'
+  +     '<div class="step"><h3>اقرأ الإفصاح</h3><p>استخدام الأموال ببنوده ومورّديه، وثلاثة سيناريوهات أوّلها المتحفظ، والمخاطر صريحة.</p></div>'
+  +     '<div class="step"><h3>التزم</h3><p>خمسة إقرارات صريحة، ثم تحويل عبر الشريك المرخّص إلى حساب ضمان. لك مهلة عدول ' + STATE.settings.coolingOffHours + ' ساعة.</p></div>'
+  +     '<div class="step"><h3>تابِع</h3><p>صرف على مراحل بدليل وبموافقة طرفين، وتقارير دورية بمؤشرات فعلية مقابل المتوقع، ثم توزيعات.</p></div>'
+  +   '</div></section>'
+
+  /* ── the four rules, each with what enforces it ── */
+  + '<section class="section"><div class="section__head"><div class="eyebrow">لماذا مختلفة</div>'
+  +   '<h2>أربع قواعد مبنية في المحرّك لا مكتوبة في سياسة</h2>'
+  +   '<p>لكل قاعدة أدناه موضعٌ في الكود يرفض مخالفتها، لا فقرة في وثيقة تَعِد بها.</p></div>'
+  +   '<div class="grid grid--2">'
+  +     '<div class="pillar"><h3>الأموال لا تمرّ بنا</h3>'
+  +       '<p>التحصيل والحفظ لدى الشريك المرخّص في حساب ضمان منفصل. لا تُجمع بيانات بطاقات، '
+  +       'ولا تُخلط أموال المستثمرين بحساب المنصة التشغيلي.</p>'
+  +       '<p class="pillar__proof">وتُقابَل أرصدتنا بكشف الشريك في شاشة مطابقة لا تُغلق '
+  +       'قبل تفسير كل فرق وتوقيع طرفين.</p></div>'
+  +     '<div class="pillar"><h3>لا يعتمد الصرفَ من طلبه</h3>'
+  +       '<p>كل صرف يحتاج طالبًا ومعتمِدًا مختلفَين، ودليلًا على استيفاء شرط المرحلة.</p>'
+  +       '<p class="pillar__proof">القاعدة على المعاملة لا على المسمّى: من يملك الصلاحيتين '
+  +       'معًا يظلّ ممنوعًا من اعتماد ما طلبه بنفسه، والرفض يُسجَّل بسببه كما يُسجَّل الاعتماد.</p></div>'
+  +     '<div class="pillar"><h3>التخصيص حسابي لا تقديري</h3>'
+  +       '<p>عند تجاوز السقف يُخصَّص الجميع تناسبيًا بطريقة «أكبر باقٍ».</p>'
+  +       '<p class="pillar__proof">نتيجة حتمية قابلة لإعادة الإنتاج، ومجموعها يطابق السقف '
+  +       'بالبايسة — تُعرض عليك قبل الإغلاق لا بعده.</p></div>'
+  +     '<div class="pillar"><h3>السجل لا يُعدَّل</h3>'
+  +       '<p>كل إجراء يُلحق بسجل تدقيق متسلسل التجزئة. لا تعديل ولا حذف.</p>'
+  +       '<p class="pillar__proof">وتُعاد التجزئة من محتوى كل سطر عند كل فتح للوحة الإدارة، '
+  +       'فأي تغيير لاحق يكسر السلسلة ويظهر بموضعه.</p></div>'
+  +   '</div></section>'
+
+  /* ── the limits, stated as numbers ── */
+  + '<section class="section"><div class="section__head"><div class="eyebrow">الأصناف والحدود</div>'
+  +   '<h2>صنفك يحدّد حدّك — وما تراه</h2>'
+  +   '<p>تُحدَّد الأصناف عند التسجيل وتُراجَع عند التحقق. الحدود إعدادات مؤرَّخة النفاذ '
+  +   'تتغيّر بمسار موافقة لا بنشر كود، وبعض الفرص مقصورة على الأصناف المؤهَّلة.</p></div>'
+  +   '<div class="grid grid--3">'
+  +     classCard('retail', 'الصنف الافتراضي. لا يرى الفرص المقصورة على المؤهَّلين.')
+  +     classCard('angel', 'يتطلب إقرارًا بالخبرة أو بالملاءمة المالية عند التسجيل.')
+  +     classCard('sophisticated', 'يتطلب مستندًا يثبت الأهلية، ويخضع لما يعتمده الشريك المرخّص.')
+  +   '</div></section>'
+
+  /* ── what this copy is, before anyone mistakes it for the thing itself ── */
+  + '<section class="section"><div class="section__head"><div class="eyebrow">ما هذه النسخة</div>'
+  +   '<h2>نسخة تجريبية كاملة تعمل داخل متصفّحك</h2></div>'
+  +   '<div class="grid grid--2">'
+  +   '<div class="note note--info"><strong>لا خادم خلفها.</strong> المستند نفسه هو قاعدة '
+  +   'البيانات: الحالة مكتوبة داخل الصفحة، وكل إجراء يعيد كتابتها. لذلك تعمل دون اتصال، '
+  +   'ويمكن تثبيتها على شاشة هاتفك من قائمة المتصفّح.</div>'
+  +   '<div class="note note--warn"><strong>ولا مال حقيقي.</strong> لا شريك مرخّص، ولا حساب '
+  +   'ضمان، ولا مزوّد تحقق هوية. الحسابات وكلماتها معروضة هنا عمدًا لأنها لا تحرس شيئًا — '
+  +   'فلا تستخدم فيها كلمة مرور تستعملها في مكان آخر.</div>'
+  +   '</div></section>'
   + '</div>';
 }
 
@@ -8281,21 +8478,9 @@ function appShell(u) {
   +   '<button class="iconbtn" data-act="logout">خروج</button>'
   + '</header>'
   + '<div class="layout">'
-  +   '<nav class="side">'
-  +     '<div class="side__group">' + esc(ROLE_AR[u.role]) + '</div>'
-  +     nav.map(n => {
-          const b = navBadge(n.k);
-          /* A real link, not a button pretending to be one: the middle click,
-             Ctrl+click, "copy link address" and the back button all come free,
-             and a screen reader announces it as what it is. */
-          /* `data-view` names the destination for anything that needs to find
-             this link; `data-act` is deliberately absent, so the click handler
-             leaves it alone and the browser follows the href itself. */
-          return '<a class="navlink" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
-            + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
-            + '<span class="navlink__n" aria-hidden="true">' + n.n + '</span><span>' + n.label + '</span>'
-            + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</a>';
-        }).join('')
+  +   '<nav class="side" aria-label="أقسام التطبيق">'
+  +     navGroups(nav).map(g => '<div class="side__group">' + esc(g.g) + '</div>'
+          + g.items.map(navLinkHtml).join('')).join('')
   +     '<div class="side__group">الحالة</div>'
   +     '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '') + '" style="padding:.4rem .6rem">'
   +       '<span class="savebar__dot" aria-hidden="true"></span><span>' + modeLabel + '</span></div>'
@@ -8364,12 +8549,7 @@ function tabbar(u, nav) {
    status lines, which on a phone had nowhere else to live. */
 function navSheet(u, nav, modeLabel) {
   if (!NAVSHEET) return '';
-  const groups = [];
-  nav.forEach(n => {
-    const g = n.group || 'أخرى';
-    const at = groups.find(x => x.g === g);
-    if (at) at.items.push(n); else groups.push({ g, items: [n] });
-  });
+  const groups = navGroups(nav);
   return '<div class="sheetback" data-act="moreNav"></div>'
     + '<div class="sheet" id="navsheet" role="dialog" aria-label="كل الشاشات">'
     + '<div class="sheet__grip" aria-hidden="true"></div>'
@@ -8378,13 +8558,7 @@ function navSheet(u, nav, modeLabel) {
     + '<button class="btn btn--sm" data-act="moreNav">إغلاق</button></div>'
     + '<div class="sheet__body">'
     + groups.map(g => '<div class="side__group">' + esc(g.g) + '</div>'
-        + g.items.map(n => {
-            const b = navBadge(n.k);
-            return '<a class="navlink" href="' + esc(hrefFor(n.k)) + '" data-view="' + n.k + '"'
-              + (n.k === SESSION.view ? ' aria-current="page"' : '') + '>'
-              + '<span class="navlink__n" aria-hidden="true">' + n.n + '</span><span>' + n.label + '</span>'
-              + (b ? '<span class="navlink__badge">' + b + '</span>' : '') + '</a>';
-          }).join('')).join('')
+        + g.items.map(navLinkHtml).join('')).join('')
     + '<div class="side__group">الحالة</div>'
     + '<div class="savebar savebar--' + (MODE === 'live' ? 'live' : MODE === 'local' ? 'ro' : '')
     + '" style="padding:.4rem .6rem"><span class="savebar__dot" aria-hidden="true"></span><span>'
@@ -8987,6 +9161,15 @@ const ACTS = {
     if (to) to.focus({ preventScroll: true });
   },
   moreAudit: () => { AUDIT_CAP += 200; render(); },
+  /* Same reason the skip link is a button: a fragment href would be read as a
+     route and navigate away from the page it was meant to scroll. */
+  scrollTo: d => {
+    const el = document.getElementById(d.to);
+    if (!el) return;
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const h = el.querySelector('h2, h3');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  },
   skipMain: () => {
     const h = document.getElementById('pagetitle');
     if (h) { h.focus(); h.scrollIntoView({ block: 'start' }); }

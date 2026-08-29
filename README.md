@@ -13,6 +13,36 @@ This repository is a complete Pilot MVP implementation of the product document a
 
 ---
 
+## النسخة الحيّة · Live demo
+
+**<https://alqaisi95.github.io/Hissa/>**
+
+صفحة واحدة تحمل النظام كاملًا وتعمل داخل المتصفّح بلا خادم: المستند نفسه هو قاعدة
+البيانات، وكل إجراء يعيد كتابته. تعمل دون اتصال وتُثبَّت على شاشة الهاتف. ادخل بأي حساب
+من «ادخل بصفة جاهزة» في الصفحة الرئيسية — كلمة المرور `Hissa#2026` — فكل صفة ترى تطبيقًا
+مختلفًا لأن الصلاحية على الحساب هي التي تقرّر.
+
+A single self-contained page carrying the whole system, running in the browser with no
+server: the document *is* the database, and every action rewrites it. It works offline and
+installs to a phone's home screen. Sign in from the ready-made accounts on the landing
+page — password `Hissa#2026`.
+
+> لا شريك مرخّص خلفها ولا حساب ضمان ولا مزوّد تحقق هوية، ولا تتحرك فيها أموال حقيقية.
+> الحسابات وكلماتها معروضة عمدًا لأنها لا تحرس شيئًا.
+
+```bash
+npm run demo:serve    # يخدمها محليًّا
+npm run demo:test     # 16 مُشغِّل اختبار على متصفّح حقيقي
+npm run demo:audit    # قياس الواجهة على 390 · 768 · 1440
+npm run demo:site     # يبني نسخة site/ العامة المنشورة أعلاه
+```
+
+المصدر كلّه في [`demo/hissa-live.html`](demo/hissa-live.html). وما تحته في هذا الملف
+يصف تنفيذ المكدّس الكامل تحت `apps/` — واجهة برمجية ومتصفّح منفصلان — وهو مسار آخر
+للمنتج نفسه لا ما يعمل على الرابط أعلاه.
+
+---
+
 ## Quick start
 
 ```bash
