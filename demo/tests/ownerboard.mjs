@@ -73,6 +73,17 @@ const late = clone(seed);
 }
 write('late.html', late);
 
+/* ٥ · تقرير بانتظار المراجعة ومعه مؤشراته. مؤشرات التقرير لا تُرسم إلا في
+      بطاقة الانتظار، فالبذرة — وتقريرها الوحيد ذو المؤشرات منشور — لا تعرض
+      انحرافًا واحدًا. */
+const inreview = clone(seed);
+{
+  const r = inreview.reports.find(x => x.id === 'RPT-2026-0001');
+  r.status = 'submitted';
+  r.publishedAt = null;
+}
+write('inreview.html', inreview);
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
   /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
   .catch(() => chromium.launch());
@@ -343,6 +354,52 @@ head('١٣ · ops.dist لا يكتب «—» على مال تحرّك');
      w.join(' + '));
   await ctx.close();
 }
+
+/* ── ١٤ · الشاشتان تقولان الشيء نفسه عن التأخّر ───────────────────────── */
+head('١٤ · المراجع وصاحب المشروع على ساعة واحدة');
+{
+  /* في late.html تجاوز RPT-2026-0002 موعده وحالته المخزَّنة «late». الشاشتان
+     كانتا تقرآن من مصدرين: صاحب المشروع من الساعة، والمراجع من الحالة —
+     فيكفي أن تمرّ الفترة بلا كتابة في الحالة ليتناقضا. */
+  const own = await open('late.html', 'owner.logistics@example.om', '#/own/reports');
+  const ownTxt = await own.p.$eval('#root', e => e.textContent);
+  const ownDays = (ownTxt.match(/متأخر (\d+) يومًا/) || [])[1];
+  ok('صاحب المشروع يرى التأخّر ومعه عدد أيامه', !!ownDays, String(ownDays));
+  await own.ctx.close();
+
+  const rev = await open('late.html', 'huda@hissa.om', '#/ops/reports');
+  const revTxt = await rev.p.$eval('#root', e => e.textContent);
+  ok('والمراجع يرى تقريرًا متأخرًا لم يُقدَّم', /متأخرًا عن موعده ولم يُقدَّم/.test(revTxt));
+  ok('ويسمّي الفرصة والفترة', /POOL-2026-0002/.test(revTxt) && /الربع الثالث 2026/.test(revTxt));
+  const revDays = (revTxt.match(/— (\d+) يومًا/) || [])[1];
+  ok('وعدد الأيام هو نفسه على الشاشتين: ' + ownDays + ' / ' + revDays,
+     !!revDays && revDays === ownDays);
+  await rev.ctx.close();
+}
+
+/* ── ١٥ · الانحراف يخرج من الطبقة لا من حلقة الرسم ───────────────────── */
+head('١٥ · ops.reports تُنسّق ولا تحسب');
+{
+  const { ctx, p } = await open('inreview.html', 'huda@hissa.om', '#/ops/reports');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('انحراف كل مؤشر معروض مقابل ما توقّعه الإفصاح',
+     /-4\.0%/.test(txt) && /-4\.1%/.test(txt) && /\+38\.9%/.test(txt),
+     (txt.match(/[+-]\d+\.\d%/g) || []).join('،'));
+  ok('ولا إنذار تأخّر: التقرير قُدِّم قبل موعده',
+     !/متأخرًا عن موعده ولم يُقدَّم/.test(txt));
+  ok('ولا يُوصف بأنه قُدِّم متأخرًا', !/قُدِّم بعد موعد الاستحقاق/.test(txt));
+  await ctx.close();
+
+  const src = fs.readFileSync('hissa-demo.html', 'utf8');
+  const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const view = strip(src.slice(src.indexOf("VIEWS['ops.reports']"),
+                               src.indexOf("VIEWS['ops.cases']")));
+  ok('لا قراءة تقارير أو فرص من STATE', !/STATE\.(reports|pools)/.test(view),
+     (view.match(/STATE\.\w+/g) || []).join('،'));
+  ok('ولا حساب انحراف في الشاشة', !/k\.forecast\s*\)\s*\*\s*1000|\/\s*k\.forecast/.test(view));
+  ok('ولا قراءة الحالة المخزَّنة للحكم بالتأخّر', !/status === 'late'/.test(view));
+}
+
 
 ok('بلا أخطاء تشغيل', errs.length === 0, errs.join(' · '));
 console.log('\n' + (bad ? '✗ ' + bad + ' فاشلًا' : '✓ سطح المالك أخضر'));

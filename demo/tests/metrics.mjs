@@ -73,6 +73,7 @@ const LAYER = new Function(`
       selConversionFunnel, selPoolHealth, selAuditIntegrity, selActivityByType,
       selUseOfFunds, selMilestonePlan, selReportSchedule,
       selPayablePools, selDistributionPreview, selDistributionLedger,
+      selReportReviewQueue,
     },
   };
 `)();
@@ -542,6 +543,95 @@ head('إضافي · التوزيعات — المعاينة والسجل');
      LAYER.sel.selDistributionLedger(base, S('u_aud1'), P()) !== undefined);
   ok('ولا يقرؤه صاحب المشروع',
      LAYER.sel.selDistributionLedger(base, S('u_own2'), P()) === undefined);
+}
+
+head('إضافي · طابور المراجعة، والاتفاق مع شاشة صاحب المشروع');
+{
+  const rev = S('u_pf1');           // report.publish
+  const q = LAYER.sel.selReportReviewQueue(base, rev, P());
+  ok('تقرير واحد منشور وواحد مجدول',
+     q.published.length === 1 && q.scheduled.length === 1,
+     `${q.published.length}/${q.scheduled.length}`);
+  ok('ولا شيء بانتظار المراجعة', q.waiting.length === 0);
+  ok('ولا متأخر اليوم', q.overdue.length === 0);
+  ok('وفرصة مشغَّلة واحدة تُجدوَل عليها فترة',
+     q.operatingPools.length === 1 && q.operatingPools[0].id === 'p_log');
+  ok('ولا يقرؤه صاحب المشروع',
+     LAYER.sel.selReportReviewQueue(base, S('u_own2'), P()) === undefined);
+  ok('ولا الالتزام بلا صلاحية النشر',
+     LAYER.sel.selReportReviewQueue(base, S('u_cmp1'), P()) === undefined);
+
+  /* الانحراف يخرج من الطبقة بالنقاط الأساسية، لا نسبة عشرية تصنعها الشاشة. */
+  const k = q.published[0].kpis;
+  ok('كل مؤشر يحمل انحرافه محسوبًا', k.length === 3);
+  ok('وكلها أعداد صحيحة بالنقاط الأساسية',
+     k.every(x => Number.isInteger(x.deviationBps)), JSON.stringify(k.map(x => x.deviationBps)));
+  ok('والانحراف السالب يبقى سالبًا', k[0].deviationBps === -400, String(k[0].deviationBps));
+  ok('والموجب موجبًا', k[2].deviationBps === 3889, String(k[2].deviationBps));
+
+  /* هذا هو العقد الذي يمنع الشاشتين من التناقض: تقرير تجاوز موعده ولم يُقدَّم
+     يُقرأ متأخرًا من الجهتين، بنفس الساعة ونفس المعرِّفات. */
+  const late = clone(SEED);
+  late.reports.find(r => r.id === 'RPT-2026-0002').dueAt = '2026-08-01';
+  late.version = 981;
+  LAYER.setState(late);
+  const bl = LAYER.BASE(late);
+  const q2 = LAYER.sel.selReportReviewQueue(bl, rev, P());
+  const own = LAYER.sel.selReportSchedule(bl, S('u_own2'), P({ poolId: 'p_log' }));
+  const revIds = q2.overdue.map(r => r.id).sort().join(',');
+  const ownIds = own.rows.filter(r => r.overdue).map(r => r.id).sort().join(',');
+  ok('المراجع يرى تقريرًا متأخرًا', revIds === 'RPT-2026-0002', revIds);
+  ok('وصاحب المشروع يرى المتأخر نفسه', ownIds === revIds, `${ownIds} مقابل ${revIds}`);
+  ok('وعدد الأيام واحد على الشاشتين',
+     q2.overdue[0].daysLate === own.rows.find(r => r.id === 'RPT-2026-0002').daysLate,
+     String(q2.overdue[0].daysLate));
+
+  /* قُدِّم بعد موعده: لم يعد «متأخرًا يُطالَب به»، لكنه «قُدِّم متأخرًا» —
+     حقيقتان مختلفتان كانت الحالة المخزَّنة تخلطهما في واحدة. */
+  const sub = clone(late);
+  const rr = sub.reports.find(r => r.id === 'RPT-2026-0002');
+  rr.submittedAt = '2026-08-20T09:00:00Z'; rr.status = 'submitted';
+  sub.version = 982;
+  LAYER.setState(sub);
+  const q3 = LAYER.sel.selReportReviewQueue(LAYER.BASE(sub), rev, P());
+  ok('بعد التقديم لا يبقى في قائمة المتأخر', q3.overdue.length === 0);
+  ok('بل ينتقل إلى بانتظار المراجعة', q3.waiting.length === 1);
+  ok('ويحمل أنه قُدِّم بعد موعده', q3.waiting[0].submittedLate === true);
+  LAYER.setState(SEED); LAYER.BASE(SEED);
+}
+
+head('إضافي · حصص التوزيعة تصل كل قارئ لها');
+{
+  /* ثلاثة مواضع كانت تقرأ d.shares مباشرةً: المحفظة (أُصلحت)، وسجل
+     التوزيعات (أُصلح)، ثم ملف بيانات الشخص وشريط إشعاراته. */
+  const got = LAYER.sel.selDistributionsReceived(base, S('u_inv4'), P());
+  ok('المستثمر المخصَّص له يرى توزيعةً واحدة وصلته', got.count === 1, String(got.count));
+  ok('ومبلغها موجب', got.total > 0, String(got.total));
+  ok('والسطر يحمل معرِّف التوزيعة وفترتها',
+     got.timeline[0].distributionId === 'DST-2026-0001'
+     && got.timeline[0].period === 'الربع الثاني 2026',
+     JSON.stringify(got.timeline[0]));
+  ok('ومن لم يُخصَّص له لا يرى شيئًا',
+     LAYER.sel.selDistributionsReceived(base, S('u_inv1'), P()).count === 0);
+
+  /* الحارس الذي يمنع تكرار العطب رابعةً: مصفوفة الحصص المخزَّنة يقرؤها موضع
+     واحد — القاعدة نفسها — وموضع ثانٍ يُخبر عن وجودها لا عن قيمتها. أي قارئ
+     ثالث يعني شاشةً تعرض «—» أو صفرًا أمام مال تحرّك، وهو ما حدث ثلاث مرات:
+     في المحفظة، وفي سجل التوزيعات، وفي ملف بيانات الشخص وشريط إشعاراته. */
+  const readers = SRC.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').map(l => l.trim()).filter(l => /\.shares\b/.test(l));
+  ok('لا يقرأ المصفوفة المخزَّنة إلا موضعان', readers.length === 2, readers.join(' | '));
+  ok('أوّلهما قاعدة القسمة نفسها',
+     /return d\.shares;$/.test(readers[0] || ''), readers[0]);
+  ok('والثاني يُخبر عن وجودها لا عن قيمتها',
+     /^stored:/.test(readers[1] || ''), readers[1]);
+
+  /* ومجموع ما رآه الثلاثة يساوي الإجمالي بالضبط — لا ريال يضيع بين الشاشات. */
+  const each = ['u_inv2', 'u_inv3', 'u_inv4']
+    .map(id => LAYER.sel.selDistributionsReceived(base, S(id), P()).total);
+  ok('ومجموع ما وصل الثلاثة يساوي إجمالي التوزيعة',
+     each.reduce((a, b) => a + b, 0) === SEED.distributions[0].gross,
+     `${each.join(' + ')} = ${SEED.distributions[0].gross}`);
 }
 
 /* ══ الخلاصة ═════════════════════════════════════════════════════════════ */

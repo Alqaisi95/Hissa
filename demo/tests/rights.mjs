@@ -65,6 +65,42 @@ console.log('══ 1 · حق الوصول: نسخة كاملة ══');
   await ctx.close();
 }
 
+/* حسابٌ وصله مال فعلًا. عبدالله أعلاه لم يُخصَّص له في أي فرصة وزّعت، فملفه
+   يمرّ بمصفوفة حصص فارغة مهما كان العطب — وهذا ما جعل الفحص السابق يمرّ بينما
+   الملف يُسقط دفعةً وصلت أصحابها. أمل مخصَّص لها في POOL-2026-0002، فالتوزيعة
+   المزروعة تخصّها. */
+console.log('\n══ 1ب · حق الوصول: ما وصلك من مال داخل ملفك ══');
+{
+  const { ctx, p } = await open();
+  await login(p, 'amal@example.om', 'Hissa#2026');
+
+  await goto(p, 'inv.portfolio');
+  const onScreen = await p.$eval('#root', e => e.textContent);
+  const shown = (onScreen.match(/([\d,]+\.\d{3})/g) || []);
+
+  await goto(p, 'acct.me');
+  await p.click('[data-act="downloadMyData"]'); await p.waitForTimeout(700);
+  const f = saved.slice(-1)[0];
+  const d = f ? JSON.parse(f.data) : null;
+
+  ok('الملف يحمل حصص التوزيعات', !!d && Array.isArray(d.distributionShares));
+  ok('وفيه ما وصلها فعلًا لا مصفوفة فارغة',
+    !!d && d.distributionShares.length === 1,
+    d ? JSON.stringify(d.distributionShares) : '(لا ملف)');
+  if (d && d.distributionShares.length) {
+    const s0 = d.distributionShares[0];
+    ok('والسطر يسمّي التوزيعة وفترتها ومبلغها',
+      s0.distribution === 'DST-2026-0001' && !!s0.period && s0.amount > 0,
+      JSON.stringify(s0));
+    /* العقد الحقيقي: ما يقوله الملف هو ما تقوله الشاشة، بالبايسة. */
+    const rials = (s0.amount / 1000).toLocaleString('en-US',
+      { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    ok('والمبلغ نفسه معروض على شاشة المحفظة: ' + rials,
+      shown.includes(rials), shown.join('، ') || '(لا مبالغ)');
+  }
+  await ctx.close();
+}
+
 console.log('\n══ 2 · حق التصحيح ══');
 {
   const { ctx, p } = await open();

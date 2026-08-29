@@ -2220,8 +2220,14 @@ function personalData(userId) {
   });
 
   const orders = STATE.orders.filter(o => o.userId === userId);
+  /* Derived on read, never taken from d.shares. A distribution written before
+     shares[] existed carries none, and reading the stored array dropped a
+     payment that had actually reached this person — from the one file that
+     claims to be everything the document holds about them. The screen showed
+     it and the export denied it. distributionShares is the same rule the
+     payout itself follows, so there is one answer rather than two. */
   const shares = [];
-  STATE.distributions.forEach(d => (d.shares || [])
+  STATE.distributions.forEach(d => distributionShares(STATE, d)
     .filter(s => s.userId === userId)
     .forEach(s => shares.push({ distribution: d.id, period: d.period,
       paidAt: d.paidAt, amount: s.amount, orderId: s.orderId })));
@@ -3528,6 +3534,7 @@ VIEWS['inv.portfolio'] = () => {
 /* ── 05 investor · inbox, derived from what actually happened ─────────── */
 VIEWS['inv.inbox'] = () => {
   const u = me();
+  const base = BASE(STATE);
   const items = [];
   STATE.orders.filter(o => o.userId === u.id).forEach(o => {
     const p = pool(o.poolId);
@@ -3538,10 +3545,15 @@ VIEWS['inv.inbox'] = () => {
     if (o.status === 'allocated') items.push({ at: p.fundedAt || o.createdAt, topic: 'تخصيص', tone: 'chip--pos',
       text: 'خُصص لك ' + rial(o.allocated || o.amount) + ' في «' + p.title + '» بعد إغلاق التمويل.' });
   });
-  STATE.distributions.forEach(d => (d.shares || []).filter(s => s.userId === u.id).forEach(s => {
-    items.push({ at: d.paidAt, topic: 'توزيع', tone: 'chip--pos',
-      text: 'وصلك توزيع ' + rial(s.amount, 3) + ' عن ' + d.period + ' (' + d.id + ').' });
-  }));
+  /* Through the selector, so the feed cannot disagree with the portfolio.
+     Reading d.shares directly meant a distribution written before that array
+     existed produced no notice at all: the money arrived, the position showed
+     it, and the person was never told. */
+  const paid = selDistributionsReceived(base, SESSION) || { timeline: [] };
+  paid.timeline.forEach(r => {
+    items.push({ at: r.at, topic: 'توزيع', tone: 'chip--pos',
+      text: 'وصلك توزيع ' + rial(r.amount, 3) + ' عن ' + r.period + ' (' + r.distributionId + ').' });
+  });
   STATE.pools.forEach(p => (p.disclosureLog || []).forEach(l => {
     const holds = STATE.orders.some(o => o.userId === u.id && o.poolId === p.id
       && ['pending', 'confirmed', 'allocated'].includes(o.status));
@@ -5345,6 +5357,52 @@ function selReportSchedule(base, session, p) {
        enters by the clock, so both are open for submission. */
     open: rows.find(r => !r.submittedAt && ['scheduled', 'late'].includes(r.status)) || null,
     awaitingReview: rows.filter(r => r.submittedAt && r.status !== 'published'),
+  };
+}
+
+/* The reviewer's side of the same duty. own.reports reads lateness from the
+   clock; this screen read it from the stored `status`, so a period that
+   crossed its due date without anything writing to state was late on one
+   screen and on time on the other — about the same report, at the same
+   moment. One rule, read from both ends, is the whole reason the gate here
+   is "owns the pool, or holds report.publish".
+
+   The deviation of each indicator against what the disclosure forecast is
+   computed here in basis points rather than in the render loop, for the same
+   reason every other percentage moved: a figure the screen invents is a
+   figure no test can hold still. */
+function selReportReviewQueue(base, session, p) {
+  if (!can(actorOf(base, session), 'report.publish')) return undefined;
+  const row = r => {
+    const due = new Date(r.dueAt + 'T23:59:59Z').getTime();
+    const pl = base.poolsById.get(r.poolId) || {};
+    return {
+      id: r.id, poolId: r.poolId, poolRef: pl.ref || r.poolId, poolTitle: pl.title || '',
+      period: r.period, dueAt: r.dueAt, status: r.status,
+      submittedAt: r.submittedAt || null, publishedAt: r.publishedAt || null,
+      returnedAt: r.returnedAt || null, returnNote: r.returnNote || null,
+      narrative: r.narrative || '', variance: r.variance || '',
+      /* Two different facts, and the screen needs both: `overdue` is still
+         owed past its date, `submittedLate` is handed in after it. Collapsing
+         them into the stored `late` lost the second the moment it was filed. */
+      overdue: p.now > due && !r.submittedAt && r.status !== 'published',
+      daysLate: p.now > due && !r.submittedAt ? Math.floor((p.now - due) / DAY) : 0,
+      submittedLate: !!r.submittedAt && Date.parse(r.submittedAt) > due,
+      kpis: (r.kpis || []).map(k => ({
+        metric: k.metric, actual: k.actual, forecast: k.forecast == null ? null : k.forecast,
+        deviationBps: k.forecast ? bps(k.actual - k.forecast, k.forecast) : null,
+      })),
+    };
+  };
+  const all = base.state.reports.map(row);
+  return {
+    waiting: all.filter(r => r.submittedAt && r.status !== 'published'),
+    scheduled: all.filter(r => !r.submittedAt && r.status !== 'published'),
+    published: all.filter(r => r.status === 'published'),
+    overdue: all.filter(r => r.overdue),
+    operatingPools: base.state.pools
+      .filter(pl => ['funded', 'operating'].includes(pl.status))
+      .map(pl => ({ id: pl.id, ref: pl.ref, title: pl.title, status: pl.status })),
   };
 }
 
@@ -7343,37 +7401,45 @@ VIEWS['ops.apps'] = () => {
 VIEWS['ops.reports'] = () => {
   const u = me();
   const canAct = can(u, 'report.publish');
-  const waiting = STATE.reports.filter(r => ['submitted', 'late'].includes(r.status) && r.submittedAt);
-  const scheduled = STATE.reports.filter(r => !r.submittedAt && r.status !== 'published');
-  const published = STATE.reports.filter(r => r.status === 'published');
-  const operating = STATE.pools.filter(p => ['funded', 'operating'].includes(p.status));
+  const base = BASE(STATE);
+  const q = selReportReviewQueue(base, SESSION, metricsParams());
+  if (!q) return { crumb: 'فريق التشغيل', title: 'مراجعة التقارير',
+    body: '<div class="note note--warn">حسابك لا يقرأ هذه الشاشة.</div>' };
 
   const kpiTable = r => '<div class="tablewrap"><table><thead><tr><th>المؤشر</th>'
     + '<th class="n">الفعلي</th><th class="n">المتوقع</th><th class="n">الانحراف</th></tr></thead><tbody>'
-    + (r.kpis || []).map(k => {
-        const dev = k.forecast ? Math.round(((k.actual - k.forecast) / k.forecast) * 1000) / 10 : null;
-        return '<tr><td class="sm">' + esc(k.metric) + '</td><td class="n">' + k.actual + '</td>'
-          + '<td class="n">' + (k.forecast == null ? '—' : k.forecast) + '</td>'
-          + '<td class="n">' + (dev === null ? '—'
-              : '<span class="chip ' + (dev >= 0 ? 'chip--pos' : 'chip--warn') + '">'
-                + (dev > 0 ? '+' : '') + dev + '%</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+    + r.kpis.map(k => '<tr><td class="sm">' + esc(k.metric) + '</td>'
+        + '<td class="n">' + k.actual + '</td>'
+        + '<td class="n">' + (k.forecast == null ? '—' : k.forecast) + '</td>'
+        + '<td class="n">' + (k.deviationBps === null ? '—'
+            : '<span class="chip ' + (k.deviationBps >= 0 ? 'chip--pos' : 'chip--warn') + '">'
+              + (k.deviationBps > 0 ? '+' : '') + (k.deviationBps / 100).toFixed(1) + '%</span>')
+        + '</td></tr>').join('')
+    + '</tbody></table></div>';
 
   return {
     crumb: 'فريق التشغيل · ' + (JOB_AR[u.job] || ''), title: 'مراجعة التقارير',
     lede: 'لا يصل تقرير إلى مستثمر قبل أن يُراجَع هنا. تُقارن المؤشرات بما نشره الإفصاح، ويُنشر التقرير أو يُعاد لصاحب المشروع بسبب مكتوب.',
     body: (canAct ? '' : '<div class="note note--warn">حسابك يقرأ هذه الشاشة ولا ينشر فيها.</div>')
+      /* The overdue list is the reviewer's half of what own.reports already
+         tells the owner, read from the same clock — so neither screen can call
+         a report late while the other calls it on time. */
+      + (q.overdue.length
+          ? '<div class="note note--crit"><strong>' + q.overdue.length
+            + ' تقريرًا متأخرًا عن موعده ولم يُقدَّم بعد.</strong> '
+            + q.overdue.map(r => esc(r.poolRef) + ' · ' + esc(r.period)
+                + ' — ' + r.daysLate + ' يومًا').join(' · ')
+            + '. صاحب المشروع يرى نفس التأخّر على شاشته.</div>'
+          : '')
       + '<div class="card"><div class="card__head"><h2>بانتظار المراجعة</h2>'
-      + '<span class="spacer chip ' + (waiting.length ? 'chip--warn' : 'chip--pos') + '">' + waiting.length + '</span></div>'
+      + '<span class="spacer chip ' + (q.waiting.length ? 'chip--warn' : 'chip--pos') + '">' + q.waiting.length + '</span></div>'
       + '<div class="card__body">'
-      + (waiting.length ? waiting.map(r => {
-          const p = pool(r.poolId) || {};
-          const late = r.status === 'late';
-          return '<div class="panel card" id="rec-' + esc(r.id) + '" style="box-shadow:none"><div class="card__body">'
-            + '<div class="row"><h3>' + esc(r.period) + ' — ' + esc(p.title || '') + '</h3>'
+      + (q.waiting.length ? q.waiting.map(r =>
+          '<div class="panel card" id="rec-' + esc(r.id) + '" style="box-shadow:none"><div class="card__body">'
+            + '<div class="row"><h3>' + esc(r.period) + ' — ' + esc(r.poolTitle) + '</h3>'
             + chip(REPORT_STATUS, r.status)
             + '<span class="spacer xs muted">قُدِّم ' + dt(r.submittedAt, true) + '</span></div>'
-            + (late ? '<div class="note note--warn sm">قُدِّم بعد موعد الاستحقاق ' + dt(r.dueAt)
+            + (r.submittedLate ? '<div class="note note--warn sm">قُدِّم بعد موعد الاستحقاق ' + dt(r.dueAt)
                 + ' — يُسجَّل متأخرًا في مؤشر الالتزام بالمواعيد.</div>' : '')
             + kpiTable(r)
             + '<p class="sm">' + esc(r.narrative) + '</p>'
@@ -7386,32 +7452,33 @@ VIEWS['ops.reports'] = () => {
                   + '<button class="btn" data-act="returnReport" data-report="' + r.id + '">إعادة لصاحب المشروع</button>'
                   + '</div>'
                 : '')
-            + '</div></div>';
-        }).join('')
+            + '</div></div>').join('')
         : '<p class="empty">لا تقارير بانتظار المراجعة.</p>')
       + '</div></div>'
 
       + '<div class="card"><div class="card__head"><h2>الجدول والمنشور</h2></div>'
       + '<div class="card__body card__body--flush"><div class="tablewrap"><table>'
       + '<thead><tr><th>الفرصة</th><th>الفترة</th><th>الاستحقاق</th><th>الحالة</th><th>النشر</th></tr></thead><tbody>'
-      + (scheduled.concat(published).length
-          ? scheduled.concat(published).map(r => {
-              const overdue = !r.submittedAt && new Date(r.dueAt + 'T23:59:59Z') < new Date();
-              return '<tr><td class="sm">' + esc((pool(r.poolId) || {}).ref || '—') + '</td>'
+      + (q.scheduled.concat(q.published).length
+          ? q.scheduled.concat(q.published).map(r =>
+              '<tr id="rec-' + esc(r.id) + '"><td class="sm">' + esc(r.poolRef) + '</td>'
                 + '<td class="sm">' + esc(r.period) + '</td>'
-                + '<td class="sm">' + (overdue ? '<span class="chip chip--crit"><span class="chip__dot"></span>'
-                    + dt(r.dueAt) + '</span>' : dt(r.dueAt)) + '</td>'
-                + '<td>' + chip(REPORT_STATUS, r.status) + '</td>'
-                + '<td class="sm">' + dt(r.publishedAt) + '</td></tr>';
-            }).join('')
+                + '<td class="sm">' + (r.overdue
+                    ? '<span class="chip chip--crit"><span class="chip__dot"></span>' + dt(r.dueAt) + '</span>'
+                      + '<div class="xs muted">متأخر ' + r.daysLate + ' يومًا</div>'
+                    : dt(r.dueAt)) + '</td>'
+                + '<td>' + chip(REPORT_STATUS, r.status)
+                + (r.returnNote ? '<div class="xs muted">أُعيد للتعديل: ' + esc(r.returnNote) + '</div>' : '')
+                + '</td>'
+                + '<td class="sm">' + dt(r.publishedAt) + '</td></tr>').join('')
           : '<tr><td colspan="5" class="empty">لا جدول بعد.</td></tr>')
       + '</tbody></table></div></div></div>'
 
-      + (canAct && operating.length
+      + (canAct && q.operatingPools.length
         ? '<div class="card"><div class="card__head"><h2>جدولة فترة جديدة</h2></div><div class="card__body">'
           + '<div class="grid grid--3">'
           + '<div class="field"><label for="schpool">الفرصة</label><select id="schpool">'
-          + operating.map(p => '<option value="' + p.id + '">' + esc(p.ref) + ' — ' + esc(p.title) + '</option>').join('')
+          + q.operatingPools.map(p => '<option value="' + p.id + '">' + esc(p.ref) + ' — ' + esc(p.title) + '</option>').join('')
           + '</select></div>'
           + '<div class="field"><label for="schper">الفترة</label><input id="schper" placeholder="الربع الرابع 2026"></div>'
           + '<div class="field"><label for="schdue">الاستحقاق</label><input id="schdue" type="date" dir="ltr"></div>'
