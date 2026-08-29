@@ -4659,79 +4659,12 @@ function auditActivity(days) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. what needs intervention ─────────────────────────────────────────
-   Exceptions, not counters. A counter tells you "3"; this tells you which
-   three, how late each is, and which screen fixes it. Sorted by lateness so
-   the top row is always the most overdue thing in the platform. */
+   Exceptions, not counters: which records are late, by how long, and which
+   screen fixes each. That list now lives in METRICS as selOverdueWork, built
+   from the same queue selectors the dashboard shows beneath it and gated block
+   by block — it was here, reading STATE with its own clock, and could describe
+   a record differently from the queue directly below it. */
 const DAY = 86400000;
-function exceptions() {
-  const now = Date.now();
-  const out = [];
-  const age = iso => Math.floor((now - new Date(iso).getTime()) / DAY);
-
-  STATE.cases.filter(c => c.status !== 'resolved').forEach(c => {
-    const over = age(c.openedAt) - c.slaDays;
-    if (over > 0) out.push({ over, kind: c.kind, ref: c.id,
-      what: c.subject, where: pool(c.poolId) ? pool(c.poolId).ref : '—',
-      why: 'تجاوزت مهلة الـSLA بـ' + over + ' يومًا'
-        + (c.assignedTo ? ' · مع ' + ((user(c.assignedTo) || {}).name || '') : ' · بلا مسؤول'),
-      view: 'ops.cases', rec: c.id });
-  });
-
-  STATE.reports.forEach(r => {
-    const due = new Date(r.dueAt + 'T23:59:59Z').getTime();
-    if (['published'].includes(r.status)) return;
-    const over = Math.floor((now - due) / DAY);
-    if (over > 0) out.push({ over, kind: 'تقرير', ref: r.id,
-      what: 'تقرير ' + r.period + ' لـ' + (pool(r.poolId) || {}).ref,
-      where: (pool(r.poolId) || {}).ref || '—',
-      why: 'متأخر ' + over + ' يومًا عن موعد الاستحقاق'
-        + (r.submittedAt ? ' وبانتظار النشر' : ' ولم يقدّمه صاحب المشروع'),
-      view: 'ops.reports', rec: r.id });
-    else if (['submitted', 'late'].includes(r.status) && r.submittedAt)
-      out.push({ over: 0, kind: 'تقرير', ref: r.id, what: 'تقرير ' + r.period + ' بانتظار النشر',
-        where: (pool(r.poolId) || {}).ref || '—', why: 'قُدِّم ولم يُنشر للمستثمرين بعد',
-        view: 'ops.reports', rec: r.id });
-  });
-
-  STATE.disbursements.filter(d => d.status === 'requested').forEach(d => {
-    out.push({ over: age(d.requestedAt), kind: 'صرف', ref: d.id,
-      what: 'طلب صرف ' + fmt(d.amount, 0) + ' ر.ع',
-      where: (pool(d.poolId) || {}).ref || '—',
-      why: 'ينتظر اعتماد طرف ثانٍ منذ ' + age(d.requestedAt) + ' يومًا', view: 'ops.money', rec: d.id });
-  });
-
-  STATE.applications.filter(a => ['submitted', 'in_review'].includes(a.status)).forEach(a => {
-    out.push({ over: age(a.resubmittedAt || a.submittedAt), kind: 'طلب تمويل', ref: a.id,
-      what: a.project.title, where: a.company.name,
-      why: (a.status === 'submitted' ? 'لم يبدأ فحصه' : 'قيد الفحص') + ' منذ '
-        + age(a.resubmittedAt || a.submittedAt) + ' يومًا', view: 'ops.apps', rec: a.id });
-  });
-
-  STATE.users.filter(x => ['investor', 'owner'].includes(x.role) && x.kyc === 'pending').forEach(x => {
-    out.push({ over: x.createdAt ? age(x.createdAt) : 0, kind: 'تحقق',
-      what: x.name, where: x.email || '—', ref: x.email || x.id,
-      why: 'حساب لا يستطيع الالتزام قبل اعتماد تحققه', view: 'ops.kyc', rec: x.id });
-  });
-
-  STATE.pools.filter(p => p.status === 'funding' && p.closesAt).forEach(p => {
-    const over = Math.floor((now - new Date(p.closesAt + 'T23:59:59Z').getTime()) / DAY);
-    if (over > 0) out.push({ over, kind: 'فرصة', ref: p.ref, what: p.title,
-      where: p.issuer, why: 'انتهت مدة تمويلها منذ ' + over + ' يومًا ولم تُغلق', view: 'ops.pools', rec: p.id });
-  });
-
-  /* Money that left a pool beyond what was ever allocated to it. Nothing else
-     in the platform reports this, and until the clamp in moneyPosition() came
-     out nothing could: the figure was floored before anyone saw it. */
-  moneyPosition().overdrawn.forEach(x => {
-    out.push({ over: 9999, kind: 'صرف زائد', ref: x.pool.ref, what: x.pool.title,
-      where: x.pool.issuer,
-      why: 'صُرف ' + fmt(x.paid, 0) + ' ر.ع من فرصة لم يُخصَّص لها إلا ' + fmt(x.alloc, 0)
-        + ' — زيادة ' + fmt(x.over, 0) + ' ر.ع خرجت بلا غطاء',
-      view: 'ops.recon' });
-  });
-
-  return out.sort((a, b) => b.over - a.over);
-}
 
 /* ── 2. where the money is ──────────────────────────────────────────────
    Every riyal an investor ever committed, and where it sits now. The five
@@ -5586,16 +5519,31 @@ function selOpenCases(base, session, p) {
     .sort((a, b) => b.overDays - a.overDays);
 }
 
-function selApplicationsUnderReview(base, session, p) {
+/* Named for what it holds rather than for one of its stages. It was
+   selApplicationsUnderReview and stopped at info_requested, so an application
+   the committee had already approved appeared in no queue at all — while
+   ops.apps still offered the button that publishes it. The work was real, the
+   owner was waiting for their opportunity to go live, and nothing said so.
+
+   `needs` is the distinction that matters to whoever opens the queue: review
+   it, or publish it. Two different acts behind two different moments. */
+const APP_OPEN = ['submitted', 'in_review', 'info_requested', 'approved'];
+
+function selApplicationsOpen(base, session, p) {
   const u = actorOf(base, session);
   if (!can(u, 'application.review')) return undefined;
   return base.state.applications
-    .filter(a => ['submitted', 'in_review', 'info_requested'].includes(a.status))
+    .filter(a => APP_OPEN.includes(a.status))
     .map(a => {
-      const at = a.resubmittedAt || a.submittedAt;
+      /* An approved application ages from its approval, not its submission:
+         the wait that matters now started when the committee said yes. */
+      const at = a.status === 'approved'
+        ? (a.decidedAt || a.resubmittedAt || a.submittedAt)
+        : (a.resubmittedAt || a.submittedAt);
       return {
         id: a.id, title: a.project.title, company: a.company.name,
         status: a.status, target: a.ask.target,
+        needs: a.status === 'approved' ? 'publish' : 'review',
         at, ageDays: at ? ageDays(at, p.now) : null,
         complete: checkApplication(a).ok,
       };
@@ -5633,6 +5581,135 @@ function selOpenVariances(base, session, p) {
 }
 
 /* ══ 4 · administration — ops.adash ════════════════════════════════════════ */
+
+/* Money that left a pool beyond what was ever allocated to it — the one
+   condition the reconciliation screen exists to find.
+
+   moneyPosition() computes the same overdraw inside the loop that partitions
+   the money bar, where it is interleaved with `spent` and `escrow` and cannot
+   be lifted out without restructuring that loop. So the rule is expressed
+   twice, which is the hazard this layer exists to remove. What holds the two
+   together is a contract in metrics.mjs that runs both over the same state and
+   fails the moment they disagree — not a comment asking the next reader to be
+   careful. */
+function selOverDisbursed(base, session, p) {
+  if (!can(actorOf(base, session), 'funds.read')) return undefined;
+  const paidBy = new Map();
+  base.state.disbursements
+    .filter(d => d.status === 'executed')
+    .forEach(d => paidBy.set(d.poolId, (paidBy.get(d.poolId) || 0) + d.amount));
+  const out = [];
+  base.state.pools.forEach(pl => {
+    const alloc = sumBaisa(
+      (base.ordersByPool.get(pl.id) || []).filter(o => o.status === 'allocated'),
+      o => (o.allocated != null ? o.allocated : o.amount));
+    const paid = paidBy.get(pl.id) || 0;
+    if (paid > alloc) out.push({ poolId: pl.id, ref: pl.ref, title: pl.title,
+      issuer: pl.issuer, alloc, paid, over: paid - alloc });
+  });
+  return out;
+}
+
+/* ── everything already past its own deadline ─────────────────────────────
+   The queues each answer for one kind of work. This cuts across all of them
+   and reaches things none of them holds: a report the owner never filed, a
+   pool whose funding window closed unnoticed, an application the committee
+   approved that nobody published, money disbursed beyond what was allocated.
+
+   It was `exceptions()`: seven blocks of inline clock arithmetic reading STATE
+   directly, sitting above the very queues it duplicates — so the deadline card
+   and the queue beneath it could describe the same record differently, which
+   is exactly what happened to the report screens.
+
+   And it computed across everything regardless of who was reading, leaving the
+   view to trim the result afterwards by which nav entries that account can
+   open. That is a navigation check standing in for a permission check. Each
+   block is behind its own permission now, so a reader who may not know does
+   not have the row built and then hidden.
+
+   Every row is data: a reason key, the record it names, and the figures the
+   sentence needs. The sentence itself is composed in the view, because a layer
+   that writes Arabic prose is a layer no other reader can reuse. */
+function selOverdueWork(base, session, p) {
+  const u = actorOf(base, session);
+  if (!can(u, 'dashboard.read')) return undefined;
+  const out = [];
+
+  const cases = selOpenCases(base, session, p);
+  if (cases) cases.filter(c => c.breached).forEach(c => out.push({
+    reason: 'caseSla', kind: 'case', over: c.overDays,
+    ref: c.id, rec: c.id, view: 'ops.cases',
+    subject: c.subject, caseKind: c.kind, assignedTo: c.assignedTo,
+  }));
+
+  /* Both halves of the reporting duty, from the queue that already separates
+     them: still owed by its author, and handed in but not yet published. */
+  const rep = selReportReviewQueue(base, session, p);
+  if (rep) {
+    rep.overdue.forEach(r => out.push({
+      reason: 'reportUnfiled', kind: 'report', over: r.daysLate,
+      ref: r.id, rec: r.id, view: 'ops.reports',
+      period: r.period, poolRef: r.poolRef,
+    }));
+    rep.waiting.forEach(r => out.push({
+      reason: 'reportUnpublished', kind: 'report',
+      over: Math.max(0, Math.floor((p.now - new Date(r.dueAt + 'T23:59:59Z').getTime()) / DAY)),
+      ref: r.id, rec: r.id, view: 'ops.reports',
+      period: r.period, poolRef: r.poolRef, submittedLate: r.submittedLate,
+    }));
+  }
+
+  const dsb = selPendingDisbursements(base, session, p);
+  if (dsb) dsb.rows.forEach(d => out.push({
+    reason: 'disbursementWaiting', kind: 'disbursement', over: d.ageDays,
+    ref: d.id, rec: d.id, view: 'ops.money',
+    amount: d.amount, poolRef: d.poolRef,
+  }));
+
+  /* info_requested is left out on purpose: it waits on the owner to complete
+     it, not on anyone here, and a queue that ages other people's homework
+     teaches its reader to ignore it. `approved` is the opposite case and was
+     missing entirely — the committee said yes and the opportunity never went
+     live, with no screen anywhere saying so. */
+  const apps = selApplicationsOpen(base, session, p);
+  if (apps) apps.forEach(a => {
+    const reason = a.needs === 'publish' ? 'appUnpublished'
+      : a.status === 'submitted' ? 'appUntouched'
+      : a.status === 'in_review' ? 'appInReview'
+      : null;
+    if (!reason) return;
+    out.push({ reason, kind: 'application', over: a.ageDays || 0,
+      ref: a.id, rec: a.id, view: 'ops.apps', title: a.title, company: a.company });
+  });
+
+  /* The old list put the person's e-mail address on this row, on a dashboard
+     read by everyone who can open it — more than the row needs to be findable,
+     and the name plus the link to the record are enough. */
+  const kyc = selKycQueue(base, session, p);
+  if (kyc) kyc.forEach(x => out.push({
+    reason: 'kycPending', kind: 'kyc', over: x.ageDays || 0,
+    ref: x.id, rec: x.id, view: 'ops.kyc', name: x.name, role: x.role,
+  }));
+
+  if (can(u, 'pool.manage')) base.state.pools
+    .filter(pl => pl.status === 'funding' && pl.closesAt)
+    .forEach(pl => {
+      const over = Math.floor((p.now - new Date(pl.closesAt + 'T23:59:59Z').getTime()) / DAY);
+      if (over > 0) out.push({ reason: 'poolPastClose', kind: 'pool', over,
+        ref: pl.ref, rec: pl.id, view: 'ops.pools', title: pl.title, issuer: pl.issuer });
+    });
+
+  const over = selOverDisbursed(base, session, p);
+  if (over) over.forEach(x => out.push({
+    /* No clock on this one: an overdraw is not late, it is wrong, and it
+       outranks everything measured in days. */
+    reason: 'overDisbursed', kind: 'overdraw', over: 9999,
+    ref: x.ref, rec: x.poolId, view: 'ops.recon',
+    title: x.title, alloc: x.alloc, paid: x.paid, excess: x.over,
+  }));
+
+  return out.sort((a, b) => b.over - a.over);
+}
 
 function selPlatformAum(base, session) {
   const u = actorOf(base, session);
@@ -6054,7 +6131,7 @@ function ageBuckets(byBand) {
 const DASH_TABS = [
   { k: 'kyc',       label: 'التحقق',   sel: selKycQueue,                 empty: 'kyc' },
   { k: 'cases',     label: 'الحالات',  sel: selOpenCases,                empty: 'cases' },
-  { k: 'apps',      label: 'الطلبات',  sel: selApplicationsUnderReview,  empty: 'apps' },
+  { k: 'apps',      label: 'الطلبات',  sel: selApplicationsOpen,         empty: 'apps' },
   { k: 'proposals', label: 'الإعدادات', sel: selPendingSettingProposals, empty: 'proposals' },
 ];
 
@@ -6104,6 +6181,59 @@ function tabRow(kind, x) {
         ? '<span class="chip chip--crit"><span class="chip__dot"></span>اقتراحك</span>'
         : '<a class="btn btn--sm" href="' + hrefFor({ view: 'ops.settings' }) + '">افتح</a>')
     + '</div></div>';
+}
+
+/* ── naming what selOverdueWork found ───────────────────────────────────
+   The layer returns a reason key and the figures; the sentence is written
+   here. Keeping the prose out of METRICS is what lets the same row feed a
+   card, a test, or an export without one of them inheriting the other's
+   wording — and it is the rule opsdash.mjs enforces on every push. */
+const EXC_KIND_AR = {
+  case: 'حالة', report: 'تقرير', disbursement: 'صرف', application: 'طلب تمويل',
+  kyc: 'تحقق', pool: 'فرصة', overdraw: 'صرف زائد',
+};
+
+function excLabel(x) {
+  return x.kind === 'case' ? (x.caseKind || EXC_KIND_AR.case) : (EXC_KIND_AR[x.kind] || x.kind);
+}
+
+function excWhat(x) {
+  switch (x.reason) {
+    case 'caseSla':             return x.subject;
+    case 'reportUnfiled':       return 'تقرير ' + x.period + ' لـ' + x.poolRef;
+    case 'reportUnpublished':   return 'تقرير ' + x.period + ' بانتظار النشر';
+    case 'disbursementWaiting': return 'طلب صرف ' + rial(x.amount) + ' · ' + x.poolRef;
+    case 'kycPending':          return x.name;
+    case 'appUnpublished':
+    case 'appUntouched':
+    case 'appInReview':         return x.title + ' — ' + x.company;
+    case 'poolPastClose':       return x.title + ' — ' + x.issuer;
+    case 'overDisbursed':       return x.title;
+    default:                    return x.ref;
+  }
+}
+
+function excWhy(x) {
+  const d = x.over + ' يومًا';
+  switch (x.reason) {
+    case 'caseSla':
+      return 'تجاوزت مهلة الـSLA بـ' + d + (x.assignedTo ? ' · مع ' + x.assignedTo : ' · بلا مسؤول');
+    case 'reportUnfiled':
+      return 'متأخر ' + d + ' عن موعد الاستحقاق ولم يقدّمه صاحب المشروع';
+    case 'reportUnpublished':
+      return (x.submittedLate ? 'قُدِّم بعد موعده و' : 'قُدِّم و') + 'لم يُنشر للمستثمرين بعد';
+    case 'disbursementWaiting':
+      return 'ينتظر اعتماد طرف ثانٍ منذ ' + d;
+    case 'appUntouched':   return 'لم يبدأ فحصه منذ ' + d;
+    case 'appInReview':    return 'قيد الفحص منذ ' + d;
+    case 'appUnpublished': return 'وافقت عليه اللجنة منذ ' + d + ' ولم يُنشر كفرصة بعد';
+    case 'kycPending':     return 'حساب لا يستطيع الالتزام قبل اعتماد تحققه';
+    case 'poolPastClose':  return 'انتهت مدة تمويلها منذ ' + d + ' ولم تُغلق';
+    case 'overDisbursed':
+      return 'صُرف ' + fmt(x.paid, 0) + ' ر.ع من فرصة لم يُخصَّص لها إلا ' + fmt(x.alloc, 0)
+        + ' — زيادة ' + fmt(x.excess, 0) + ' ر.ع خرجت بلا غطاء';
+    default: return '';
+  }
 }
 
 VIEWS['ops.dash'] = () => {
@@ -6188,8 +6318,7 @@ VIEWS['ops.dash'] = () => {
      the tidier queues would have quietly retired the only place an
      over-disbursement is announced. It stays first, because "past its
      deadline" outranks "waiting". */
-  const exc = exceptions().filter(x =>
-    !x.view || canOpen(u, STAFF_NAV.find(n => n.k === x.view)));
+  const exc = selOverdueWork(base, SESSION, p) || [];
   const card0 = !exc.length ? '' :
     '<section class="card qcard qcard--crit"><div class="card__head"><h2>تجاوز مهلته</h2>'
     + '<span class="chip chip--crit">' + exc.length + '</span>'
@@ -6199,8 +6328,8 @@ VIEWS['ops.dash'] = () => {
         const cls = x.over > 5 ? ' exc__age--crit' : x.over > 0 ? ' exc__age--warn' : '';
         return '<div class="exc__row" id="rec-' + esc(x.ref) + '">'
           + '<span class="exc__age' + cls + '">' + (x.over > 0 ? x.over + ' ي' : 'اليوم') + '</span>'
-          + '<span><span class="exc__what">' + esc(x.what) + '</span>'
-          + '<span class="exc__why">' + esc(x.kind) + ' · ' + esc(x.why) + '</span></span>'
+          + '<span><span class="exc__what">' + esc(excWhat(x)) + '</span>'
+          + '<span class="exc__why">' + esc(excLabel(x)) + ' · ' + esc(excWhy(x)) + '</span></span>'
           /* Seven rows carrying the identical word «افتح السطر» spend the
              widest slot in the row on nothing: the label is the same whichever
              row you are on, so it distinguishes none of them. The arrow keeps
@@ -6208,7 +6337,7 @@ VIEWS['ops.dash'] = () => {
              which is more than the visible text ever did. */
           + (x.view
               ? '<a class="btn btn--sm btn--go" href="' + esc(hrefFor({ view: x.view, id: x.rec || null }))
-                + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + x.what) + '">'
+                + '" aria-label="' + esc((x.rec ? 'افتح السطر' : 'افتح') + ' — ' + excWhat(x)) + '">'
                 + '<span aria-hidden="true">←</span></a>'
               : '<span class="xs muted mono">' + esc(x.ref) + '</span>')
           + '</div>';

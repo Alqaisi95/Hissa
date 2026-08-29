@@ -68,12 +68,12 @@ const LAYER = new Function(`
       selFundingProgress, selInvestorCount, selTicketStats,
       selDisbursementLedger, selReconciliationStatus, selFeesAccrued,
       selMyApprovalQueue, selPendingDisbursements, selKycQueue, selOpenCases,
-      selApplicationsUnderReview, selPendingSettingProposals, selOpenVariances,
+      selApplicationsOpen, selPendingSettingProposals, selOpenVariances,
       selPlatformAum, selActivePools, selActiveUsers, selFeeRevenue,
       selConversionFunnel, selPoolHealth, selAuditIntegrity, selActivityByType,
       selUseOfFunds, selMilestonePlan, selReportSchedule,
       selPayablePools, selDistributionPreview, selDistributionLedger,
-      selReportReviewQueue,
+      selReportReviewQueue, selOverDisbursed, selOverdueWork,
     },
   };
 `)();
@@ -632,6 +632,127 @@ head('إضافي · حصص التوزيعة تصل كل قارئ لها');
   ok('ومجموع ما وصل الثلاثة يساوي إجمالي التوزيعة',
      each.reduce((a, b) => a + b, 0) === SEED.distributions[0].gross,
      `${each.join(' + ')} = ${SEED.distributions[0].gross}`);
+}
+
+head('إضافي · قائمة ما تجاوز مهلته — بوّابة لكل كتلة، وساعة واحدة');
+{
+  const adm = S('u_adm_omar');      // كل الصلاحيات
+  const rows = LAYER.sel.selOverdueWork(base, adm, P());
+  ok('القائمة تُبنى', Array.isArray(rows), typeof rows);
+  ok('ومرتَّبة من الأكثر تأخرًا',
+     rows.every((r, i) => i === 0 || rows[i - 1].over >= r.over),
+     rows.map(r => r.over).join('،'));
+  ok('وكل سطر يسمّي سِجلًّا وشاشةً تفتحه وسببًا مفتاحيًّا',
+     rows.every(r => r.ref && r.view && r.reason && r.kind), JSON.stringify(rows[0] || {}));
+  /* الطبقة تُعيد مفاتيح لا جُملًا: الصياغة في الشاشة، فلا يرث تصديرٌ أو
+     اختبارٌ نصَّ بطاقةٍ كُتب لعين قارئ. */
+  ok('ولا تحمل نصًّا مصوغًا',
+     rows.every(r => r.why === undefined && r.what === undefined));
+
+  /* البوّابة صارت داخل السيلكتور: من لا يملك الصلاحية لا يُبنى له السطر
+     أصلًا، بدل أن يُبنى ثم تُخفيه الشاشة بفحص «هل يفتح هذه الوجهة». */
+  const cmp = LAYER.sel.selOverdueWork(base, S('u_cmp1'), P());   // kyc فقط
+  ok('حساب الالتزام يرى قائمته', Array.isArray(cmp));
+  ok('ولا صرفًا فيها', !cmp.some(r => r.kind === 'disbursement'), cmp.map(r => r.kind).join('،'));
+  ok('ولا تقارير', !cmp.some(r => r.kind === 'report'));
+  ok('ولا فرصًا', !cmp.some(r => r.kind === 'pool'));
+  ok('بل التحقق والحالات فقط',
+     cmp.every(r => ['kyc', 'case'].includes(r.kind)),
+     [...new Set(cmp.map(r => r.kind))].join('،'));
+  ok('ومن لا يقرأ اللوحات لا يرى القائمة',
+     LAYER.sel.selOverdueWork(base, S('u_inv1'), P()) === undefined);
+
+  /* الساعة واحدة: ما تسمّيه القائمة متأخرًا هو ما تسمّيه الطوابير متأخرًا. */
+  const cases = LAYER.sel.selOpenCases(base, adm, P());
+  const breached = cases.filter(c => c.breached).map(c => c.id).sort().join(',');
+  const listed = rows.filter(r => r.view === 'ops.cases').map(r => r.rec).sort().join(',');
+  ok('الحالات المتجاوزة في القائمة هي المتجاوزة في طابورها',
+     listed === breached, `${listed} مقابل ${breached}`);
+
+  const dsb = LAYER.sel.selPendingDisbursements(base, adm, P());
+  const dIds = dsb.rows.map(r => r.id).sort().join(',');
+  const dList = rows.filter(r => r.kind === 'disbursement').map(r => r.rec).sort().join(',');
+  ok('وطلبات الصرف كذلك', dList === dIds, `${dList} مقابل ${dIds}`);
+}
+
+head('إضافي · الطلب الذي وافقت عليه اللجنة ولم ينشره أحد');
+{
+  const adm = S('u_adm_omar');
+  /* البذرة تحمل طلبًا قيد الفحص فقط. نوافق عليه لنصنع الحالة التي لم تكن
+     تظهر في أي مكان: مُعتمَد، وزرّ النشر معروض، وما من طابور يسمّيه. */
+  const st = clone(SEED);
+  const a = st.applications[0];
+  a.status = 'approved';
+  a.decidedAt = '2026-08-20T09:00:00Z';
+  st.version = 991;
+  LAYER.setState(st);
+  const b = LAYER.BASE(st);
+
+  const open = LAYER.sel.selApplicationsOpen(b, adm, P());
+  ok('الطلب المعتمد ما زال في الطابور', open.some(x => x.id === a.id));
+  ok('ويقول إن المطلوب نشره لا فحصه',
+     (open.find(x => x.id === a.id) || {}).needs === 'publish',
+     (open.find(x => x.id === a.id) || {}).needs);
+  ok('ويُحسب عمره من موافقة اللجنة لا من تقديمه',
+     (open.find(x => x.id === a.id) || {}).ageDays === 6,
+     String((open.find(x => x.id === a.id) || {}).ageDays));
+
+  const rows = LAYER.sel.selOverdueWork(b, adm, P());
+  const hit = rows.find(r => r.rec === a.id);
+  ok('وقائمة ما تجاوز مهلته تسمّيه', !!hit, rows.map(r => r.ref).join('،'));
+  ok('وتقول لماذا بالضبط', !!hit && hit.reason === 'appUnpublished',
+     hit ? hit.reason : '—');
+  ok('وتوجّه إلى الشاشة التي تحمل زرّ النشر', !!hit && hit.view === 'ops.apps');
+
+  /* المنشور فعلًا يخرج من الطابور: عمل انتهى لا يبقى معروضًا. */
+  const done = clone(st);
+  done.applications[0].status = 'published';
+  done.version = 992;
+  LAYER.setState(done);
+  const b2 = LAYER.BASE(done);
+  ok('وبعد النشر يخرج من الطابور',
+     !LAYER.sel.selApplicationsOpen(b2, adm, P()).some(x => x.id === a.id));
+  ok('ومن قائمة ما تجاوز مهلته',
+     !LAYER.sel.selOverdueWork(b2, adm, P()).some(r => r.rec === a.id));
+  LAYER.setState(SEED); LAYER.BASE(SEED);
+}
+
+head('إضافي · الصرف الزائد: تعبيران عن قاعدة واحدة، مربوطان');
+{
+  const adm = S('u_adm_omar');
+  ok('لا صرف زائد في البذرة',
+     LAYER.sel.selOverDisbursed(base, adm, P()).length === 0);
+  ok('ولا يقرؤه من لا يملك funds.read',
+     LAYER.sel.selOverDisbursed(base, S('u_cmp1'), P()) === undefined);
+
+  /* فرصة أُغلقت بين حدّها الأدنى وهدفها تُخصَّص أقلّ من مجموع مراحلها، فصرف
+     كل مرحلة يتجاوز ما خُصِّص لها. هذه هي الحالة التي وُجدت شاشة المطابقة
+     لأجلها، وهذا ما يمنع النسختين من الافتراق بصمت. */
+  const st = clone(SEED);
+  st.disbursements.push({ id: 'DSB-OVER', poolId: 'p_log', milestoneId: 'm3',
+    amount: 20_000_000, status: 'executed', requestedBy: 'u_fin1',
+    requestedAt: '2026-08-25T08:00:00Z', approvedBy: 'u_fin2',
+    approvedAt: '2026-08-25T09:00:00Z', evidence: 'اختبار' });
+  st.version = 993;
+  LAYER.setState(st);
+  const b = LAYER.BASE(st);
+
+  const sel = LAYER.sel.selOverDisbursed(b, adm, P());
+  const eng = LAYER.moneyPosition().overdrawn;
+  ok('السيلكتور يرى صرفًا زائدًا', sel.length === 1, JSON.stringify(sel.map(x => x.ref)));
+  ok('والمحرّك يراه كذلك', eng.length === 1);
+  ok('وبنفس الفرصة ونفس المبلغ بالبايسة',
+     sel[0].ref === eng[0].pool.ref && sel[0].over === eng[0].over
+     && sel[0].alloc === eng[0].alloc && sel[0].paid === eng[0].paid,
+     `${sel[0].over} مقابل ${eng[0].over}`);
+
+  const rows = LAYER.sel.selOverdueWork(b, adm, P());
+  const hit = rows.find(r => r.kind === 'overdraw');
+  ok('وقائمة ما تجاوز مهلته تضعه أولًا', !!hit && rows[0] === hit);
+  ok('وتحمل المبلغ الخارج بلا غطاء بالبايسة',
+     !!hit && hit.excess === sel[0].over && hit.paid === sel[0].paid,
+     hit ? String(hit.excess) : '—');
+  LAYER.setState(SEED); LAYER.BASE(SEED);
 }
 
 /* ══ الخلاصة ═════════════════════════════════════════════════════════════ */

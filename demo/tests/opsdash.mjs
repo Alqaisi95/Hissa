@@ -47,6 +47,17 @@ const empty = { v: 1, version: 0, schema: 6, settings: clone(seed.settings),
   resets: [], reconciliations: [] };
 write('empty.html', empty);
 
+/* ── طلب وافقت عليه اللجنة ولم ينشره أحد ──────────────────────────────
+   الحالة التي لم تكن تظهر في أي مكان: زرّ النشر معروض على ops.apps، ولا
+   طابور ولا قائمة مهل تسمّيه. */
+const approved = clone(seed);
+{
+  const a = approved.applications[0];
+  a.status = 'approved';
+  a.decidedAt = '2026-08-18T09:00:00Z';
+}
+write('approved.html', approved);
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
   /* المسار أعلاه للصندوق المحلّي؛ على عدّاء CI تجد playwright متصفّحها بنفسها. */
   .catch(() => chromium.launch());
@@ -252,6 +263,39 @@ head('١٠ · لا تنسيق في الحساب ولا حساب في التنس�
   const view = strip(src.slice(src.indexOf("VIEWS['ops.dash']"), src.indexOf("VIEWS['ops.adash']")));
   ok('ولا حساب ماليّ في طبقة الرسم', !/\bproRata\(|feeBps|\* 10000|\/ 10000/.test(view),
      (view.match(/proRata\(|feeBps|\* 10000|\/ 10000/g) || []).join('،'));
+}
+
+/* ── ١١ · العمل الذي لم يكن له طابور ─────────────────────────────────── */
+head('١١ · طلب معتمَد لم يُنشر يصل اللوحة');
+{
+  const { ctx, p, errs } = await open('approved.html', 'sysadmin@hissa.local', '#/ops/dash');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('اللوحة تسمّيه', /وافقت عليه اللجنة/.test(txt),
+     (txt.match(/وافقت عليه اللجنة[^·]*/) || ['(لا شيء)'])[0].trim());
+  ok('وتقول إنه لم يُنشر كفرصة', /لم يُنشر كفرصة بعد/.test(txt));
+  ok('وسطره يحمل معرِّف الطلب ليُبرَز',
+     (await p.$$('.qcard--crit #rec-APP-2026-0007')).length === 1);
+  ok('وتبويب الطلبات يعدّه', /الطلبات/.test(txt));
+  ok('بلا أخطاء تشغيل', errs.length === 0, errs.join(' · '));
+  await ctx.close();
+}
+{
+  /* وعلى البذرة — والطلب فيها قيد الفحص — لا تُقال العبارة. */
+  const { ctx, p } = await open('index.html', 'sysadmin@hissa.local', '#/ops/dash');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('ولا تُقال عن طلب ما زال قيد الفحص', !/وافقت عليه اللجنة/.test(txt));
+  await ctx.close();
+}
+
+/* ── ١٢ · البوّابة داخل الطبقة لا في الشاشة ──────────────────────────── */
+head('١٢ · قائمة المهل مبنيّة بصلاحية قارئها');
+{
+  const { ctx, p } = await open('work.html', 'compliance@hissa.om', '#/ops/dash');
+  const txt = await p.$eval('#root', e => e.textContent);
+  ok('حساب الالتزام يرى قائمة مهله', /تجاوز مهلته/.test(txt) || /لا شيء ينتظرك/.test(txt));
+  ok('ولا طلب صرف فيها', !/ينتظر اعتماد طرف ثانٍ/.test(txt));
+  ok('ولا تقريرًا', !/موعد الاستحقاق/.test(txt));
+  await ctx.close();
 }
 
 console.log('\n' + (bad ? '✗ ' + bad + ' فاشلًا' : '✓ كل معايير المرحلة ٢ خضراء'));
