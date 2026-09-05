@@ -292,3 +292,49 @@ test('a read-only role cannot set money in motion', async (t) => {
     assert.deepEqual(holders, ['system_admin']);
   });
 });
+
+test('the way to pay survives a refresh', async (t) => {
+  const {
+    startTestServer, stopTestServer, api, makeUser, login, makePool, ACKS, partnerWebhook,
+  } = await import('./helpers.ts');
+  const { omr } = await import('../lib/money.ts');
+
+  await startTestServer();
+  t.after(() => stopTestServer());
+
+  const staff = makeUser({ fullName: 'محفظة', email: 'pf-pay@test.om', roles: ['portfolio_ops'] });
+  const owner = makeUser({ fullName: 'مالك', email: 'owner-pay@test.om', roles: ['project_owner'] });
+  makeUser({
+    fullName: 'مستثمر', email: 'investor-pay@test.om', roles: ['investor'],
+    investor: { classification: 'retail' },
+  });
+  const token = await login('investor-pay@test.om');
+  const { poolId, disclosureId } = makePool({ createdBy: staff, ownerUserId: owner });
+
+  const created = await api('POST', '/api/orders', {
+    token, body: { poolId, amount: omr(200), disclosureVersionId: disclosureId, acknowledgements: ACKS },
+  });
+  assert.equal(created.status, 201);
+  const orderId = created.body.orderId;
+
+  await t.test('GET /orders/:id carries the checkout link while payment is pending', async () => {
+    // The only thing a fresh page load has. Before this, the link existed
+    // solely in the router state of the redirect that created the order, so a
+    // refresh left the investor told to pay with nothing to press.
+    const fetched = await api('GET', `/api/orders/${orderId}`, { token });
+    assert.equal(fetched.status, 200);
+    assert.equal(fetched.body.payment.providerRef, created.body.payment.providerRef);
+    assert.equal(fetched.body.payment.redirectUrl, created.body.payment.redirectUrl);
+    assert.ok(fetched.body.payment.redirectUrl.includes(created.body.payment.providerRef));
+  });
+
+  await t.test('and withholds it once the money has moved', async () => {
+    await partnerWebhook({
+      id: `evt-pay-${orderId}`, type: 'payment.settled',
+      providerRef: created.body.payment.providerRef, amount: omr(200),
+    });
+    const fetched = await api('GET', `/api/orders/${orderId}`, { token });
+    assert.equal(fetched.body.payment.status, 'settled');
+    assert.equal(fetched.body.payment.redirectUrl, null, 'offered a way to pay something already paid');
+  });
+});
