@@ -194,3 +194,48 @@ test('an upload cannot write outside the storage directory', async (t) => {
     assert.equal(kept.category, '../../../../hissa-escape-probe');
   });
 });
+
+test('a second factor the user switched on is actually required', async (t) => {
+  const { startTestServer, stopTestServer, api, makeUser } = await import('./helpers.ts');
+  const { run } = await import('../db/index.ts');
+
+  await startTestServer();
+  t.after(() => stopTestServer());
+
+  await t.test('an investor with MFA enabled cannot act on the token alone', async () => {
+    const id = makeUser({
+      fullName: 'مستثمر بعامل ثانٍ', email: 'mfa-investor@test.om', roles: ['investor'],
+      investor: { classification: 'retail' },
+    });
+    run(`UPDATE users SET mfa_enabled = 1 WHERE id = ?`, [id]);
+
+    const signedIn = await api('POST', '/api/identity/login',
+      { body: { identifier: 'mfa-investor@test.om', password: 'TestPassword#2026' } });
+    assert.equal(signedIn.status, 200);
+    assert.equal(signedIn.body.mfaRequired, true);
+
+    // The token is real and the session exists — the question is whether the
+    // server honours the flag it just set.
+    const beforeMfa = await api('GET', '/api/portfolio', { token: signedIn.body.token });
+    assert.equal(beforeMfa.status, 403, 'the token worked without the second factor');
+
+    const cleared = await api('POST', '/api/identity/mfa/verify',
+      { token: signedIn.body.token, body: { code: signedIn.body.devOtp } });
+    assert.equal(cleared.status, 200);
+
+    const afterMfa = await api('GET', '/api/portfolio', { token: signedIn.body.token });
+    assert.equal(afterMfa.status, 200);
+  });
+
+  await t.test('an investor without it is unaffected', async () => {
+    makeUser({
+      fullName: 'مستثمر عادي', email: 'plain-investor@test.om', roles: ['investor'],
+      investor: { classification: 'retail' },
+    });
+    const signedIn = await api('POST', '/api/identity/login',
+      { body: { identifier: 'plain-investor@test.om', password: 'TestPassword#2026' } });
+    assert.equal(signedIn.body.mfaRequired, false);
+    const straight = await api('GET', '/api/portfolio', { token: signedIn.body.token });
+    assert.equal(straight.status, 200);
+  });
+});

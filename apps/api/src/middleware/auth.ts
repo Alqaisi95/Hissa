@@ -14,6 +14,7 @@ declare global {
         sessionId: string;
         roles: string[];
         mfaPassed: boolean;
+        mfaEnabled: boolean;
         locale: 'ar' | 'en';
         status: string;
       };
@@ -34,7 +35,7 @@ export function loadSession(req: Request, _res: Response, next: NextFunction): v
   if (!token) return next();
 
   const session = get<any>(
-    `SELECT s.*, u.status AS user_status, u.locale
+    `SELECT s.*, u.status AS user_status, u.locale, u.mfa_enabled
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,
     [sha256(token), nowIso()],
@@ -49,6 +50,7 @@ export function loadSession(req: Request, _res: Response, next: NextFunction): v
     sessionId: session.id,
     roles,
     mfaPassed: session.mfa_passed === 1,
+    mfaEnabled: session.mfa_enabled === 1,
     locale: session.locale,
     status: session.user_status,
   };
@@ -60,8 +62,14 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   if (req.auth.status === 'suspended' || req.auth.status === 'closed') {
     return next(forbidden('الحساب موقوف. تواصل مع الدعم.', 'Account suspended. Please contact support.'));
   }
-  // FR-007 — privileged roles must clear MFA on the session before acting.
-  if (requiresMfa(req.auth.roles) && !req.auth.mfaPassed) {
+  /* FR-007 — privileged roles must clear MFA on the session before acting.
+     The predicate has to match the one login used to decide whether to issue a
+     code (identity/routes.ts), or the two disagree. It did: login also required
+     MFA when the *user* had enabled it, and set mfa_passed=0 accordingly — but
+     this check only asked about roles. So an investor who switched MFA on got a
+     code, an mfaRequired flag, and a fully working token in the same response.
+     Their second factor was decoration. */
+  if ((requiresMfa(req.auth.roles) || req.auth.mfaEnabled) && !req.auth.mfaPassed) {
     return next(forbidden('يلزم إكمال التحقق بخطوتين لهذه الجلسة.', 'This session requires multi-factor verification.'));
   }
   next();
