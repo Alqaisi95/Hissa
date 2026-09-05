@@ -1,5 +1,6 @@
 /** Shared presentational building blocks. */
-import type { ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode, ReactElement } from 'react';
 import { useI18n } from '../lib/i18n.tsx';
 import type { ApiError } from '../lib/api.ts';
 
@@ -231,15 +232,45 @@ export function Money({ baisa, decimals }: { baisa: number | null | undefined; d
   return <span className="numeric">{formatOmr(baisa, { decimals })}</span>;
 }
 
+/**
+ * The hint and the error are described *to* the control, not merely printed
+ * under it.
+ *
+ * They used to be anonymous spans. Checkout pointed at `aria-describedby=
+ * "amount-hint"` and no element carried that id, so the minimum ticket and the
+ * remaining limit — the two numbers that decide whether an amount is accepted
+ * — were never announced, and every audit tool flagged the dangling
+ * reference. Wiring it here fixes all 117 Field usages at once, without
+ * touching one of them.
+ *
+ * The control is cloned to receive the ids. Where a Field wraps something
+ * other than a single element — a radio group, a fieldset — it is rendered
+ * untouched, which is what it did before.
+ */
 export function Field({ label, hint, error, children, htmlFor }: {
   label: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; htmlFor?: string;
 }) {
+  const generated = useId();
+  const base = htmlFor ?? generated;
+  const hintId = hint ? `${base}-hint` : undefined;
+  const errorId = error ? `${base}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
+
+  const only = Children.count(children) === 1 ? Children.only(children) : null;
+  const control = only && isValidElement(only) && describedBy
+    ? cloneElement(only as ReactElement<Record<string, unknown>>, {
+        'aria-describedby': [(only.props as Record<string, unknown>)['aria-describedby'], describedBy]
+          .filter(Boolean).join(' '),
+        ...(error ? { 'aria-invalid': true } : {}),
+      })
+    : children;
+
   return (
     <div className="field">
       <label htmlFor={htmlFor}>{label}</label>
-      {children}
-      {hint ? <span className="field__hint">{hint}</span> : null}
-      {error ? <span className="field__error">{error}</span> : null}
+      {control}
+      {hint ? <span className="field__hint" id={hintId}>{hint}</span> : null}
+      {error ? <span className="field__error" id={errorId}>{error}</span> : null}
     </div>
   );
 }
@@ -259,6 +290,146 @@ export function Tabs<T extends string>({ tabs, active, onChange }: {
           {tab.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ─────────────────────── asking for a reason ───────────────────────
+ *
+ * Thirty-seven staff actions — pausing a pool, cancelling one, recording a
+ * default, closing out a settlement — collected their justification through
+ * window.prompt, and every call site did the same thing with the result:
+ *
+ *     const r = ask('Pause reason (10+)'); if (r.length >= 10) run(pause.run(r));
+ *
+ * Nine characters and the click vanished. No message, no field error, nothing
+ * to distinguish a rejected reason from a broken button — on actions that move
+ * investor money. Multi-step ones (default → reason, then plan) could be
+ * abandoned halfway with no trace. window.prompt is also unstyled, ignores the
+ * document's direction, cannot be translated, and some browsers suppress it.
+ *
+ * The dialog states the requirement, keeps the confirm button disabled until
+ * it is met, and says why. Cancelling is explicit.
+ */
+export interface AskField {
+  name: string;
+  label: ReactNode;
+  minLength?: number;
+  type?: 'text' | 'number';
+  multiline?: boolean;
+}
+
+interface AskRequest {
+  title: ReactNode;
+  intro?: ReactNode;
+  fields: AskField[];
+  confirmText?: ReactNode;
+  danger?: boolean;
+  resolve: (value: Record<string, string> | null) => void;
+}
+
+export function useReasonDialog() {
+  const [request, setRequest] = useState<AskRequest | null>(null);
+
+  const ask = useCallback(
+    (config: Omit<AskRequest, 'resolve'>) =>
+      new Promise<Record<string, string> | null>((resolve) => setRequest({ ...config, resolve })),
+    [],
+  );
+
+  const dialog = request
+    ? <ReasonDialog request={request} onClose={() => setRequest(null)} />
+    : null;
+
+  return { ask, dialog };
+}
+
+function ReasonDialog({ request, onClose }: { request: AskRequest; onClose: () => void }) {
+  const { t, locale } = useI18n();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const first = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+
+  useEffect(() => { first.current?.focus(); }, []);
+
+  const shortfall = (field: AskField): number => {
+    const value = (values[field.name] ?? '').trim();
+    return Math.max(0, (field.minLength ?? 0) - value.length);
+  };
+  const complete = request.fields.every((field) => shortfall(field) === 0 && (values[field.name] ?? '').trim() !== '');
+
+  const finish = (result: Record<string, string> | null) => { request.resolve(result); onClose(); };
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) finish(null); }}
+    >
+      <div
+        role="dialog" aria-modal="true" aria-label={typeof request.title === 'string' ? request.title : undefined}
+        className="modal"
+        onKeyDown={(event) => { if (event.key === 'Escape') finish(null); }}
+      >
+        <h3 className="modal__title">{request.title}</h3>
+        {request.intro ? <p className="small muted">{request.intro}</p> : null}
+
+        {request.fields.map((field, index) => {
+          const missing = shortfall(field);
+          const showError = touched[field.name] && missing > 0;
+          return (
+            <Field
+              key={field.name}
+              htmlFor={`ask-${field.name}`}
+              label={field.label}
+              hint={field.minLength
+                ? (locale === 'ar'
+                    ? `${field.minLength} أحرف على الأقل`
+                    : `at least ${field.minLength} characters`)
+                : undefined}
+              error={showError
+                ? (locale === 'ar'
+                    ? `ينقص ${missing} ${missing === 1 ? 'حرف' : 'حرفًا'}`
+                    : `${missing} more character${missing === 1 ? '' : 's'} needed`)
+                : undefined}
+            >
+              {field.multiline ? (
+                <textarea
+                  id={`ask-${field.name}`}
+                  ref={index === 0 ? (first as React.RefObject<HTMLTextAreaElement>) : undefined}
+                  value={values[field.name] ?? ''}
+                  onChange={(event) => setValues((v) => ({ ...v, [field.name]: event.target.value }))}
+                  onBlur={() => setTouched((s) => ({ ...s, [field.name]: true }))}
+                />
+              ) : (
+                <input
+                  id={`ask-${field.name}`}
+                  type={field.type === 'number' ? 'number' : 'text'}
+                  ref={index === 0 ? (first as React.RefObject<HTMLInputElement>) : undefined}
+                  value={values[field.name] ?? ''}
+                  onChange={(event) => setValues((v) => ({ ...v, [field.name]: event.target.value }))}
+                  onBlur={() => setTouched((s) => ({ ...s, [field.name]: true }))}
+                />
+              )}
+            </Field>
+          );
+        })}
+
+        <div className="modal__actions">
+          <button type="button" className="btn" onClick={() => finish(null)}>
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            className={request.danger ? 'btn btn--danger' : 'btn btn--primary'}
+            disabled={!complete}
+            onClick={() => finish(
+              Object.fromEntries(request.fields.map((f) => [f.name, (values[f.name] ?? '').trim()])),
+            )}
+          >
+            {request.confirmText ?? t('confirm')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
