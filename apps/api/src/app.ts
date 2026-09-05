@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { z } from 'zod';
-import { config } from './config.ts';
+import { config, assertBootConfig } from './config.ts';
 import { db, all, get } from './db/index.ts';
 import { correlation, errorHandler, notFoundHandler } from './middleware/error.ts';
 import { loadSession, requireAuth, requirePermission } from './middleware/auth.ts';
@@ -25,7 +25,8 @@ import { ALL_JOBS } from './workflow/scheduler.ts';
 import { nowIso } from './lib/ids.ts';
 
 export function createApp() {
-  db();   // open the database and apply the schema
+  assertBootConfig();   // refuse to serve traffic on a missing or default webhook secret
+  db();                 // open the database and apply the schema
   const app = express();
 
   app.set('trust proxy', 1);
