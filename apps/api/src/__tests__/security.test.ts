@@ -50,9 +50,32 @@ test('the partner webhook secret — the app refuses to start without a real one
     // under a test environment that sets the variable.
     const source = fs.readFileSync(path.join(import.meta.dirname, '..', 'config.ts'), 'utf8');
     assert.ok(
-      /webhookSecret: process\.env\.PARTNER_WEBHOOK_SECRET \?\? '',/.test(source),
+      /webhookSecret: source\.PARTNER_WEBHOOK_SECRET \?\? '',/.test(source),
       'config.ts must not give the webhook secret a literal fallback',
     );
     assert.equal(config.webhookSecret, 'test-webhook-secret');
+  });
+});
+
+test('an unlabelled environment is treated as the real one', async (t) => {
+  const { buildConfig } = await import('../config.ts');
+
+  await t.test('NODE_ENV absent means production, not development', () => {
+    assert.equal(buildConfig({}).env, 'production');
+  });
+
+  await t.test('the OTP echo is off unless asked for by name', () => {
+    // The dangerous case: no NODE_ENV at all. This used to be `true`, so the
+    // login response carried the second factor beside the token it protects.
+    assert.equal(buildConfig({}).exposeOtp, false);
+    assert.equal(buildConfig({ NODE_ENV: 'development' }).exposeOtp, false);
+    assert.equal(buildConfig({ HISSA_DEV_OTP: '1' }).exposeOtp, false, 'production ignores the opt-in');
+    assert.equal(buildConfig({ NODE_ENV: 'development', HISSA_DEV_OTP: '1' }).exposeOtp, true);
+  });
+
+  await t.test('the rate limiter cannot be switched off by an unlabelled environment', () => {
+    assert.equal(buildConfig({ RATE_LIMIT_DISABLED: '1' }).rateLimitEnabled, true);
+    assert.equal(buildConfig({ RATE_LIMIT_DISABLED: '1', NODE_ENV: 'production' }).rateLimitEnabled, true);
+    assert.equal(buildConfig({ RATE_LIMIT_DISABLED: '1', NODE_ENV: 'test' }).rateLimitEnabled, false);
   });
 });

@@ -9,3 +9,7 @@ process.env.NODE_ENV = 'test';
 process.env.PARTNER_WEBHOOK_SECRET = 'test-webhook-secret';
 // Suites drive dozens of accounts from one address; rateLimit() is unit-tested directly.
 process.env.RATE_LIMIT_DISABLED = '1';
+// login() in helpers.ts clears MFA with the code from the response body. That
+// echo is now an explicit opt-in rather than anything NODE_ENV implies, so the
+// suite has to ask for it — which is the whole point of the switch.
+process.env.HISSA_DEV_OTP = '1';
