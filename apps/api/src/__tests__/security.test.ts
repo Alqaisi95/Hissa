@@ -139,3 +139,58 @@ test('verifying a contact channel is not a way back into a shut account', async 
     assert.equal(statusOf(id), 'active');
   });
 });
+
+test('an upload cannot write outside the storage directory', async (t) => {
+  const { startTestServer, stopTestServer, makeUser } = await import('./helpers.ts');
+  const { putObject, getObject } = await import('../lib/storage.ts');
+  const { attachDocument } = await import('../lib/documents.ts');
+  const { get } = await import('../db/index.ts');
+
+  await startTestServer();
+  t.after(() => stopTestServer());
+
+  const root = path.resolve(config.storageDir);
+  const escapee = path.join(path.dirname(root), 'hissa-escape-probe');
+
+  await t.test('putObject refuses a key that climbs out', () => {
+    assert.throws(() => putObject('../hissa-escape-probe', Buffer.from('x')), /escapes the storage directory/);
+    assert.throws(() => putObject('application/x/../../../hissa-escape-probe', Buffer.from('x')),
+      /escapes the storage directory/);
+    assert.equal(fs.existsSync(escapee), false, 'a file was created outside the storage root');
+  });
+
+  await t.test('getObject refuses to read back out of it', () => {
+    assert.throws(() => getObject('../../etc/hostname'), /escapes the storage directory/);
+  });
+
+  await t.test('an ordinary key still round-trips', () => {
+    const stored = putObject('application/abc/doc-v1', Buffer.from('hello'));
+    assert.equal(getObject(stored.key)!.toString(), 'hello');
+  });
+
+  await t.test('a hostile category never reaches the path', () => {
+    // The reachable route: a project owner uploading to their own draft. The
+    // category was unconstrained (z.string().min(2)) and went straight into
+    // path.join, so `..` segments resolved out of the storage root.
+    const uploader = makeUser({ fullName: 'مالك', email: 'traversal@test.om', roles: ['project_owner'] });
+    const doc = attachDocument({
+      ownerType: 'application',
+      ownerId: 'app-traversal',
+      category: '../../../../hissa-escape-probe',
+      fileName: 'cr.pdf',
+      mimeType: 'application/pdf',
+      contentBase64: Buffer.from('%PDF-1.4 test').toString('base64'),
+      uploadedBy: uploader,
+    });
+
+    const row = get<{ storage_key: string }>(
+      `SELECT storage_key FROM documents WHERE id = ?`, [doc.documentId])!;
+    assert.ok(!row.storage_key.includes('..'), `storage key still carries the category: ${row.storage_key}`);
+    assert.equal(row.storage_key, `application/app-traversal/${doc.documentId}-v1`);
+    assert.equal(fs.existsSync(escapee), false, 'the upload landed outside the storage root');
+
+    // The category is not lost — it is recorded where it belongs, on the row.
+    const kept = get<{ category: string }>(`SELECT category FROM documents WHERE id = ?`, [doc.documentId])!;
+    assert.equal(kept.category, '../../../../hissa-escape-probe');
+  });
+});

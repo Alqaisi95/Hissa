@@ -48,7 +48,13 @@ export function attachDocument(input: AttachInput) {
   const version = (previous?.version ?? 0) + 1;
 
   const id = newId();
-  const stored = putObject(`${input.ownerType}/${input.ownerId}/${input.category}-v${version}-${id}`, data);
+  /* The key is built from server-controlled values only. It used to carry
+     `category`, a caller-supplied string with no charset constraint, straight
+     into path.join — see the note on resolvePath in storage.ts. The category
+     is a property of the document, not of where its bytes live, and it is
+     already recorded in the column below (and read by the MAX(version) lookup
+     above), so nothing is lost by keeping it there. */
+  const stored = putObject(`${input.ownerType}/${input.ownerId}/${id}-v${version}`, data);
   run(
     `INSERT INTO documents (id, owner_type, owner_id, category, file_name, mime_type, size_bytes, storage_key,
                             checksum, version, expires_on, malware_scan, visibility, uploaded_by, created_at)

@@ -10,8 +10,31 @@ import { config } from '../config.ts';
 
 export interface StoredObject { key: string; checksum: string; sizeBytes: number }
 
+/**
+ * Every key is resolved through here, and a key that lands outside the storage
+ * directory is refused rather than written.
+ *
+ * `path.join` normalises `..` away silently, so a key assembled from any
+ * caller-supplied string was an arbitrary write: attachDocument built its key
+ * from an unconstrained `category`, and a project owner uploading to their own
+ * draft could put a file anywhere the process could write. Callers now build
+ * keys from server-controlled values only — but this is the wall behind that,
+ * because the next caller will not remember.
+ *
+ * An S3 driver keeps the same contract: object stores treat the key as
+ * opaque, and a key with `..` in it is still not one we ever mean to write.
+ */
+function resolvePath(key: string): string {
+  const root = path.resolve(config.storageDir);
+  const target = path.resolve(root, key);
+  if (target !== root && !target.startsWith(root + path.sep)) {
+    throw new Error(`storage key escapes the storage directory: ${key}`);
+  }
+  return target;
+}
+
 export function putObject(key: string, data: Buffer): StoredObject {
-  const target = path.join(config.storageDir, key);
+  const target = resolvePath(key);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, data);
   return {
@@ -22,7 +45,7 @@ export function putObject(key: string, data: Buffer): StoredObject {
 }
 
 export function getObject(key: string): Buffer | null {
-  const target = path.join(config.storageDir, key);
+  const target = resolvePath(key);
   return fs.existsSync(target) ? fs.readFileSync(target) : null;
 }
 
