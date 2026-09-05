@@ -239,3 +239,24 @@ test('a second factor the user switched on is actually required', async (t) => {
     assert.equal(straight.status, 200);
   });
 });
+
+test('reading across customers costs a second factor, whatever the role', async (t) => {
+  const { ROLES, ROLE_PERMISSIONS, MFA_REQUIRED_ROLES } = await import('../lib/rbac.ts');
+
+  await t.test('every role that can read another customer is on the list', () => {
+    // Stated as the rule rather than the list: `auditor` was missing, and it
+    // holds order.read_any, case.read_any and the entire audit trail. A list
+    // is something to forget; a rule catches the next role that is added.
+    const readsAcrossCustomers = (role: string) =>
+      (ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] ?? [])
+        .some((p: string) => p.endsWith('.read_any') || p === 'audit.read');
+
+    const missing = ROLES.filter((r) => readsAcrossCustomers(r) && !MFA_REQUIRED_ROLES.includes(r));
+    assert.deepEqual(missing, [], `these roles read across customers with one factor: ${missing.join(', ')}`);
+  });
+
+  await t.test('and an investor still is not asked for one', () => {
+    assert.ok(!MFA_REQUIRED_ROLES.includes('investor'));
+    assert.ok(!MFA_REQUIRED_ROLES.includes('project_owner'));
+  });
+});

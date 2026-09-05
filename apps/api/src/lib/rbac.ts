@@ -86,8 +86,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 };
 
 /** Roles that must clear MFA before any privileged action (FR-007). */
+/* Every role that can read across customers, not only those that can write.
+   `auditor` was missing: it holds order.read_any, case.read_any and the whole
+   audit trail, so one phished password was a complete single-factor read of
+   every investor's orders and complaints — the same data every other role here
+   needs two factors to see. */
 export const MFA_REQUIRED_ROLES: Role[] = [
   'compliance', 'finance_ops', 'portfolio_ops', 'system_admin', 'committee_member', 'investment_analyst',
+  'auditor',
 ];
 
 export function permissionsFor(roles: string[]): Set<Permission> {
