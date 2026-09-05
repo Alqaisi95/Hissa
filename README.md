@@ -47,7 +47,7 @@ npm run demo:site     # يبني نسخة site/ العامة المنشورة أ
 
 ```bash
 npm install
-npm run seed -w apps/api -- --fresh     # pilot dataset: 3 pools, full staff roster
+NODE_ENV=development npm run seed -w apps/api -- --fresh   # pilot dataset: 3 pools, full staff roster
 npm run dev                             # API on :4000, web on :5173
 ```
 
@@ -68,7 +68,7 @@ Staff roles require MFA. In development the one-time code is echoed in the sign-
 response and shown under the code field — never in production (`config.exposeOtp`).
 
 ```bash
-npm test          # 54 tests: AT-01..AT-12, engines, full journey
+npm test          # 85 tests: AT-01..AT-12, engines, full journey
 npm run typecheck # API and web
 npm run build     # production build
 ```
@@ -228,14 +228,23 @@ and distribution.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `NODE_ENV` | **`production`** | Unset means production. Say `development` on a laptop. |
 | `PORT` | `4000` | API port |
 | `HISSA_DB` | `apps/api/data/hissa.sqlite` | Database file (`:memory:` in tests) |
 | `HISSA_STORAGE` | `apps/api/data/objects` | Object store root |
-| `PARTNER_WEBHOOK_SECRET` | `dev-webhook-secret` | HMAC secret for partner webhooks |
+| `PARTNER_WEBHOOK_SECRET` | **none — required** | HMAC secret for partner webhooks. The API refuses to start without it outside development. |
 | `PARTNER_BASE_URL` | sandbox | Licensed operator base URL |
 | `SESSION_TTL_HOURS` | `12` | Session lifetime |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed origins |
 | `ANALYTICS_SALT` | dev value | Pseudonymisation salt (§14.1) |
+| `HISSA_DEV_OTP` | off | Set to `1` to echo OTP codes in API responses. Ignored in production. |
+| `SEED_PASSWORD` | dev value | Password for seeded accounts. Required outside development; the seed refuses production entirely. |
+
+Three of these fail *closed* on purpose. `NODE_ENV` defaults to production because an
+unlabelled environment is more likely to be the real one than a laptop; the webhook
+secret has no fallback because a settlement it verifies turns into holdings; and the OTP
+echo hands the second factor to whoever already has the password, so it has to be asked
+for by name.
 
 The datastore is SQLite via Node's built-in `node:sqlite`, chosen so the pilot runs with
 no external service. The access layer is a thin SQL wrapper; moving to PostgreSQL means

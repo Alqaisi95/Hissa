@@ -28,11 +28,37 @@ const { scoreRisk } = await import('../domains/origination/riskModel.ts');
 const { LEGAL_DOCUMENTS } = await import('../lib/legal.ts');
 
 db();
+
+/**
+ * The seed creates nine staff accounts — compliance, both finance signatories,
+ * the system admin, the auditor — active, with email already marked verified
+ * and MFA off. Run against anything but a developer's laptop, that is nine
+ * privileged accounts sharing one password.
+ *
+ * The password used to default to a constant committed in this file, and the
+ * script printed it on exit, which put it in the log of whatever ran it.
+ * Neither is worth the convenience outside development.
+ */
+if (config.env === 'production') {
+  throw new Error('refusing to seed a production database');
+}
+if (!process.env.SEED_PASSWORD && config.env !== 'development') {
+  throw new Error('SEED_PASSWORD is required outside development: refusing to seed with a known password');
+}
+{
+  const populated = get<{ n: number }>(`SELECT COUNT(*) AS n FROM users`);
+  if ((populated?.n ?? 0) > 0 && !process.argv.includes('--fresh')) {
+    throw new Error(
+      `refusing to seed over ${populated!.n} existing user(s) — pass --fresh to rebuild from scratch`,
+    );
+  }
+}
+
 const at = nowIso();
 
 // ─────────────────────────── users ───────────────────────────
 
-const PASSWORD = process.env.SEED_PASSWORD ?? 'HissaPilot#2026';
+const PASSWORD = process.env.SEED_PASSWORD ?? 'HissaPilot#2026';   // development only — guarded above
 
 function createUser(params: {
   fullName: string; email: string; phone?: string; roles: string[]; locale?: 'ar' | 'en';
@@ -529,7 +555,9 @@ console.log('\n✓ حِصّة | Hissa Pools — seeded pilot dataset\n');
 console.table(summary.pools);
 console.log(`users=${summary.users} entities=${summary.entities} applications=${summary.applications} ` +
             `orders=${summary.orders} holdings=${summary.holdings} refunds=${summary.refunds}`);
-console.log(`\nAll seeded accounts use the password: ${PASSWORD}`);
+console.log(process.env.SEED_PASSWORD
+  ? '\nAll seeded accounts use the password in SEED_PASSWORD.'
+  : `\nAll seeded accounts use the development password: ${PASSWORD}`);
 console.log('Investor: investor1@example.om   Owner: owner.cafe@example.om');
 console.log('Analyst: analyst@hissa.om   Compliance: compliance@hissa.om');
 console.log('Finance (maker): finance.maker@hissa.om   Finance (checker): finance.checker@hissa.om');
