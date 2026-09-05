@@ -128,11 +128,25 @@ export function createApp() {
     res.json(investorInsights(req.auth!.userId));
   });
 
-  /** Manual job trigger for operations and UAT (the scheduler runs them automatically). */
-  app.post('/api/admin/jobs/:name/run', requireAuth, requirePermission('audit.read'), (req, res) => {
+  /**
+   * Manual job trigger for operations and UAT (the scheduler runs them
+   * automatically).
+   *
+   * This was gated on audit.read, which `auditor` holds — a deliberately
+   * read-only role. One POST on pools.sweep_closings moves pools to refunding,
+   * inserts refund rows and cancels pending orders, and every one of those
+   * carried the auditor's own id as the actor. The gate is now a permission
+   * only system_admin holds.
+   *
+   * The job is also invoked the way the scheduler invokes it — with no actor —
+   * so it resolves its own, as it does on every automatic tick. Stamping the
+   * caller on a scheduled close attributed a decision to somebody who only
+   * pressed a button.
+   */
+  app.post('/api/admin/jobs/:name/run', requireAuth, requirePermission('ops.run_jobs'), (req, res) => {
     const job = ALL_JOBS[req.params.name as keyof typeof ALL_JOBS];
     if (!job) throw badRequest('unknown_job', 'المهمة غير معروفة', 'Unknown job', { available: Object.keys(ALL_JOBS) });
-    res.json({ job: req.params.name, result: job(req.auth!.userId as any) });
+    res.json({ job: req.params.name, result: (job as () => unknown)() });
   });
 
   app.use('/api', notFoundHandler);

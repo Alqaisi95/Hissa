@@ -260,3 +260,35 @@ test('reading across customers costs a second factor, whatever the role', async 
     assert.ok(!MFA_REQUIRED_ROLES.includes('project_owner'));
   });
 });
+
+test('a read-only role cannot set money in motion', async (t) => {
+  const { startTestServer, stopTestServer, api, makeUser, login } = await import('./helpers.ts');
+  const { ROLE_PERMISSIONS } = await import('../lib/rbac.ts');
+
+  await startTestServer();
+  t.after(() => stopTestServer());
+
+  await t.test('the job runner is not reachable with audit.read', async () => {
+    makeUser({ fullName: 'مدقّق', email: 'auditor-jobs@test.om', roles: ['auditor'] });
+    const token = await login('auditor-jobs@test.om');
+
+    // pools.sweep_closings moves pools to refunding, inserts refund rows and
+    // cancels pending orders. The auditor is defined as read-only.
+    const ran = await api('POST', '/api/admin/jobs/pools.sweep_closings/run', { token });
+    assert.equal(ran.status, 403);
+  });
+
+  await t.test('system_admin still can', async () => {
+    makeUser({ fullName: 'مدير نظام', email: 'sysadmin-jobs@test.om', roles: ['system_admin'] });
+    const token = await login('sysadmin-jobs@test.om');
+    const ran = await api('POST', '/api/admin/jobs/notifications.dispatch/run', { token });
+    assert.equal(ran.status, 200);
+  });
+
+  await t.test('and no role that cannot approve money holds the permission', () => {
+    const holders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, perms]) => (perms as string[]).includes('ops.run_jobs'))
+      .map(([role]) => role);
+    assert.deepEqual(holders, ['system_admin']);
+  });
+});

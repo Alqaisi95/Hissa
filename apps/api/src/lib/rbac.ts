@@ -33,7 +33,7 @@ export const PERMISSIONS = [
   'report.submit', 'report.review', 'report.publish', 'monitor.read', 'pool.monitor', 'distribution.create',
   // support & admin
   'case.read_any', 'case.work', 'complaint.create', 'settings.propose', 'settings.approve',
-  'admin.users', 'audit.read', 'reports.export', 'banner.manage',
+  'admin.users', 'audit.read', 'reports.export', 'banner.manage', 'ops.run_jobs',
   // the operations dashboard: aggregate figures, no record-level detail
   'dashboard.read',
 ] as const;
@@ -77,7 +77,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
   // Technical breadth, zero financial/investment approval.
   system_admin: ['admin.users', 'settings.propose', 'audit.read', 'banner.manage', 'pool.read_any',
-                 'dashboard.read'],
+                 'dashboard.read', 'ops.run_jobs'],
 
   auditor: [
     'audit.read', 'pool.read_any', 'application.read_any', 'funds.read', 'order.read_any',
