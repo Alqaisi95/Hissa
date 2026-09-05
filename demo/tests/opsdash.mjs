@@ -41,7 +41,7 @@ write('broken.html', broken);
 
 /* ── قاعدة فارغة تمامًا، وفيها حساب واحد يفتح كل شيء ── */
 const empty = { v: 1, version: 0, schema: 6, settings: clone(seed.settings),
-  users: [clone(seed.users.find(u => u.id === 'u_adm_omar'))],
+  users: [clone(seed.users.find(u => u.id === 'u_adm2'))],
   pools: [], orders: [], disbursements: [], distributions: [], reports: [], cases: [],
   audit: [], applications: [], invites: [], settingProposals: [], settingsHistory: [],
   resets: [], reconciliations: [] };
@@ -179,12 +179,12 @@ head('٥ · الرابط قابل للمشاركة');
 /* ── ٦ · السلسلة المكسورة تُعلن نفسها ─────────────────────────────────── */
 head('٦ · شارة سلامة السجل');
 {
-  const good = await open('work.html', 'sysadmin@hissa.local');
+  const good = await open('work.html', 'sysadmin@hissa.om');
   ok('السليمة تُعرض شريط حالة أخضر', (await good.p.$$('.statusbar__dot--ok')).length === 1);
   ok('ولا إنذار', (await good.p.$$('.note--crit')).length === 0);
   await good.ctx.close();
 
-  const bd = await open('broken.html', 'sysadmin@hissa.local');
+  const bd = await open('broken.html', 'sysadmin@hissa.om');
   const txt = await bd.p.$eval('.note--crit', e => e.textContent).catch(() => '');
   ok('المكسورة تُعلن الكسر', txt.includes('مكسورة'), txt.slice(0, 60));
   ok('وبرقم السطر الصحيح (٣)', /السطر 3\b/.test(txt), txt.slice(0, 90));
@@ -223,7 +223,7 @@ head('٧ · الرفض يُسجَّل بسببه');
 /* ── ٨ · قاعدة فارغة تمامًا ───────────────────────────────────────────── */
 head('٨ · الشاشة على قاعدة فارغة');
 {
-  const { ctx, p, errs } = await open('empty.html', 'sysadmin@hissa.local');
+  const { ctx, p, errs } = await open('empty.html', 'sysadmin@hissa.om');
   const title = await p.$eval('#pagetitle', e => e.textContent.trim()).catch(() => '');
   ok('الشاشة تُرسم', title === 'لوحة التشغيل', title);
   const empties = await p.$$eval('.empty', e => e.map(x => x.textContent.trim()));
@@ -268,7 +268,7 @@ head('١٠ · لا تنسيق في الحساب ولا حساب في التنس�
 /* ── ١١ · العمل الذي لم يكن له طابور ─────────────────────────────────── */
 head('١١ · طلب معتمَد لم يُنشر يصل اللوحة');
 {
-  const { ctx, p, errs } = await open('approved.html', 'sysadmin@hissa.local', '#/ops/dash');
+  const { ctx, p, errs } = await open('approved.html', 'sysadmin@hissa.om', '#/ops/dash');
   const txt = await p.$eval('#root', e => e.textContent);
   ok('اللوحة تسمّيه', /وافقت عليه اللجنة/.test(txt),
      (txt.match(/وافقت عليه اللجنة[^·]*/) || ['(لا شيء)'])[0].trim());
@@ -281,7 +281,7 @@ head('١١ · طلب معتمَد لم يُنشر يصل اللوحة');
 }
 {
   /* وعلى البذرة — والطلب فيها قيد الفحص — لا تُقال العبارة. */
-  const { ctx, p } = await open('index.html', 'sysadmin@hissa.local', '#/ops/dash');
+  const { ctx, p } = await open('index.html', 'sysadmin@hissa.om', '#/ops/dash');
   const txt = await p.$eval('#root', e => e.textContent);
   ok('ولا تُقال عن طلب ما زال قيد الفحص', !/وافقت عليه اللجنة/.test(txt));
   await ctx.close();

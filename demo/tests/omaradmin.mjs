@@ -12,7 +12,7 @@ const ok = (l, v) => console.log((v ? '  ✓ ' : '  ✗ ') + l);
 
 await p.goto('http://127.0.0.1:8731/', { waitUntil: 'load' }); await p.waitForTimeout(500);
 await p.click('[data-pub="login"]'); await p.waitForTimeout(250);
-await p.fill('#lem', 'sysadmin@hissa.local'); await p.fill('#lpw', 'Hissa#2026');
+await p.fill('#lem', 'sysadmin@hissa.om'); await p.fill('#lpw', 'Hissa#2026');
 await p.click('[data-act="doLogin"]');
 const inn = await p.waitForSelector('.topbar', { timeout: 9000 }).then(() => true).catch(() => false);
 ok('يدخل بالبريد وكلمة المرور', inn);
@@ -34,7 +34,7 @@ await p.evaluate(() => {
 await p.waitForTimeout(400);
 const mine = await p.$$eval('.pmx tbody tr', rows => {
   const head = [...document.querySelectorAll('.pmx__who span:first-child')].map(x => x.textContent.trim());
-  const col = head.indexOf('عمر');
+  const col = head.indexOf('المشرف');
   return rows.map(r => {
     const cells = [...r.querySelectorAll('.pmx__c')];
     return { perm: r.querySelector('.mono').textContent.trim(),

@@ -82,7 +82,7 @@ await p.click('[data-pub="login"]');
 await p.waitForTimeout(250);
 ok('شاشة الدخول عنوانها #/login', (await hash()) === '#/login');
 
-await login('sysadmin@hissa.local', 'Hissa#2026');
+await login('sysadmin@hissa.om', 'Hissa#2026');
 ok('الدخول يهبط على لوحة الإدارة بعنوانها', (await hash()) === '#/ops/adash', await hash());
 
 const links = await p.$$eval('a.navlink', l => l.map(x => ({ href: x.getAttribute('href'), view: x.dataset.view })));
@@ -160,7 +160,7 @@ await p.waitForTimeout(500);
 ok('عنوان تطبيق بلا حساب ⇒ الدخول حاملًا المقصد',
   (await hash()) === '#/login?next=%2Fops%2Frecon', await hash());
 ok('ونموذج الدخول معروض', await p.isVisible('#lem'));
-await login('sysadmin@hissa.local', 'Hissa#2026');
+await login('sysadmin@hissa.om', 'Hissa#2026');
 ok('وبعد الدخول يُستأنف إلى المقصد لا إلى الافتراضية',
   (await hash()) === '#/ops/recon' && (await title()) === 'المطابقة البنكية', await hash());
 

@@ -93,6 +93,43 @@ jobs:
           [ $bad -eq 0 ] && echo "نظيف: لا هوية شخصية في الملفات ولا في التاريخ."
           exit $bad
 
+      # الحارس أعلاه يعرف مزوّدي البريد العامّين وحدهم، وmake_public.py يطبّق
+      # قاعدة أضيق: لا يبقى في المنشور إلا @example.om و@hissa.om. فمرّ بينهما
+      # حسابان — omar@test.com وsysadmin@hissa.local بصلاحياته الثماني عشرة —
+      # حُذفا من المنشور وبقيا في المصدر المتتبَّع لمستودع عامّ.
+      #
+      # هذا الفحص يطبّق قاعدة البناء نفسها على المصدر، فلا يتباعدان مرّة أخرى.
+      - name: بريد البذرة داخل نطاقَي العرض وحدهما
+        run: |
+          python3 - <<'GUARD'
+          import io, json, re, sys
+
+          DOMAINS = ('@example.om', '@hissa.om')   # نفس ثابت make_public.py
+          bad = []
+
+          def check(label, users):
+              for u in users:
+                  mail = u.get('email') or ''
+                  if mail and not mail.endswith(DOMAINS):
+                      bad.append(f'{label}: {u.get("id")} → {mail}')
+
+          src = io.open('demo/hissa-live.html', encoding='utf-8').read()
+          m = re.search(r'<script id="appstate" type="application/json">(.*?)</script>', src, re.S)
+          if not m:
+              sys.exit('demo/hissa-live.html: لا كتلة حالة')
+          check('demo/hissa-live.html', json.loads(m.group(1).replace('\\u003c', '<')).get('users', []))
+
+          for path in ('demo/tests/fixtures/state.ancient.json', 'demo/tests/fixtures/state.gutted.json'):
+              check(path, json.loads(io.open(path, encoding='utf-8').read()).get('users', []))
+
+          if bad:
+              print('::error::بريد خارج نطاقَي العرض داخل المصدر المتتبَّع:')
+              for line in bad:
+                  print('  ' + line)
+              sys.exit(1)
+          print('نظيف: كل بريد في البذرة داخل @example.om أو @hissa.om.')
+          GUARD
+
       # الأيقونات مولَّدة ومدفوعة، لكن إعادة توليدها تثبت أن المولِّد يعمل
       - name: بناء النسخة العامة
         run: npm run demo:site

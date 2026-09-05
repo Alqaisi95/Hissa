@@ -45,7 +45,7 @@ async function open(email, pw, hash) {
 
 /* ══ ١ · كل رسم يقول ما وحدته ══ */
 console.log('\n══ ١ · لا رقم بلا وحدة ══');
-const A = await open('sysadmin@hissa.local', 'Hissa#2026', '#/ops/pipeline');
+const A = await open('sysadmin@hissa.om', 'Hissa#2026', '#/ops/pipeline');
 ok('الشاشة تفتح بعنوانها', A.inn);
 if (A.inn) {
   const title = await A.p.textContent('#pagetitle');
@@ -98,7 +98,7 @@ await A.ctx.close();
 
 /* ══ ٤ · جدول المستثمرين كامل ويُرتَّب ══ */
 console.log('\n══ ٤ · القائمة كاملة، ويمكن ترتيبها ══');
-const B = await open('sysadmin@hissa.local', 'Hissa#2026', '#/ops/pipeline');
+const B = await open('sysadmin@hissa.om', 'Hissa#2026', '#/ops/pipeline');
 if (B.inn) {
   /* الجدول مُعنون بـdata-table، فالاختبار يخاطبه بعينه: الشاشة تحمل ستة
      جداول أخرى، وأول <table> في المستند ليس هذا. */
@@ -165,7 +165,7 @@ await B.ctx.close();
 
 /* ══ ٧ · لا معنى محمولًا باللون وحده ══ */
 console.log('\n══ ٧ · اللون لا يحمل معنًى وحده ══');
-const C = await open('sysadmin@hissa.local', 'Hissa#2026', '#/ops/pipeline');
+const C = await open('sysadmin@hissa.om', 'Hissa#2026', '#/ops/pipeline');
 if (C.inn) {
   const bars = await C.p.$$eval('.frame', fs_ => fs_.map(f => ({
     title: (f.querySelector('h2') || {}).textContent || '',

@@ -115,7 +115,7 @@ mp.on('pageerror', e => errs.push('phone: ' + e.message));
 await mp.goto('http://127.0.0.1:8731/', { waitUntil: 'load' });
 await mp.waitForTimeout(350);
 await mp.click('[data-pub="login"]'); await mp.waitForTimeout(200);
-await mp.fill('#lem', 'sysadmin@hissa.local'); await mp.fill('#lpw', 'Hissa#2026');
+await mp.fill('#lem', 'sysadmin@hissa.om'); await mp.fill('#lpw', 'Hissa#2026');
 await mp.click('[data-act="doLogin"]'); await mp.waitForTimeout(1500);
 
 const PHONE_SCREENS = ['ops.adash', 'ops.dash', 'ops.admin', 'ops.audit', 'ops.money', 'ops.recon'];

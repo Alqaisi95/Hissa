@@ -156,13 +156,13 @@ head('٣ · undefined ≠ صفر');
   const wrong = gated.filter(k => LAYER.sel[k](base, noPerm, P()) !== undefined);
   ok('كل سيلكتور خلف صلاحية يُرجع undefined لمن لا يملكها', wrong.length === 0, wrong.join('، '));
 
-  const admin = S('u_adm_omar');
+  const admin = S('u_adm2');
   ok('ويُرجع قيمة فعلية لمن يملكها', LAYER.sel.selPlatformAum(base, admin, P()) !== undefined);
 
   /* والفرق الذي تقوم عليه القاعدة: لا بيانات ⇒ صفر، والبطاقة تُرسم. */
   LAYER.setState(EMPTY);
   const eb = LAYER.BASE(EMPTY);
-  const aumEmpty = LAYER.sel.selPlatformAum(eb, S('u_adm_omar'), P());
+  const aumEmpty = LAYER.sel.selPlatformAum(eb, S('u_adm2'), P());
   ok('حساب غير موجود في قاعدة فارغة ⇒ undefined', aumEmpty === undefined);
   LAYER.setState(SEED);
 }
@@ -223,7 +223,7 @@ head('٥ · تقاطع الطابور مع الرقابة الثنائية');
   ok('الطرف نفسه لا يرى معاملته في طابوره', selfSees.length === 0, selfSees.join('، '));
 
   /* والطرف الثاني يراها — وإلا صار الاختبار يمرّ بطابور فارغ دائمًا. */
-  const second = { disbursement: 'u_fin1', settingProposal: 'u_adm_omar', reconciliation: 'u_fin2' };
+  const second = { disbursement: 'u_fin1', settingProposal: 'u_adm2', reconciliation: 'u_fin2' };
   const secondMisses = Object.keys(pick).filter(kind => {
     const q = LAYER.sel.selMyApprovalQueue(b2, S(second[kind]), P()) || [];
     return !q.some(x => x.id === pick[kind]);
@@ -232,7 +232,7 @@ head('٥ · تقاطع الطابور مع الرقابة الثنائية');
 
   /* التقاطع الحقيقي: كل صف معروض يجب أن يجتاز نفس مُسنِدَي ACTS. */
   let offered = 0, wouldReject = 0;
-  ['u_fin1', 'u_fin2', 'u_adm1', 'u_adm_omar', 'u_pf1', 'u_cmp1', 'u_aud1'].forEach(uid => {
+  ['u_fin1', 'u_fin2', 'u_adm1', 'u_adm2', 'u_pf1', 'u_cmp1', 'u_aud1'].forEach(uid => {
     (LAYER.sel.selMyApprovalQueue(b2, S(uid), P()) || []).forEach(item => {
       offered += 1;
       const row = rows[item.kind].find(r => r.id === item.id);
@@ -277,7 +277,7 @@ head('٧ · لا كتابة في الحالة');
 
   const snapshot = JSON.stringify(SEED);
   Object.keys(LAYER.sel).forEach(k => {
-    try { LAYER.sel[k](base, S('u_adm_omar'), P({ poolId: 'p_log' })); } catch (e) { /* ٨ يمسكها */ }
+    try { LAYER.sel[k](base, S('u_adm2'), P({ poolId: 'p_log' })); } catch (e) { /* ٨ يمسكها */ }
   });
   ok('وتشغيل كل السيلكتورات لا يغيّر بايتًا من الحالة', JSON.stringify(SEED) === snapshot);
 }
@@ -288,7 +288,7 @@ head('٨ · كل سيلكتور على قاعدة فارغة');
   LAYER.setState(EMPTY);
   const eb = LAYER.BASE(EMPTY);
   const broke = [];
-  ['u_adm_omar', null].forEach(uid => {
+  ['u_adm2', null].forEach(uid => {
     Object.keys(LAYER.sel).forEach(k => {
       try { LAYER.sel[k](eb, S(uid), P({ poolId: 'p_none' })); }
       catch (e) { broke.push(k + '(' + uid + '): ' + e.message); }
@@ -319,7 +319,7 @@ head('٩ · التسعير بإعدادات وقتها');
   st.settings.feeBps.platform = 400;
   st.settingsHistory.push({ key: 'feeBps.platform', before: 200, after: 400,
     effectiveFrom: '2026-08-01', reason: 'اختبار', proposedBy: 'u_adm1',
-    approvedBy: 'u_adm_omar', at: '2026-08-01T00:00:00Z' });
+    approvedBy: 'u_adm2', at: '2026-08-01T00:00:00Z' });
   st.version = 950;
   LAYER.setState(st);
   const b4 = LAYER.BASE(st);
@@ -395,7 +395,7 @@ head('إضافي · حصص توزيعة مزروعة بلا shares');
 
 head('إضافي · النسب تخرج bps صحيحة');
 {
-  const funnel = LAYER.sel.selConversionFunnel(base, S('u_adm_omar'), P());
+  const funnel = LAYER.sel.selConversionFunnel(base, S('u_adm2'), P());
   const bad = funnel.filter(s => !Number.isInteger(s.fromPrevBps) || !Number.isInteger(s.fromBaseBps));
   ok('كل نسبة عدد صحيح بالنقاط الأساسية', bad.length === 0, JSON.stringify(bad));
   ok('والأساس ١٠٠٠٠', funnel[0].fromPrevBps === 10000);
@@ -636,7 +636,7 @@ head('إضافي · حصص التوزيعة تصل كل قارئ لها');
 
 head('إضافي · قائمة ما تجاوز مهلته — بوّابة لكل كتلة، وساعة واحدة');
 {
-  const adm = S('u_adm_omar');      // كل الصلاحيات
+  const adm = S('u_adm2');      // كل الصلاحيات
   const rows = LAYER.sel.selOverdueWork(base, adm, P());
   ok('القائمة تُبنى', Array.isArray(rows), typeof rows);
   ok('ومرتَّبة من الأكثر تأخرًا',
@@ -677,7 +677,7 @@ head('إضافي · قائمة ما تجاوز مهلته — بوّابة لك�
 
 head('إضافي · الطلب الذي وافقت عليه اللجنة ولم ينشره أحد');
 {
-  const adm = S('u_adm_omar');
+  const adm = S('u_adm2');
   /* البذرة تحمل طلبًا قيد الفحص فقط. نوافق عليه لنصنع الحالة التي لم تكن
      تظهر في أي مكان: مُعتمَد، وزرّ النشر معروض، وما من طابور يسمّيه. */
   const st = clone(SEED);
@@ -719,7 +719,7 @@ head('إضافي · الطلب الذي وافقت عليه اللجنة ولم 
 
 head('إضافي · الصرف الزائد: تعبيران عن قاعدة واحدة، مربوطان');
 {
-  const adm = S('u_adm_omar');
+  const adm = S('u_adm2');
   ok('لا صرف زائد في البذرة',
      LAYER.sel.selOverDisbursed(base, adm, P()).length === 0);
   ok('ولا يقرؤه من لا يملك funds.read',
