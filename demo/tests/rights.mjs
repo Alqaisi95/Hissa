@@ -180,11 +180,11 @@ console.log('\n══ 4 · لا بريد داخل سطر لا يُعدَّل ═
   await goto(p, 'ops.audit');
   const details = await p.$$eval('table tbody tr td:nth-child(4)', t => t.map(x => x.textContent));
   const withMail = details.filter(t => /@/.test(t));
-  /* One row predates the fix and can never be rewritten. Every other row must
-     be clean, and the count must not grow. */
-  const legacy = withMail.filter(t => t.includes('omar@test.com'));
-  ok('لا بريد إلا في السطر القديم الذي لا يُعاد كتابته (' + withMail.length + ' سطر)',
-    withMail.length === legacy.length && legacy.length <= 1);
+  /* كان سطر واحد يسبق الإصلاح ولا يُعاد كتابته، فكان الشرط «لا بريد إلا فيه».
+     حُذف الحساب الذي خلّفه ومعه سطراه، فصار الشرط ما كان يجب أن يكونه: ولا
+     سطر واحد يحمل عنوانًا. */
+  ok('لا بريد في أي سطر تدقيق (' + withMail.length + ' سطر)', withMail.length === 0,
+    withMail.slice(0, 2).join(' | '));
   await ctx.close();
 }
 

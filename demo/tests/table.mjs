@@ -32,7 +32,7 @@ async function open(hash, w, h) {
   await p.goto('http://127.0.0.1:8731/index.html', { waitUntil: 'load' });
   await p.waitForTimeout(400);
   await p.click('[data-pub="login"]'); await p.waitForTimeout(200);
-  await p.fill('#lem', 'sysadmin@hissa.local'); await p.fill('#lpw', 'Hissa#2026');
+  await p.fill('#lem', 'sysadmin@hissa.om'); await p.fill('#lpw', 'Hissa#2026');
   await p.click('[data-act="doLogin"]');
   const inn = await p.waitForSelector('.topbar', { timeout: 9000 }).then(() => true).catch(() => false);
   if (inn && hash) { await p.evaluate(x => { location.hash = x; }, hash); await p.waitForTimeout(500); }

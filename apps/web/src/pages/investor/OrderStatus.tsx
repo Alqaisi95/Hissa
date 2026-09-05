@@ -3,7 +3,7 @@
  * pending; the UI never guesses a failure from a delay.
  */
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n.tsx';
 import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
@@ -11,9 +11,7 @@ import { Card, ErrorNotice, Loading, Money, StatusBadge, Badge, Reason } from '.
 
 export function OrderStatus() {
   const { id = '' } = useParams();
-  const location = useLocation();
   const { t, pick, locale, formatDate } = useI18n();
-  const payment = (location.state as any)?.payment;
 
   const order = useQuery<any>(`/orders/${id}`, [id]);
   const [poll, setPoll] = useState(0);
@@ -31,7 +29,7 @@ export function OrderStatus() {
   if (order.error) return <ErrorNotice error={order.error} onRetry={order.reload} />;
   if (!order.data) return null;
 
-  const { order: o, pool, refunds } = order.data;
+  const { order: o, pool, refunds, payment } = order.data;
   const isPending = o.status === 'pending';
   const isConfirmed = o.status === 'confirmed' || o.status === 'allocated';
 
@@ -48,6 +46,10 @@ export function OrderStatus() {
         <div className="notice notice--success" role="status">{t('orderConfirmed')}</div>
       ) : null}
 
+      {/* The link comes from the order, not from the navigation state that
+          carried it here. Reading it from location.state meant a refresh, a
+          bookmark, or arriving from the portfolio lost the only way to pay a
+          commitment the page was telling you to pay. */}
       {isPending && payment?.redirectUrl ? (
         <Card title={t('proceedToPayment')}>
           <div className="stack-sm">

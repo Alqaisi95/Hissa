@@ -12,7 +12,7 @@ import { useQuery, useMutation } from '../../lib/useApi.ts';
 import { api } from '../../lib/api.ts';
 import { useAuth } from '../../lib/auth.tsx';
 import {
-  Badge, Card, Empty, ErrorNotice, Field, Loading, Money, StatusBadge, Tabs,
+  Badge, Card, Empty, ErrorNotice, Field, Loading, Money, StatusBadge, Tabs, useReasonDialog,
 } from '../../components/ui.tsx';
 import { TrendChart, BarList, ComparisonChart, ProgressMeter, compactNumber } from '../../components/charts.tsx';
 
@@ -402,6 +402,7 @@ function PoolInsights({ poolId }: { poolId: string }) {
 
 function DisclosurePanel({ poolId, pool, onChanged }: { poolId: string; pool: any; onChanged: () => void }) {
   const { t, locale, formatDate } = useI18n();
+  const { ask, dialog } = useReasonDialog();
   const auth = useAuth();
   const versions = useQuery<any>(`/pools/${poolId}/disclosures`, [poolId]);
   const [diff, setDiff] = useState<{ from: number; to: number } | null>(null);
@@ -414,6 +415,7 @@ function DisclosurePanel({ poolId, pool, onChanged }: { poolId: string; pool: an
 
   return (
     <div className="stack">
+      {dialog}
       <Card title={locale === 'ar' ? 'نسخ الإفصاح' : 'Disclosure versions'}
             actions={<Badge tone="info">{locale === 'ar' ? 'غير قابلة للاستبدال' : 'Immutable'}</Badge>}>
         <p className="small muted">
@@ -447,12 +449,23 @@ function DisclosurePanel({ poolId, pool, onChanged }: { poolId: string; pool: an
                         <button
                           type="button" className="btn btn--sm btn--primary" disabled={publish.pending}
                           onClick={async () => {
-                            const escrow = pool.escrow_account_ref
-                              ?? window.prompt(locale === 'ar' ? 'مرجع حساب الضمان' : 'Escrow account reference');
-                            if (!escrow) return;
-                            const reason = window.prompt(locale === 'ar' ? 'سبب النشر' : 'Publication reason') ?? '';
-                            if (reason.length < 5) return;
-                            if (await publish.run({ disclosureId: v.id, escrowAccountRef: escrow, reason })) onChanged();
+                            /* Publishing binds every future order to this
+                               document, so the escrow reference and the reason
+                               are asked for together and validated in place. */
+                            const known = pool.escrow_account_ref;
+                            const r = await ask({
+                              title: locale === 'ar' ? 'نشر الإفصاح' : 'Publish disclosure',
+                              confirmText: locale === 'ar' ? 'نشر' : 'Publish',
+                              fields: [
+                                ...(known ? [] : [{ name: 'escrow', minLength: 3,
+                                  label: locale === 'ar' ? 'مرجع حساب الضمان' : 'Escrow account reference' }]),
+                                { name: 'reason', minLength: 5, multiline: true,
+                                  label: locale === 'ar' ? 'سبب النشر' : 'Publication reason' },
+                              ],
+                            });
+                            if (!r) return;
+                            const escrow = known ?? r.escrow;
+                            if (await publish.run({ disclosureId: v.id, escrowAccountRef: escrow, reason: r.reason })) onChanged();
                           }}
                         >
                           {locale === 'ar' ? 'نشر' : 'Publish'}
@@ -660,7 +673,7 @@ function DisclosureEditor({ poolId, nextVersion, onSaved }: {
 function LifecyclePanel({ pool, onChanged }: { pool: any; onChanged: () => void }) {
   const { t, locale, formatDate } = useI18n();
   const auth = useAuth();
-  const ask = (m: string) => window.prompt(m) ?? '';
+  const { ask, dialog } = useReasonDialog();
 
   const pause = useMutation((reason: string) => api.post(`/pools/${pool.id}/pause`, { reason }));
   const resume = useMutation((reason: string) => api.post(`/pools/${pool.id}/resume`, { reason }));
@@ -672,6 +685,7 @@ function LifecyclePanel({ pool, onChanged }: { pool: any; onChanged: () => void 
 
   return (
     <div className="stack">
+      {dialog}
       <Card title={locale === 'ar' ? 'حالة الفرصة' : 'Pool state'}>
         <dl className="kv" style={{ marginBlockEnd: '1rem' }}>
           <dt>{t('status')}</dt><dd><StatusBadge status={pool.status} /></dd>
@@ -691,9 +705,13 @@ function LifecyclePanel({ pool, onChanged }: { pool: any; onChanged: () => void 
         <div className="row">
           {!pool.owner_contribution_received_at && auth.has('finance_ops') ? (
             <button type="button" className="btn btn--primary btn--sm" disabled={ownerPaid.pending}
-                    onClick={() => {
-                      const ref = ask(locale === 'ar' ? 'مرجع إيداع مساهمة صاحب المشروع' : 'Owner contribution deposit reference');
-                      if (ref.length >= 3) run(ownerPaid.run(ref));
+                    onClick={async () => {
+                      const r = await ask({
+                        title: locale === 'ar' ? 'تسجيل استلام المساهمة' : 'Record contribution received',
+                        fields: [{ name: 'reference', minLength: 3,
+                          label: locale === 'ar' ? 'مرجع إيداع المساهمة' : 'Deposit reference' }],
+                      });
+                      if (r) run(ownerPaid.run(r.reference));
                     }}>
               {locale === 'ar' ? 'تسجيل استلام المساهمة' : 'Record contribution received'}
             </button>
@@ -701,25 +719,49 @@ function LifecyclePanel({ pool, onChanged }: { pool: any; onChanged: () => void 
 
           {pool.status === 'funding' && auth.has('compliance') ? (
             <button type="button" className="btn btn--sm" disabled={pause.pending}
-                    onClick={() => { const r = ask(locale === 'ar' ? 'سبب الإيقاف (10 أحرف)' : 'Pause reason (10+)'); if (r.length >= 10) run(pause.run(r)); }}>
+                    onClick={async () => {
+                      const r = await ask({
+                        title: locale === 'ar' ? 'إيقاف الفرصة مؤقتًا' : 'Pause this pool',
+                        fields: [{ name: 'reason', minLength: 10, multiline: true,
+                          label: locale === 'ar' ? 'سبب الإيقاف' : 'Pause reason' }],
+                      });
+                      if (r) run(pause.run(r.reason));
+                    }}>
               {locale === 'ar' ? 'إيقاف مؤقت' : 'Pause'}
             </button>
           ) : null}
 
           {pool.status === 'paused' && auth.has('portfolio_ops') ? (
             <button type="button" className="btn btn--sm" disabled={resume.pending}
-                    onClick={() => { const r = ask(locale === 'ar' ? 'سبب الاستئناف (10 أحرف)' : 'Resume reason (10+)'); if (r.length >= 10) run(resume.run(r)); }}>
+                    onClick={async () => {
+                      const r = await ask({
+                        title: locale === 'ar' ? 'استئناف الفرصة' : 'Resume this pool',
+                        fields: [{ name: 'reason', minLength: 10, multiline: true,
+                          label: locale === 'ar' ? 'سبب الاستئناف' : 'Resume reason' }],
+                      });
+                      if (r) run(resume.run(r.reason));
+                    }}>
               {locale === 'ar' ? 'استئناف' : 'Resume'}
             </button>
           ) : null}
 
           {['funding', 'paused'].includes(pool.status) && auth.has('portfolio_ops') ? (
             <button type="button" className="btn btn--sm" disabled={extend.pending}
-                    onClick={() => {
-                      const days = Number(ask(locale === 'ar' ? 'عدد الأيام الإضافية' : 'Additional days'));
-                      if (!days) return;
-                      const r = ask(locale === 'ar' ? 'سبب التمديد (10 أحرف)' : 'Extension reason (10+)');
-                      if (r.length >= 10) run(extend.run({ additionalDays: days, reason: r }));
+                    onClick={async () => {
+                      /* One dialog, not two prompts: answering the first and
+                         cancelling the second used to leave nothing behind and
+                         say nothing about it. */
+                      const r = await ask({
+                        title: locale === 'ar' ? 'تمديد مدة التمويل' : 'Extend the funding window',
+                        fields: [
+                          { name: 'days', type: 'number', minLength: 1,
+                            label: locale === 'ar' ? 'عدد الأيام الإضافية' : 'Additional days' },
+                          { name: 'reason', minLength: 10, multiline: true,
+                            label: locale === 'ar' ? 'سبب التمديد' : 'Extension reason' },
+                        ],
+                      });
+                      const days = Number(r?.days);
+                      if (r && days > 0) run(extend.run({ additionalDays: days, reason: r.reason }));
                     }}>
               {locale === 'ar' ? 'تمديد المدة' : 'Extend'}
             </button>
@@ -727,15 +769,21 @@ function LifecyclePanel({ pool, onChanged }: { pool: any; onChanged: () => void 
 
           {!['closed', 'cancelled'].includes(pool.status) && auth.has('compliance') ? (
             <button type="button" className="btn btn--sm btn--danger" disabled={cancel.pending}
-                    onClick={() => {
+                    onClick={async () => {
                       const warn = pool.raisedAmount > 0
                         ? (locale === 'ar'
                           ? 'توجد التزامات مؤكدة — سيتحول الإلغاء إلى مسار استرداد لكل مستثمر. متابعة؟'
                           : 'There are confirmed commitments — cancelling routes every investor to a refund. Continue?')
                         : (locale === 'ar' ? 'إلغاء الفرصة؟' : 'Cancel this pool?');
-                      if (!window.confirm(warn)) return;
-                      const r = ask(locale === 'ar' ? 'سبب الإلغاء (10 أحرف)' : 'Cancellation reason (10+)');
-                      if (r.length >= 10) run(cancel.run(r));
+                      const r = await ask({
+                        title: locale === 'ar' ? 'إلغاء الفرصة' : 'Cancel this pool',
+                        intro: warn,
+                        danger: true,
+                        confirmText: locale === 'ar' ? 'تأكيد الإلغاء' : 'Confirm cancellation',
+                        fields: [{ name: 'reason', minLength: 10, multiline: true,
+                          label: locale === 'ar' ? 'سبب الإلغاء' : 'Cancellation reason' }],
+                      });
+                      if (r) run(cancel.run(r.reason));
                     }}>
               {locale === 'ar' ? 'إلغاء الفرصة' : 'Cancel pool'}
             </button>
@@ -823,6 +871,7 @@ function DataRoomPanel({ poolId, documents, onChanged }: { poolId: string; docum
 
 function QaPanel({ poolId, onChanged }: { poolId: string; onChanged: () => void }) {
   const { t, locale, formatDate } = useI18n();
+  const { ask, dialog } = useReasonDialog();
   const pending = useQuery<any>(`/pools/${poolId}/questions/pending`, [poolId]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answer = useMutation((p: { id: string; answer: string; publish: boolean; rejectReason?: string }) =>
@@ -833,6 +882,7 @@ function QaPanel({ poolId, onChanged }: { poolId: string; onChanged: () => void 
 
   return (
     <Card title={locale === 'ar' ? 'أسئلة بانتظار المراجعة' : 'Questions awaiting review'}>
+      {dialog}
       <p className="small muted">
         {locale === 'ar'
           ? 'لا يُنشر أي جواب قبل اعتماد الدور المخول، ويُفحص نص الجواب من عبارات الضمان قبل قبوله.'
@@ -868,8 +918,14 @@ function QaPanel({ poolId, onChanged }: { poolId: string; onChanged: () => void 
                 </button>
                 <button type="button" className="btn btn--sm btn--danger" disabled={answer.pending}
                         onClick={async () => {
-                          const why = window.prompt(locale === 'ar' ? 'سبب الرفض' : 'Rejection reason') ?? '';
-                          if (why && await answer.run({ id: q.id, answer: answers[q.id] ?? '—', publish: false, rejectReason: why })) reload();
+                          const r = await ask({
+                            title: locale === 'ar' ? 'رفض السؤال' : 'Reject this question',
+                            danger: true,
+                            confirmText: locale === 'ar' ? 'تأكيد الرفض' : 'Confirm rejection',
+                            fields: [{ name: 'why', minLength: 5, multiline: true,
+                              label: locale === 'ar' ? 'سبب الرفض' : 'Rejection reason' }],
+                          });
+                          if (r && await answer.run({ id: q.id, answer: answers[q.id] ?? '—', publish: false, rejectReason: r.why })) reload();
                         }}>
                   {t('reject')}
                 </button>
@@ -905,10 +961,11 @@ function MonitoringPanel({ pool, onChanged }: { pool: any; onChanged: () => void
     api.post(`/portfolio/pools/${pool.id}/close`, p));
 
   const canAct = auth.has('portfolio_ops');
-  const ask = (m: string) => window.prompt(m) ?? '';
+  const { ask, dialog } = useReasonDialog();
 
   return (
     <div className="stack">
+      {dialog}
       {canAct ? (
         <Card title={locale === 'ar' ? 'جدول التقارير' : 'Report schedule'}>
           <form className="stack" onSubmit={async (e) => { e.preventDefault(); if (await addSchedule.run()) onChanged(); }}>
@@ -999,10 +1056,18 @@ function MonitoringPanel({ pool, onChanged }: { pool: any; onChanged: () => void
             {pool.status === 'operating' ? (
               <button type="button" className="btn btn--sm btn--danger" disabled={markDefault.pending}
                       onClick={async () => {
-                        const reason = ask(locale === 'ar' ? 'سبب التعثر (20 حرفًا)' : 'Default reason (20+)');
-                        if (reason.length < 20) return;
-                        const plan = ask(locale === 'ar' ? 'خطة المعالجة (20 حرفًا)' : 'Workout plan (20+)');
-                        if (plan.length >= 20 && await markDefault.run({ reason, plan })) onChanged();
+                        const r = await ask({
+                          title: locale === 'ar' ? 'تسجيل تعثر' : 'Record a default',
+                          danger: true,
+                          confirmText: locale === 'ar' ? 'تسجيل التعثر' : 'Record default',
+                          fields: [
+                            { name: 'reason', minLength: 20, multiline: true,
+                              label: locale === 'ar' ? 'سبب التعثر' : 'Default reason' },
+                            { name: 'plan', minLength: 20, multiline: true,
+                              label: locale === 'ar' ? 'خطة المعالجة' : 'Workout plan' },
+                          ],
+                        });
+                        if (r && await markDefault.run({ reason: r.reason, plan: r.plan })) onChanged();
                       }}>
                 {locale === 'ar' ? 'تسجيل تعثر' : 'Record default'}
               </button>
@@ -1010,8 +1075,12 @@ function MonitoringPanel({ pool, onChanged }: { pool: any; onChanged: () => void
             {['operating', 'default'].includes(pool.status) ? (
               <button type="button" className="btn btn--sm" disabled={workout.pending}
                       onClick={async () => {
-                        const r = ask(locale === 'ar' ? 'سبب بدء المعالجة (20 حرفًا)' : 'Workout reason (20+)');
-                        if (r.length >= 20 && await workout.run(r)) onChanged();
+                        const r = await ask({
+                          title: locale === 'ar' ? 'بدء المعالجة' : 'Start a workout',
+                          fields: [{ name: 'reason', minLength: 20, multiline: true,
+                            label: locale === 'ar' ? 'سبب بدء المعالجة' : 'Workout reason' }],
+                        });
+                        if (r && await workout.run(r.reason)) onChanged();
                       }}>
                 {locale === 'ar' ? 'بدء المعالجة' : 'Start workout'}
               </button>
@@ -1019,10 +1088,18 @@ function MonitoringPanel({ pool, onChanged }: { pool: any; onChanged: () => void
             {['operating', 'default', 'workout'].includes(pool.status) ? (
               <button type="button" className="btn btn--sm" disabled={close.pending}
                       onClick={async () => {
-                        const reason = ask(locale === 'ar' ? 'سبب الإغلاق (20 حرفًا)' : 'Closing reason (20+)');
-                        if (reason.length < 20) return;
-                        const note = ask(locale === 'ar' ? 'ملاحظة التسوية النهائية' : 'Final settlement note');
-                        if (note.length >= 10 && await close.run({ reason, finalSettlementNote: note })) onChanged();
+                        const r = await ask({
+                          title: locale === 'ar' ? 'إغلاق نهائي' : 'Final close',
+                          danger: true,
+                          confirmText: locale === 'ar' ? 'تأكيد الإغلاق' : 'Confirm close',
+                          fields: [
+                            { name: 'reason', minLength: 20, multiline: true,
+                              label: locale === 'ar' ? 'سبب الإغلاق' : 'Closing reason' },
+                            { name: 'note', minLength: 10, multiline: true,
+                              label: locale === 'ar' ? 'ملاحظة التسوية النهائية' : 'Final settlement note' },
+                          ],
+                        });
+                        if (r && await close.run({ reason: r.reason, finalSettlementNote: r.note })) onChanged();
                       }}>
                 {locale === 'ar' ? 'إغلاق نهائي' : 'Final close'}
               </button>

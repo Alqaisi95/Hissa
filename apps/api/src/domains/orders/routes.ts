@@ -9,7 +9,7 @@ import { conflict, forbidden, notFound, unprocessable } from '../../lib/errors.t
 import { requireAuth, requirePermission } from '../../middleware/auth.ts';
 import { getSetting, SETTING_KEYS, fees } from '../../lib/settings.ts';
 import { evaluateEligibility, publicVerdict, committedToPool } from './eligibility.ts';
-import { createCollectionIntent, markSettled, markFailed, queryStatus } from '../../integrations/partner.ts';
+import { createCollectionIntent, markSettled, markFailed, queryStatus, checkoutUrl } from '../../integrations/partner.ts';
 import { signDocument } from '../../integrations/esign.ts';
 import { notify } from '../../integrations/notifications.ts';
 import { track } from '../analytics/track.ts';
@@ -178,8 +178,19 @@ ordersRouter.get('/:id', requireAuth, (req, res) => {
   res.json({
     order: { ...order, acknowledgements: JSON.parse(order.acknowledgements) },
     pool: get(`SELECT id, reference, title_ar, status, target_amount, closes_at FROM pools WHERE id = ?`, [order.pool_id]),
-    // FR-406 — the investor sees status and reference, never sensitive payment data.
-    payment: payment ? { providerRef: payment.provider_ref, status: payment.status, createdAt: payment.created_at } : null,
+    /* FR-406 — the investor sees status and reference, never sensitive payment
+       data. The checkout link belongs here too: it is derived from the
+       reference we already return, and without it a refreshed or bookmarked
+       order page showed "being confirmed" and offered no way to pay. It is
+       withheld once the money has moved, because then there is nothing to
+       pay. */
+    payment: payment ? {
+      providerRef: payment.provider_ref,
+      status: payment.status,
+      createdAt: payment.created_at,
+      redirectUrl: ['initiated', 'pending'].includes(payment.status)
+        ? checkoutUrl(payment.provider_ref) : null,
+    } : null,
     refunds: all(`SELECT id, amount, status, reason, created_at, settled_at FROM refunds WHERE order_id = ?`, [order.id]),
   });
 });

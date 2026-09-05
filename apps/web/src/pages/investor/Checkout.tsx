@@ -108,7 +108,6 @@ export function Checkout() {
                   id="amount" type="text" inputMode="decimal" dir="ltr"
                   value={amountText} onChange={(event) => setAmountText(event.target.value)}
                   placeholder={locale === 'ar' ? 'مثال: 500.000' : 'e.g. 500.000'}
-                  aria-describedby="amount-hint"
                 />
               </Field>
 
@@ -161,7 +160,7 @@ export function Checkout() {
                 poolId, amount: amountBaisa, disclosureVersionId: disclosure.id,
                 acknowledgements: Object.keys(checked).filter((code) => checked[code]),
               });
-              if (result) navigate(`/orders/${result.orderId}`, { state: { payment: result.payment } });
+              if (result) navigate(`/orders/${result.orderId}`);
             }}
           >
             {orderMutation.pending ? t('loading') : t('proceedToPayment')}

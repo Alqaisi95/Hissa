@@ -1,13 +1,19 @@
-# يشغّل مجموعة اختبارات النسخة التجريبية في المتصفح.
+# مهمتان: النسخة التجريبية في المتصفح، والمكدّس تحت apps/.
 #
-# نطاقه demo/ وحده عمدًا. اختبارات apps/api لم تُشغَّل في CI قطّ، ولا أعرف
-# حالتها؛ وإدخالها هنا الآن يجعل كل دفعة حمراء لسبب لا يخصّ ما تغيّر. من
-# يريد تشغيلها يضيف مهمة ثانية بعد أن يتأكد من خضرتها محليًّا.
+# كان نطاق هذا الملف demo/ وحده، وكان التعليق هنا يقول إن اختبارات apps/api
+# «لم تُشغَّل في CI قطّ ولا أعرف حالتها». شُغِّلت الآن محليًّا أولًا كما اشترط
+# ذلك التعليق: ٥٦ اختبارًا خضراء، وفحص الأنواع نظيف، وبناء الويب يمرّ. فدخلت
+# مهمة ثانية.
 #
-# الاختبارات تفتح Chromium فعليًّا: تسجّل دخولًا، وتلصق كشفًا، وتقطع الشبكة،
-# وتزرع أزرارًا لترى المحرّك يرفضها. فهي أبطأ من اختبار وحدة وأصدق منه.
+# المهمتان تعملان معًا على أي دفعة تطابق المرشّح: مرشّحات المسارات في Actions
+# على مستوى سير العمل لا المهمة، وفصلهما يحتاج إجراءً خارجيًّا لا يستحقّه
+# توفيرُ بضع دقائق. وهما تتوازيان على أي حال.
+#
+# اختبارات النسخة التجريبية تفتح Chromium فعليًّا: تسجّل دخولًا، وتلصق كشفًا،
+# وتقطع الشبكة، وتزرع أزرارًا لترى المحرّك يرفضها. فهي أبطأ من اختبار وحدة
+# وأصدق منه.
 
-name: اختبارات النسخة التجريبية
+name: الاختبارات
 
 on:
   push:
@@ -15,20 +21,25 @@ on:
     paths:
       - 'demo/**'
       - 'site/**'
+      - 'apps/**'
       - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/test.yml'
   pull_request:
     paths:
       - 'demo/**'
       - 'site/**'
+      - 'apps/**'
       - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/test.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: demo-tests-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -82,6 +93,43 @@ jobs:
           [ $bad -eq 0 ] && echo "نظيف: لا هوية شخصية في الملفات ولا في التاريخ."
           exit $bad
 
+      # الحارس أعلاه يعرف مزوّدي البريد العامّين وحدهم، وmake_public.py يطبّق
+      # قاعدة أضيق: لا يبقى في المنشور إلا @example.om و@hissa.om. فمرّ بينهما
+      # حسابان — omar@test.com وsysadmin@hissa.local بصلاحياته الثماني عشرة —
+      # حُذفا من المنشور وبقيا في المصدر المتتبَّع لمستودع عامّ.
+      #
+      # هذا الفحص يطبّق قاعدة البناء نفسها على المصدر، فلا يتباعدان مرّة أخرى.
+      - name: بريد البذرة داخل نطاقَي العرض وحدهما
+        run: |
+          python3 - <<'GUARD'
+          import io, json, re, sys
+
+          DOMAINS = ('@example.om', '@hissa.om')   # نفس ثابت make_public.py
+          bad = []
+
+          def check(label, users):
+              for u in users:
+                  mail = u.get('email') or ''
+                  if mail and not mail.endswith(DOMAINS):
+                      bad.append(f'{label}: {u.get("id")} → {mail}')
+
+          src = io.open('demo/hissa-live.html', encoding='utf-8').read()
+          m = re.search(r'<script id="appstate" type="application/json">(.*?)</script>', src, re.S)
+          if not m:
+              sys.exit('demo/hissa-live.html: لا كتلة حالة')
+          check('demo/hissa-live.html', json.loads(m.group(1).replace('\\u003c', '<')).get('users', []))
+
+          for path in ('demo/tests/fixtures/state.ancient.json', 'demo/tests/fixtures/state.gutted.json'):
+              check(path, json.loads(io.open(path, encoding='utf-8').read()).get('users', []))
+
+          if bad:
+              print('::error::بريد خارج نطاقَي العرض داخل المصدر المتتبَّع:')
+              for line in bad:
+                  print('  ' + line)
+              sys.exit(1)
+          print('نظيف: كل بريد في البذرة داخل @example.om أو @hissa.om.')
+          GUARD
+
       # الأيقونات مولَّدة ومدفوعة، لكن إعادة توليدها تثبت أن المولِّد يعمل
       - name: بناء النسخة العامة
         run: npm run demo:site
@@ -99,3 +147,31 @@ jobs:
             .demo-work/shots/**
           if-no-files-found: ignore
           retention-days: 7
+
+  # المكدّس تحت apps/ — لم يكن يُشغَّل هنا شيء منه، فكانت دفعة تمسّه وحده
+  # تمرّ بلا اختبار ولا فحص أنواع ولا بناء. ومصفوفة التتبّع في
+  # docs/TRACEABILITY.md تستشهد بعمود «Test» لاختبارات لم تكن تعمل.
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: تثبيت مساحة العمل
+        run: npm ci --no-audit --no-fund
+
+      # 56 اختبارًا على node:test بقاعدة في الذاكرة: الوحدات، ومعايير القبول
+      # AT-01…AT-12، والرحلة الكاملة من التسجيل إلى الصرف.
+      - name: اختبارات الواجهة البرمجية
+        run: npm test --workspace apps/api
+
+      - name: فحص الأنواع
+        run: npm run typecheck
+
+      - name: بناء الويب
+        run: npm run build --workspace apps/web

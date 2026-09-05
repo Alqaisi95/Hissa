@@ -51,6 +51,29 @@ HEAD_EXTRA = (
 )
 
 
+def h64(text):
+    """FNV-1a 64, byte for byte the h64() inside the page."""
+    prime, mask = 0x100000001b3, (1 << 64) - 1
+    value = 0xcbf29ce484222325
+    for ch in text:
+        value ^= ord(ch)
+        value = (value * prime) & mask
+    return format(value, '016x')
+
+
+def rechain(rows):
+    """Rewrite prev/hash so the shortened log verifies against the page's own
+    check. Mirrors appendAudit(): the hash covers the row with `prev` set and
+    `hash` absent, serialised in its existing key order."""
+    prev = '0' * 16
+    for row in rows:
+        body = {k: v for k, v in row.items() if k != 'hash'}
+        body['prev'] = prev
+        row['prev'] = prev
+        row['hash'] = h64(prev + '|' + json.dumps(body, ensure_ascii=False, separators=(',', ':')))
+        prev = row['hash']
+
+
 def build_pwa(index_bytes):
     """Copy the worker, manifest and icons into site/, stamping the build."""
     missing = [p for p in (os.path.join(PWA, 'sw.js'),
@@ -90,10 +113,19 @@ def main():
             if not (u.get('email') or '').endswith(DEMO_DOMAINS)]
     ids = {u['id'] for u in real}
     st['users'] = [u for u in st['users'] if u['id'] not in ids]
-    # Audit rows naming a removed account go with it. The chain is recomputed
-    # from scratch on every load, so a shortened log still verifies.
+    # Audit rows naming a removed account go with it — and then the chain has
+    # to be rebuilt.
+    #
+    # The note that used to sit here said a shortened log "still verifies
+    # because the chain is recomputed from scratch on every load". It is not:
+    # auditIntegrity() recomputes and *compares*, so every row after a removal
+    # fails, and the reader is shown a broken audit trail on a page whose whole
+    # argument is that the trail cannot be tampered with. Removing a row is a
+    # legitimate edit made by this build; re-linking is what makes the
+    # remaining log honest rather than merely shorter.
     st['audit'] = [a for a in st['audit']
                    if a.get('entity') not in ids and a.get('actor') not in ids]
+    rechain(st['audit'])
 
     body = json.dumps(st, ensure_ascii=False).replace('<', '\\u003c')
     out = src[:m.start()] + m.group(1) + body + m.group(3) + src[m.end():]

@@ -39,7 +39,7 @@ const VIEWPORTS = [
   { k: 'desktop', w: 1440, h: 900,  touch: false },
 ];
 const ACCOUNTS = [
-  { k: 'admin',    email: 'sysadmin@hissa.local', pw: 'Hissa#2026' },
+  { k: 'admin',    email: 'sysadmin@hissa.om', pw: 'Hissa#2026' },
   { k: 'finance',  email: 'maryam@hissa.om',      pw: 'Hissa#2026' },
   { k: 'investor', email: 'abdullah@example.om',  pw: 'Hissa#2026' },
   { k: 'owner',    email: 'owner.cafe@example.om', pw: 'Hissa#2026' },

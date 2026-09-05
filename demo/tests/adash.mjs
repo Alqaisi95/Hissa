@@ -50,7 +50,7 @@ async function open(file, email, pw) {
 
 /* ══ ١ · اللوحة بعين مدير النظام ══ */
 console.log('\n══ لوحة الإدارة — مدير بكل الصلاحيات ══');
-const A = await open('index.html', 'sysadmin@hissa.local', 'Hissa#2026');
+const A = await open('index.html', 'sysadmin@hissa.om', 'Hissa#2026');
 ok('يدخل ويصل اللوحة', A.inn);
 if (A.inn) {
   await A.p.click('[data-view="ops.adash"]');
@@ -98,7 +98,7 @@ if (A.inn) {
   /* ٣ · فصل المهام */
   const sodNames = await A.p.$$eval('.sod__h strong', n => n.map(x => x.textContent.trim()));
   ok('حساب المدير يظهر في تحليل فصل المهام — بلا استثناء',
-    sodNames.includes('عمر القيسي'), sodNames.join(' · '));
+    sodNames.includes('المشرف العام'), sodNames.join(' · '));
   const marks = await A.p.$$eval('.sod__r .exc__age', n => n.map(x => x.textContent.trim()));
   ok('يعرض «محجوب» حيث يوجد ضابط', marks.includes('محجوب'));
   ok('ويعرض «مكشوف» حيث لا ضابط', marks.includes('مكشوف'));
@@ -137,7 +137,7 @@ await A.ctx.close();
 
 /* ══ ٤ · انقلاب المصفوفة عند اثني عشر حسابًا نشطًا ══ */
 console.log('\n══ المصفوفة عند ١٢ حسابًا نشطًا ══');
-const B = await open('many.html', 'sysadmin@hissa.local', 'Hissa#2026');
+const B = await open('many.html', 'sysadmin@hissa.om', 'Hissa#2026');
 ok('يدخل', B.inn);
 if (B.inn) {
   await B.p.click('[data-view="ops.adash"]');

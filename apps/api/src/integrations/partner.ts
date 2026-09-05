@@ -37,7 +37,7 @@ export function createCollectionIntent(params: {
     return {
       paymentReferenceId: existing.id,
       providerRef: existing.provider_ref,
-      redirectUrl: `${partnerBaseUrl()}/checkout/${existing.provider_ref}`,
+      redirectUrl: checkoutUrl(existing.provider_ref),
       status: existing.status === 'initiated' ? 'initiated' : 'pending',
     };
   }
@@ -53,7 +53,7 @@ export function createCollectionIntent(params: {
     [id, params.orderId, PROVIDER, providerRef, params.idempotencyKey, params.amount,
      params.escrowAccountRef, JSON.stringify({ correlationId: params.correlationId ?? null }), at, at],
   );
-  return { paymentReferenceId: id, providerRef, redirectUrl: `${partnerBaseUrl()}/checkout/${providerRef}`, status: 'initiated' };
+  return { paymentReferenceId: id, providerRef, redirectUrl: checkoutUrl(providerRef), status: 'initiated' };
 }
 
 /** Outbound money movement (refund, disbursement, distribution) at the partner/bank. */
@@ -109,6 +109,16 @@ export function markFailed(providerRef: string, payload: unknown): boolean {
 }
 
 export const partnerBaseUrl = () => process.env.PARTNER_BASE_URL ?? 'https://sandbox.partner.example/om';
+
+/**
+ * Where the investor goes to pay. Derived entirely from the provider
+ * reference, which is why GET /orders/:id can hand it back: the checkout page
+ * used to reach the browser only in the router state of the redirect that
+ * created the order, so a refresh left the investor on "your commitment is
+ * being confirmed" with no way to pay it.
+ */
+export const checkoutUrl = (providerRef: string): string =>
+  `${partnerBaseUrl()}/checkout/${providerRef}`;
 
 /** Statement feed used by daily reconciliation (FR-402). */
 export function fetchEscrowStatement(escrowAccountRef: string, _date: string) {
