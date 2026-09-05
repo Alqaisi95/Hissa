@@ -79,3 +79,63 @@ test('an unlabelled environment is treated as the real one', async (t) => {
     assert.equal(buildConfig({ RATE_LIMIT_DISABLED: '1', NODE_ENV: 'test' }).rateLimitEnabled, false);
   });
 });
+
+test('verifying a contact channel is not a way back into a shut account', async (t) => {
+  const { startTestServer, stopTestServer, api, makeUser } = await import('./helpers.ts');
+  const { get, run } = await import('../db/index.ts');
+  const { nowIso } = await import('../lib/ids.ts');
+
+  await startTestServer();
+  t.after(() => stopTestServer());
+
+  const statusOf = (id: string) => get<{ status: string }>(`SELECT status FROM users WHERE id = ?`, [id])!.status;
+
+  await t.test('a suspended account is refused a code at all', async () => {
+    const id = makeUser({ fullName: 'موقوف', email: 'suspended@test.om', roles: ['investor'] });
+    run(`UPDATE users SET status = 'suspended', updated_at = ? WHERE id = ?`, [nowIso(), id]);
+
+    const asked = await api('POST', '/api/identity/otp/request',
+      { body: { userId: id, channel: 'email', purpose: 'verify_contact' } });
+    assert.equal(asked.status, 403);
+    assert.equal(statusOf(id), 'suspended');
+  });
+
+  await t.test('a restricted account that still holds a code stays restricted after using it', async () => {
+    // The two halves are guarded separately: a code issued before the
+    // restriction lands must not become a way back either.
+    const id = makeUser({ fullName: 'مقيَّد', email: 'restricted-otp@test.om', roles: ['investor'] });
+    const asked = await api('POST', '/api/identity/otp/request',
+      { body: { userId: id, channel: 'email', purpose: 'verify_contact' } });
+    assert.equal(asked.status, 200);
+    const code = get<{ id: string }>(
+      `SELECT id FROM otp_codes WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, [id])!;
+    assert.ok(code);
+
+    run(`UPDATE users SET status = 'restricted', updated_at = ? WHERE id = ?`, [nowIso(), id]);
+
+    // Replay the code the account already had. It must verify the channel and
+    // change nothing else.
+    const otp = get<any>(`SELECT * FROM otp_codes WHERE id = ?`, [code.id]);
+    assert.ok(otp);
+    const verified = await api('POST', '/api/identity/otp/verify',
+      { body: { userId: id, code: asked.body.devOtp, purpose: 'verify_contact' } });
+    assert.equal(verified.status, 200);
+    assert.equal(statusOf(id), 'restricted', 'the account promoted itself back to active');
+    assert.ok(
+      get<any>(`SELECT email_verified_at FROM users WHERE id = ?`, [id])!.email_verified_at,
+      'the channel should still be recorded as proven',
+    );
+  });
+
+  await t.test('an account that never finished sign-up is still promoted', async () => {
+    const id = makeUser({ fullName: 'جديد', email: 'pending-otp@test.om', roles: ['investor'] });
+    run(`UPDATE users SET status = 'pending_verification', updated_at = ? WHERE id = ?`, [nowIso(), id]);
+
+    const asked = await api('POST', '/api/identity/otp/request',
+      { body: { userId: id, channel: 'email', purpose: 'verify_contact' } });
+    const verified = await api('POST', '/api/identity/otp/verify',
+      { body: { userId: id, code: asked.body.devOtp, purpose: 'verify_contact' } });
+    assert.equal(verified.status, 200);
+    assert.equal(statusOf(id), 'active');
+  });
+});

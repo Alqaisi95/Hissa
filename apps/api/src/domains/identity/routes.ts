@@ -95,8 +95,15 @@ identityRouter.post('/otp/request', rateLimit({ windowMs: minutes(10), max: 5, k
     purpose: z.enum(['verify_contact', 'mfa', 'password_reset', 'payment_change']).default('verify_contact'),
   }).parse(req.body);
 
-  const user = get<any>(`SELECT id FROM users WHERE id = ?`, [body.userId]);
+  const user = get<any>(`SELECT id, status FROM users WHERE id = ?`, [body.userId]);
   if (!user) throw notFound();
+  /* This endpoint takes a userId and no session, so it is the one door into
+     the account that an unauthenticated caller can knock on. Handing a code to
+     an account compliance has just shut is the first half of reactivating it;
+     the second half is guarded below, at verify. Both halves are needed. */
+  if (user.status === 'suspended' || user.status === 'closed') {
+    throw forbidden('الحساب موقوف. تواصل مع الدعم.', 'Account suspended. Please contact support.');
+  }
 
   const code = issueOtp(body.userId, body.channel, body.purpose);
   res.json({ sent: true, ...(config.exposeOtp ? { devOtp: code } : {}) });
@@ -131,7 +138,17 @@ identityRouter.post('/otp/verify', rateLimit({ windowMs: minutes(10), max: 10, k
 
   if (body.purpose === 'verify_contact') {
     const column = otp.channel === 'email' ? 'email_verified_at' : 'phone_verified_at';
-    run(`UPDATE users SET ${column} = ?, status = 'active', updated_at = ? WHERE id = ?`, [at, at, body.userId]);
+    /* Recording that the channel was proven is always correct, so it is
+       unconditional. Moving the account to active is not: this ran with no
+       precondition on the status it was moving *from*, so an account that
+       compliance had suspended for suspected fraud — or that
+       restrictExpiredKyc had restricted for lapsed verification — could put
+       itself back to active by proving an address it already controlled, and
+       with it clear the account_restricted block in orders/eligibility.
+       Only an account that has never finished sign-up is promoted here. */
+    run(`UPDATE users SET ${column} = ?, updated_at = ? WHERE id = ?`, [at, at, body.userId]);
+    run(`UPDATE users SET status = 'active', updated_at = ? WHERE id = ? AND status = 'pending_verification'`,
+        [at, body.userId]);
     audit({ actorId: body.userId, action: 'user.contact_verified', entityType: 'user', entityId: body.userId,
             after: { channel: otp.channel }, ip: req.ip });
   }
